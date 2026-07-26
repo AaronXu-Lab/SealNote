@@ -47,7 +47,7 @@ Seal Note 不会有意收集儿童的个人信息，也不面向儿童进行行�
 
 ## 联系我们
 
-如对本政策、数据删除或隐私选择有疑问，请通过 [GitHub Issues](https://github.com/XuWeinan123/EncryptNotes_for_TRAE/issues) 联系开发者。请勿在公开 Issue 中提交笔记正文、密钥或其他敏感信息。
+如对本政策、数据删除或隐私选择有疑问，请通过 [GitHub Issues](https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE/issues) 联系开发者。请勿在公开 Issue 中提交笔记正文、密钥或其他敏感信息。
 
 ---
 
@@ -67,4 +67,4 @@ Other than Apple iCloud for file synchronization, Seal Note does not transmit th
 
 The macOS app includes an optional local command-line interface that is disabled by default. Once explicitly enabled in Settings, the signed `sealnote` helper communicates with the running app over an authenticated `127.0.0.1` connection. It does not directly access vault files or encryption keys and does not send note content to the developer. Encrypted-note titles, identifiers, counts, and bodies are hidden from the CLI, which cannot create or modify encrypted notes. Session credentials rotate whenever the app starts and are revoked when CLI access is disabled or the app exits.
 
-For privacy questions, deletion guidance, or privacy choices, contact the developer through [GitHub Issues](https://github.com/XuWeinan123/EncryptNotes_for_TRAE/issues). Do not include note content, encryption keys, or other sensitive information in a public issue.
+For privacy questions, deletion guidance, or privacy choices, contact the developer through [GitHub Issues](https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE/issues). Do not include note content, encryption keys, or other sensitive information in a public issue.

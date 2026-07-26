@@ -338,7 +338,7 @@ struct MacSettingsView: View {
     }
 
     private var privacyPolicyURL: URL {
-        URL(string: "https://github.com/XuWeinan123/EncryptNotes_for_TRAE/blob/main/PRIVACY.md")!
+        URL(string: "https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE/blob/main/PRIVACY.md")!
     }
 
     #if DEBUG

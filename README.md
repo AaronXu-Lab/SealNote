@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/XuWeinan123/EncryptNotes_for_TRAE/releases">下载最新版本</a>
+  <a href="https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE/releases">下载最新版本</a>
   ·
   <a href="PRIVACY.md">隐私政策</a>
   ·
-  <a href="https://github.com/XuWeinan123/EncryptNotes_for_TRAE/issues">反馈问题</a>
+  <a href="https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE/issues">反馈问题</a>
 </p>
 
 ## 为什么是 Seal Note
@@ -55,7 +55,7 @@ iCloud Drive / 本地存储
 项目是纯 Xcode 工程，使用 Swift 5；依赖由 Xcode 的 Swift Package Manager 自动解析。
 
 ```bash
-git clone https://github.com/XuWeinan123/EncryptNotes_for_TRAE.git
+git clone https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE.git
 cd EncryptNotes_for_TRAE
 
 # 构建、启动并验证 macOS 应用进程
@@ -126,4 +126,4 @@ SealNote/
 - 维护日志默认关闭，且不记录正文或密钥
 - 笔记文件始终由用户自己的设备与 iCloud Drive 管理
 
-如需报告安全问题或缺陷，请通过 [GitHub Issues](https://github.com/XuWeinan123/EncryptNotes_for_TRAE/issues) 联系，并避免在公开 Issue 中附上笔记正文或密钥。
+如需报告安全问题或缺陷，请通过 [GitHub Issues](https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE/issues) 联系，并避免在公开 Issue 中附上笔记正文或密钥。
