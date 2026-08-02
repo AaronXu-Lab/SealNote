@@ -12,7 +12,7 @@ PROJECT="SealNote.xcodeproj"
 IOS_SCHEME="SealNote"
 MAC_SCHEME="SealNoteMac"
 
-LOG_DIR="${VERIFY_LOG_DIR:-/private/tmp/claude-501/-Users-wally-Documents-EncryptNotes-for-TRAE/4f0eee76-98d1-42d1-bf59-41f3fa74e2d9/scratchpad}"
+LOG_DIR="${VERIFY_LOG_DIR:-${TMPDIR:-/private/tmp}/sealnote-verify}"
 mkdir -p "$LOG_DIR"
 
 log_path() { echo "$LOG_DIR/verify-$1-$(date +%Y%m%d-%H%M%S).log"; }

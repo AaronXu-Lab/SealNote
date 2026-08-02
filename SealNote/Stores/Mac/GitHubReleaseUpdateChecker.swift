@@ -31,10 +31,10 @@ final class GitHubReleaseUpdateChecker {
     }
 
     private let latestReleaseURL = URL(
-        string: "https://api.github.com/repos/AaronXu-Lab/EncryptNotes_for_TRAE/releases/latest"
+        string: "https://api.github.com/repos/AaronXu-Lab/SealNote/releases/latest"
     )!
     private let releasesPageURL = URL(
-        string: "https://github.com/AaronXu-Lab/EncryptNotes_for_TRAE/releases"
+        string: "https://github.com/AaronXu-Lab/SealNote/releases"
     )!
     private let skippedReleaseVersionKey = "githubReleaseUpdateChecker.skippedVersion"
 

@@ -1,4 +1,8 @@
 build/
 .derivedData/
 dist/
+.DS_Store
+*.profraw
+**/xcuserdata/
 *.xcuserstate
+temp_for_ai/seal_note_string_inventory.csv

@@ -30,7 +30,7 @@
 ## 二、测试与验证
 
 ```bash
-cd /Users/wally/Documents/EncryptNotes_for_TRAE
+cd /Users/wally/Documents/SealNote
 ./script/verify.sh ios-build      # iOS 构建
 ./script/verify.sh mac-build      # macOS 构建（共享代码必须保持可编译）
 ./script/verify.sh mac-test       # SealNoteMacTests（CLICommandServiceTests）
