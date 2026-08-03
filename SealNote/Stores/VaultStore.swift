@@ -38,6 +38,12 @@ nonisolated enum IOSVaultKeyStatus: Equatable {
 }
 #endif
 
+nonisolated enum CloudNoteDownloadState: Equatable {
+    case queued
+    case downloading
+    case failed(String)
+}
+
 nonisolated struct EncryptedNoteInfo: Identifiable, Equatable {
     let id: String
     let url: URL
@@ -71,6 +77,7 @@ final class VaultStore: ObservableObject {
     /// True when the vault is on iCloud but a local fallback vault still holds notes
     /// written while iCloud was signed out (P0-3).
     @Published private(set) var strandedLocalDataDetected: Bool = false
+    @Published private(set) var cloudNoteDownloadStates: [String: CloudNoteDownloadState] = [:]
     #endif
 
     private let storage: VaultStorage
@@ -93,6 +100,12 @@ final class VaultStore: ObservableObject {
     private var pendingDownloadCount = 0
     #if os(iOS)
     private var cloudOnlyPlainNoteIDs = Set<String>()
+    private var cloudDownloadQueue: [String] = []
+    private var queuedCloudDownloadIDs = Set<String>()
+    private var activeCloudDownloadIDs = Set<String>()
+    private var cloudDownloadRetryCounts: [String: Int] = [:]
+    private var cloudDownloadPumpTask: Task<Void, Never>?
+    private var automaticCloudDownloadsEnabled = false
     #endif
 
     private struct LoadedNotesSnapshot {
@@ -358,13 +371,180 @@ final class VaultStore: ObservableObject {
         cloudOnlyPlainNoteIDs.contains(note.id)
     }
 
-    func openCloudOnlyNote(_ note: Note) async throws -> Note {
-        guard cloudOnlyPlainNoteIDs.contains(note.id),
-              let entry = noteIndex.entry(for: note.id),
-              let url = Self.urlForEntry(entry, storage: storage) else {
+    func cloudDownloadState(for noteID: String) -> CloudNoteDownloadState? {
+        cloudNoteDownloadStates[noteID]
+    }
+
+    func noteForEditing(noteID: String) async throws -> Note {
+        if let note = readableNotes.first(where: { $0.id == noteID }), !isCloudOnly(note) {
             return note
         }
-        let mdFile = try await fileIO.perform { [storage] in try storage.loadMarkdownFile(at: url) }
+
+        guard cloudOnlyPlainNoteIDs.contains(noteID) else {
+            throw StorageError.fileNotFound
+        }
+
+        prioritizeCloudDownload(noteID: noteID)
+        let deadline = Date().addingTimeInterval(30)
+        while Date() < deadline {
+            if let note = readableNotes.first(where: { $0.id == noteID }), !isCloudOnly(note) {
+                return note
+            }
+            if case .failed = cloudNoteDownloadStates[noteID] {
+                retryCloudDownload(noteID: noteID)
+            }
+            try await Task.sleep(nanoseconds: 200_000_000)
+            try Task.checkCancellation()
+        }
+
+        let message: String
+        if case .failed(let error) = cloudNoteDownloadStates[noteID] {
+            message = error
+        } else {
+            message = StorageError.iCloudDownloadPending.localizedDescription
+        }
+        throw CloudNoteDownloadError.failed(message)
+    }
+
+    func openCloudOnlyNote(_ note: Note) async throws -> Note {
+        try await noteForEditing(noteID: note.id)
+    }
+
+    func prioritizeCloudDownload(noteID: String) {
+        guard cloudOnlyPlainNoteIDs.contains(noteID) else { return }
+        enqueueCloudDownloads([noteID], atFront: true)
+        startCloudDownloadPumpIfNeeded()
+    }
+
+    func retryCloudDownload(noteID: String) {
+        guard cloudOnlyPlainNoteIDs.contains(noteID) else { return }
+        cloudDownloadRetryCounts[noteID] = 0
+        enqueueCloudDownloads([noteID], atFront: true)
+        startCloudDownloadPumpIfNeeded()
+    }
+
+    func resumeAutomaticCloudDownloads() {
+        guard isUsingICloudStorage else { return }
+        automaticCloudDownloadsEnabled = true
+        let orderedIDs = plainNotes
+            .filter { cloudOnlyPlainNoteIDs.contains($0.id) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .map(\.id)
+        enqueueCloudDownloads(orderedIDs, atFront: false)
+        startCloudDownloadPumpIfNeeded()
+    }
+
+    func pauseAutomaticCloudDownloads() {
+        automaticCloudDownloadsEnabled = false
+        cloudDownloadPumpTask?.cancel()
+        cloudDownloadPumpTask = nil
+        activeCloudDownloadIDs.removeAll()
+    }
+
+    func cleanupAbandonedIPadDrafts() async {
+        let registry = IPadTemporaryNoteRegistry.shared
+        guard let noteIDs = registry.takeNoteIDsForLaunchCleanup() else { return }
+        for noteID in noteIDs {
+            guard let note = readableNotes.first(where: { $0.id == noteID }) else {
+                registry.finish(noteID)
+                continue
+            }
+            guard !isCloudOnly(note) else { continue }
+            if note.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                try? await discardEmptyNote(note, body: note.body)
+            }
+            registry.finish(noteID)
+        }
+    }
+
+    private func enqueueCloudDownloads(_ noteIDs: [String], atFront: Bool) {
+        let newIDs = noteIDs.filter {
+            cloudOnlyPlainNoteIDs.contains($0)
+                && !queuedCloudDownloadIDs.contains($0)
+                && !activeCloudDownloadIDs.contains($0)
+        }
+        guard !newIDs.isEmpty else { return }
+        if atFront {
+            cloudDownloadQueue.insert(contentsOf: newIDs, at: 0)
+        } else {
+            cloudDownloadQueue.append(contentsOf: newIDs)
+        }
+        queuedCloudDownloadIDs.formUnion(newIDs)
+        for noteID in newIDs where cloudNoteDownloadStates[noteID] == nil {
+            cloudNoteDownloadStates[noteID] = .queued
+        }
+        pendingDownloadCount = cloudOnlyPlainNoteIDs.count
+        SyncStatusStore.shared.setPendingDownloads(count: pendingDownloadCount)
+    }
+
+    private func startCloudDownloadPumpIfNeeded() {
+        guard cloudDownloadPumpTask == nil, !cloudDownloadQueue.isEmpty else { return }
+        cloudDownloadPumpTask = Task { [weak self] in
+            guard let self else { return }
+            await withTaskGroup(of: Void.self) { group in
+                for _ in 0..<3 {
+                    group.addTask { [weak self] in
+                        await self?.runCloudDownloadWorker()
+                    }
+                }
+                await group.waitForAll()
+            }
+            guard !Task.isCancelled else { return }
+            self.cloudDownloadPumpTask = nil
+            if !self.cloudDownloadQueue.isEmpty {
+                self.startCloudDownloadPumpIfNeeded()
+            }
+        }
+    }
+
+    private func runCloudDownloadWorker() async {
+        while !Task.isCancelled {
+            guard let noteID = dequeueCloudDownload() else { return }
+            do {
+                try await downloadCloudNote(noteID: noteID)
+                cloudDownloadRetryCounts[noteID] = nil
+            } catch is CancellationError {
+                return
+            } catch {
+                let count = cloudDownloadRetryCounts[noteID, default: 0] + 1
+                cloudDownloadRetryCounts[noteID] = count
+                cloudNoteDownloadStates[noteID] = .failed(error.localizedDescription)
+                guard automaticCloudDownloadsEnabled else { continue }
+                let delay = min(8, max(1, 1 << min(count - 1, 3)))
+                try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
+                guard !Task.isCancelled else { return }
+                enqueueCloudDownloads([noteID], atFront: false)
+            }
+        }
+    }
+
+    private func dequeueCloudDownload() -> String? {
+        while let noteID = cloudDownloadQueue.first {
+            cloudDownloadQueue.removeFirst()
+            queuedCloudDownloadIDs.remove(noteID)
+            guard cloudOnlyPlainNoteIDs.contains(noteID),
+                  !activeCloudDownloadIDs.contains(noteID) else { continue }
+            activeCloudDownloadIDs.insert(noteID)
+            cloudNoteDownloadStates[noteID] = .downloading
+            return noteID
+        }
+        return nil
+    }
+
+    private func downloadCloudNote(noteID: String) async throws {
+        defer { activeCloudDownloadIDs.remove(noteID) }
+        guard let entry = noteIndex.entry(for: noteID),
+              entry.location == .notes,
+              entry.mode == .plain,
+              let url = Self.urlForEntry(entry, storage: storage) else {
+            throw StorageError.fileNotFound
+        }
+
+        let mdFile = try await Task.detached(priority: .utility) { [storage] in
+            try storage.loadMarkdownFile(at: url)
+        }.value
+        try Task.checkCancellation()
+
         let loaded = Note(
             id: mdFile.noteId,
             body: mdFile.body,
@@ -372,11 +552,19 @@ final class VaultStore: ObservableObject {
             updatedAt: mdFile.updatedAt,
             isEncrypted: false
         )
-        cloudOnlyPlainNoteIDs.remove(note.id)
-        if let index = plainNotes.firstIndex(where: { $0.id == note.id }) {
+        cloudOnlyPlainNoteIDs.remove(noteID)
+        cloudNoteDownloadStates[noteID] = nil
+        if let index = plainNotes.firstIndex(where: { $0.id == noteID }) {
             plainNotes[index] = loaded
+        } else {
+            plainNotes.append(loaded)
         }
-        return loaded
+        pendingDownloadCount = cloudOnlyPlainNoteIDs.count
+        if pendingDownloadCount == 0 {
+            SyncStatusStore.shared.setSaved()
+        } else {
+            SyncStatusStore.shared.setPendingDownloads(count: pendingDownloadCount)
+        }
     }
     #endif
 
@@ -421,6 +609,10 @@ final class VaultStore: ObservableObject {
                 handlePendingDownloads(pendingDownloadCount)
             }
             state = .ready
+            #if os(iOS)
+            await cleanupAbandonedIPadDrafts()
+            resumeAutomaticCloudDownloads()
+            #endif
         } catch {
             state = .error(message: error.localizedDescription)
         }
@@ -675,13 +867,17 @@ final class VaultStore: ObservableObject {
     private func handlePendingDownloads(_ count: Int) {
         #if os(iOS)
         if isUsingICloudStorage {
-            // iOS presents index entries immediately and downloads note bodies
-            // only when opened. A missing/local-placeholder body is not an
-            // active sync job and must not start a refresh timer.
-            pendingDownloadCount = 0
+            // Keep index-backed placeholders visible immediately, then hydrate
+            // every ordinary note body in a bounded background queue.
+            pendingDownloadCount = max(count, cloudOnlyPlainNoteIDs.count)
             pendingDownloadRetryTask?.cancel()
             pendingDownloadRetryTask = nil
-            SyncStatusStore.shared.setSaved()
+            if pendingDownloadCount > 0 {
+                recordPendingDownloads(pendingDownloadCount)
+                SyncStatusStore.shared.setPendingDownloads(count: pendingDownloadCount)
+            } else {
+                SyncStatusStore.shared.setSaved()
+            }
             return
         }
         #endif
@@ -807,6 +1003,7 @@ final class VaultStore: ObservableObject {
                         isEncrypted: false
                     ))
                     cloudOnlyPlainNoteIDs.insert(entry.noteId)
+                    pendingDownloadKeys.insert(currentFileKey)
                 } else if entry.location == .notes {
                     lockedEncryptedNotes.append(EncryptedNoteInfo(
                         id: entry.noteId,
@@ -1910,6 +2107,7 @@ final class VaultStore: ObservableObject {
             noteIndex = snapshot.noteIndex
             #if os(iOS)
             cloudOnlyPlainNoteIDs = snapshot.cloudOnlyPlainNoteIDs
+            cloudNoteDownloadStates = cloudNoteDownloadStates.filter { cloudOnlyPlainNoteIDs.contains($0.key) }
             #endif
             handlePendingDownloads(prepared.pendingDownloadKeys.union(snapshot.pendingDownloadKeys).count)
         } catch {
@@ -1954,6 +2152,9 @@ final class VaultStore: ObservableObject {
             } else {
                 SyncStatusStore.shared.setSaved()
             }
+            #if os(iOS)
+            resumeAutomaticCloudDownloads()
+            #endif
         }
     }
 
@@ -2751,6 +2952,18 @@ nonisolated enum VaultError: Error, LocalizedError {
         }
     }
 }
+
+#if os(iOS)
+nonisolated enum CloudNoteDownloadError: Error, LocalizedError {
+    case failed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .failed(let message): return message
+        }
+    }
+}
+#endif
 
 nonisolated enum VaultKeyFileError: Error, LocalizedError, Equatable {
     case fileMissing

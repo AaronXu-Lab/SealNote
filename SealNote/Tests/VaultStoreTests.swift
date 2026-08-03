@@ -1712,6 +1712,59 @@ final class VaultStoreTests: XCTestCase {
         XCTAssertEqual(createCount, 1)
         XCTAssertEqual(updateCount, 1)
     }
+
+    @MainActor
+    func testEditorSessionWindowTransferCreatesOneStableEmptyDraft() async throws {
+        var createdBodies: [String] = []
+        var discardedIDs: [String] = []
+        let session = EditorSession(
+            initialNote: nil,
+            debounceInterval: 10,
+            autoDiscardEmpty: { true },
+            create: { body, _ in
+                createdBodies.append(body)
+                return Note(id: "window-draft", body: body, isEncrypted: false)
+            },
+            update: { note, _ in note },
+            convert: { note, _, _ in note },
+            discardEmpty: { note, _ in discardedIDs.append(note.id) }
+        )
+
+        let first = try await session.prepareForWindowTransfer()
+        let second = try await session.prepareForWindowTransfer()
+
+        XCTAssertEqual(first.id, "window-draft")
+        XCTAssertEqual(second.id, first.id)
+        XCTAssertEqual(createdBodies, [""])
+        XCTAssertEqual(session.createdNoteID, "window-draft")
+
+        await session.close()
+        XCTAssertEqual(discardedIDs, ["window-draft"])
+        XCTAssertNil(session.persistedNote)
+    }
+
+    @MainActor
+    func testEditorSessionWindowTransferReusesAutosavedNewNote() async throws {
+        var createCount = 0
+        let session = EditorSession(
+            initialNote: nil,
+            debounceInterval: 10,
+            create: { body, _ in
+                createCount += 1
+                return Note(id: "autosaved-draft", body: body, isEncrypted: false)
+            },
+            update: { note, _ in note },
+            convert: { note, _, _ in note },
+            discardEmpty: { _, _ in }
+        )
+
+        session.noteDidChange(body: "正在写", isEncrypted: false)
+        let transferred = try await session.prepareForWindowTransfer()
+
+        XCTAssertEqual(transferred.id, "autosaved-draft")
+        XCTAssertEqual(createCount, 1)
+        XCTAssertFalse(session.hasUnsavedChanges)
+    }
     #endif
 }
 

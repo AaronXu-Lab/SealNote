@@ -1,16 +1,34 @@
 import SwiftUI
+import UIKit
+
+enum MobileFeatureVisibility {
+    // Keep paused implementations compiled so they can be re-enabled later.
+    static let markdownPreview = false
+    static let encryptionActions = false
+    static let tags = false
+    static let bulkActions = false
+    static let statistics = false
+}
+
+private enum MobileEditorSheet: Identifiable {
+    case create
+    case edit(Note)
+
+    var id: String { "quick-editor" }
+}
 
 struct HomeView: View {
     @StateObject private var vaultStore = VaultStore.shared
     @StateObject private var appLockStore = AppLockStore.shared
     @StateObject private var syncStore = SyncStatusStore.shared
     @StateObject private var settings = SettingsStore.shared
+    @StateObject private var noteWindowRegistry = IPadNoteWindowRegistry.shared
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openWindow) private var openWindow
 
     @State private var showSettings = false
     @State private var showTrash = false
-    @State private var showNewNoteEditor = false
-    @State private var selectedNote: Note?
+    @State private var editorSheet: MobileEditorSheet?
     @State private var noteToDelete: NoteListItem?
     @State private var showDeleteConfirmation = false
     @State private var noteToRename: Note?
@@ -27,6 +45,7 @@ struct HomeView: View {
     @State private var showShareSheet = false
     @State private var settingsInitialRoute: SettingsRoute?
     @State private var showKeyIssueAlert = false
+    @State private var showEncryptedNoteUnavailable = false
     @State private var isStorageRefreshInProgress = false
 
     private var filteredItems: [NoteListItem] {
@@ -35,13 +54,6 @@ struct HomeView: View {
 
     private var selectedItems: [NoteListItem] {
         filteredItems.filter { selectedIDs.contains($0.id) }
-    }
-
-    private var isSystemBottomSearchAvailable: Bool {
-        if #available(iOS 26.0, *) {
-            return true
-        }
-        return false
     }
 
     var body: some View {
@@ -56,32 +68,17 @@ struct HomeView: View {
         .onChange(of: scenePhase) { _, newPhase in
             appLockStore.handleScenePhaseChange(newPhase)
             refreshNotesWhenAppBecomesActive(newPhase)
+            if newPhase == .background, UIApplication.shared.applicationState == .background {
+                vaultStore.pauseAutomaticCloudDownloads()
+            }
         }
         .onChange(of: syncStore.isNetworkAvailable) { wasAvailable, isAvailable in
             if !wasAvailable && isAvailable {
                 requestStorageRefresh()
             }
         }
-        .onChange(of: vaultStore.allTags) { _, _ in
-            clearInvalidTagSelectionIfNeeded()
-        }
-        .onChange(of: settings.excludeHexColorsFromTags) { _, _ in
-            clearInvalidTagSelectionIfNeeded()
-        }
-        .sheet(isPresented: $showNewNoteEditor) {
-            NoteEditorView(mode: .create) { body, isEncrypted in
-                return try await vaultStore.createNote(body: body, isEncrypted: isEncrypted)
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-        }
-        .sheet(item: $selectedNote) { note in
-            NoteEditorView(mode: .edit(note)) { body, _ in
-                try await vaultStore.updateNote(note, body: body)
-                return vaultStore.readableNotes.first(where: { $0.id == note.id }) ?? note
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+        .sheet(item: $editorSheet) { destination in
+            quickEditor(for: destination)
         }
         .fullScreenCover(isPresented: $showSettings, onDismiss: {
             settingsInitialRoute = nil
@@ -109,7 +106,14 @@ struct HomeView: View {
         } message: {
             Text("检测到本机存储中还有笔记，可能是 iCloud 退出登录期间创建的。是否合并到当前 iCloud 保险库？重复的笔记会保留为「本机副本」。")
         }
-        .alert("保存密钥", isPresented: $vaultStore.needsKeyExport) {
+        .alert("保存密钥", isPresented: Binding(
+            get: { MobileFeatureVisibility.encryptionActions && vaultStore.needsKeyExport },
+            set: { isPresented in
+                if MobileFeatureVisibility.encryptionActions {
+                    vaultStore.needsKeyExport = isPresented
+                }
+            }
+        )) {
             Button("立即保存") { exportKeyFile() }
             Button("稍后", role: .cancel) { vaultStore.needsKeyExport = false }
         } message: {
@@ -162,6 +166,11 @@ struct HomeView: View {
         } message: {
             Text(keyIssueMessage)
         }
+        .alert("加密笔记", isPresented: $showEncryptedNoteUnavailable) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text("当前版本暂不支持在 iPhone 或 iPad 上查看和编辑加密笔记，请使用 Seal Note for Mac 打开。")
+        }
         .alert("错误", isPresented: Binding(
             get: { vaultStore.lastError != nil },
             set: { if !$0 { vaultStore.lastError = nil } }
@@ -171,15 +180,19 @@ struct HomeView: View {
             Text(vaultStore.lastError ?? "")
         }
         .task {
+            vaultStore.selectedTag = nil
             if case .loading = vaultStore.state {
                 await vaultStore.initialize()
             }
+            await vaultStore.cleanupAbandonedIPadDrafts()
+            vaultStore.resumeAutomaticCloudDownloads()
         }
     }
 
     private func refreshNotesWhenAppBecomesActive(_ phase: ScenePhase) {
         guard phase == .active else { return }
         guard case .ready = vaultStore.state else { return }
+        vaultStore.resumeAutomaticCloudDownloads()
         requestStorageRefresh()
     }
 
@@ -191,6 +204,31 @@ struct HomeView: View {
             await vaultStore.refreshFromStorage()
             isStorageRefreshInProgress = false
         }
+    }
+
+    private func saveEditedNote(_ note: Note, body: String) async throws -> Note {
+        try await vaultStore.updateNote(note, body: body)
+        return vaultStore.readableNotes.first { $0.id == note.id } ?? note
+    }
+
+    @ViewBuilder
+    private func quickEditor(for destination: MobileEditorSheet) -> some View {
+        Group {
+            switch destination {
+            case .create:
+                NoteEditorView(mode: .create, presentation: .sheet) { body, _ in
+                    let note = try await vaultStore.createNote(body: body, isEncrypted: false)
+                    IPadTemporaryNoteRegistry.shared.register(note.id)
+                    return note
+                }
+            case .edit(let note):
+                NoteEditorView(mode: .edit(note), presentation: .sheet) { body, _ in
+                    try await saveEditedNote(note, body: body)
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
     }
 
     private func clearInvalidTagSelectionIfNeeded() {
@@ -227,11 +265,6 @@ struct HomeView: View {
                     prompt: "搜索"
                 )
                 .autocorrectionDisabled()
-                .safeAreaInset(edge: .bottom) {
-                    if !isSelecting && !isSystemBottomSearchAvailable {
-                        bottomSearchBar
-                    }
-                }
             }
             .animation(.easeInOut(duration: 0.2), value: vaultStore.filteredNotes.count)
         }
@@ -240,7 +273,7 @@ struct HomeView: View {
     @ToolbarContentBuilder
     private var homeToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            if isSelecting {
+            if MobileFeatureVisibility.bulkActions && isSelecting {
                 Button {
                     if selectedItems.count == filteredItems.count {
                         selectedIDs.removeAll()
@@ -262,7 +295,7 @@ struct HomeView: View {
         }
 
         ToolbarItem(placement: .principal) {
-            if isSelecting {
+            if MobileFeatureVisibility.bulkActions && isSelecting {
                 Text("已选 \(selectedItems.count) 条")
                     .font(DS.title())
                     .foregroundColor(DS.textEmphasize)
@@ -274,7 +307,7 @@ struct HomeView: View {
         }
 
         ToolbarItem(placement: .topBarTrailing) {
-            if isSelecting {
+            if MobileFeatureVisibility.bulkActions && isSelecting {
                 Button {
                     exitSelectMode()
                 } label: {
@@ -282,25 +315,20 @@ struct HomeView: View {
                         .font(.system(size: 17, weight: .semibold))
                 }
             } else {
-                Menu {
-                    Button {
-                        enterSelectMode()
-                    } label: {
-                        Label("多选笔记", systemImage: "checkmark.circle")
-                    }
-                    Button {
-                        exportNotes()
-                    } label: {
-                        Label("导出笔记", systemImage: "square.and.arrow.up")
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        editorSheet = .create
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 17, weight: .regular))
+                    Image(systemName: "square.and.pencil")
+                        .font(.system(size: 17, weight: .semibold))
                 }
+                .accessibilityLabel("新建笔记")
+                .dsProminentSystemGlassButton()
             }
         }
 
-        if isSelecting {
+        if MobileFeatureVisibility.bulkActions && isSelecting {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button {
                     performBatchCopy()
@@ -317,19 +345,6 @@ struct HomeView: View {
                     Label("删除", systemImage: "trash")
                 }
                 .disabled(selectedItems.isEmpty)
-            }
-        } else if #available(iOS 26.0, *) {
-            DefaultToolbarItem(kind: .search, placement: .bottomBar)
-            ToolbarSpacer(.fixed, placement: .bottomBar)
-            ToolbarItem(placement: .bottomBar) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showNewNoteEditor = true
-                    }
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                }
-                .accessibilityLabel("新建笔记")
             }
         }
     }
@@ -365,7 +380,7 @@ struct HomeView: View {
     private var emptyState: some View {
         VStack(spacing: DS.s4) {
             Spacer()
-            Image(systemName: vaultStore.lockedNoteCount > 0 && !vaultStore.isKeyLoaded ? "lock.doc" : "note.text")
+            Image(systemName: "note.text")
                 .font(.system(size: 44, weight: .regular))
                 .foregroundColor(DS.textSubtle)
             Text(emptyTitle)
@@ -383,19 +398,11 @@ struct HomeView: View {
 
     private var emptyTitle: String {
         if !vaultStore.searchText.isEmpty { return "未找到匹配笔记" }
-        if let tag = vaultStore.selectedTag { return "没有 \(tag)" }
-        if vaultStore.lockedNoteCount > 0 && !vaultStore.isKeyLoaded { return "有笔记待解锁" }
         return "暂无笔记"
     }
 
     private var emptyMessage: String {
         if !vaultStore.searchText.isEmpty { return "换个关键词试试。" }
-        if let tag = vaultStore.selectedTag {
-            return "没有包含 \(tag) 的可读笔记。"
-        }
-        if vaultStore.lockedNoteCount > 0 && !vaultStore.isKeyLoaded {
-            return "前往密钥设置加载原密钥后，加密笔记会在本机解密显示。"
-        }
         return "点击下方按钮创建第一条笔记。"
     }
 
@@ -410,9 +417,11 @@ struct HomeView: View {
                     syncErrorBanner("iCloud 暂时不可用，正在临时使用本机存储。iCloud 恢复后会自动切回，笔记不会丢失。")
                 }
 
-                tagChips
+                if MobileFeatureVisibility.tags {
+                    tagChips
+                }
 
-                if !filteredItems.isEmpty {
+                if MobileFeatureVisibility.statistics && !filteredItems.isEmpty {
                     listSummary
                 }
 
@@ -428,7 +437,7 @@ struct HomeView: View {
             }
             .padding(.horizontal, DS.s3)
             .padding(.top, DS.s3)
-            .padding(.bottom, isSelecting || isSystemBottomSearchAvailable ? DS.s4 : 88)
+            .padding(.bottom, DS.s4)
             .frame(maxWidth: DS.contentMax)
             .frame(maxWidth: .infinity)
         }
@@ -558,65 +567,53 @@ struct HomeView: View {
         .padding(.horizontal, DS.s2)
     }
 
-    // Pre-iOS-26 bottom action bar. Search now lives entirely in the system
-    // `.searchable` field, so this carries only the new-note button (iOS 26 uses a
-    // dedicated bottomBar toolbar item instead).
-    private var bottomSearchBar: some View {
-        HStack {
-            Spacer()
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    showNewNoteEditor = true
-                }
-            } label: {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 19, weight: .semibold))
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel("新建笔记")
-            .dsSystemGlassButton()
-        }
-        .padding(.horizontal, DS.cardPadding)
-        .padding(.vertical, DS.s2)
-        .background(.clear)
-    }
-
     @ViewBuilder
     private func noteRow(_ item: NoteListItem) -> some View {
         let isItemSelected = selectedIDs.contains(item.id)
         switch item {
         case .readable(let note):
-            NoteCardView(
-                note: note,
-                displayTitle: vaultStore.displayTitle(for: note),
-                excludesHexColorsFromTags: settings.excludeHexColorsFromTags,
-                isCloudOnly: vaultStore.isCloudOnly(note),
-                isSelected: isItemSelected,
-                isSelecting: isSelecting,
-                onTap: {
-                    openReadableNote(note)
-                },
-                onRename: note.isEncrypted ? nil : {
-                    beginRenaming(note)
-                },
-                onEdit: {
-                    withAnimation(.easeInOut(duration: 0.2)) { selectedNote = note }
-                },
-                onDelete: {
-                    noteToDelete = item
-                    showDeleteConfirmation = true
-                },
-                onToggleSelect: {
-                    toggleSelection(for: item.id)
+            if note.isEncrypted {
+                EncryptedCardView(note: note) {
+                    showEncryptedNoteUnavailable = true
                 }
-            )
+            } else {
+                NoteCardView(
+                    note: note,
+                    displayTitle: vaultStore.displayTitle(for: note),
+                    excludesHexColorsFromTags: settings.excludeHexColorsFromTags,
+                    isCloudOnly: vaultStore.isCloudOnly(note),
+                    cloudDownloadState: vaultStore.cloudDownloadState(for: note.id),
+                    isSelected: isItemSelected,
+                    isSelecting: MobileFeatureVisibility.bulkActions && isSelecting,
+                    onTap: {
+                        openReadableNote(note)
+                    },
+                    onRename: nil,
+                    onEdit: {
+                        openReadableNote(note)
+                    },
+                    onDelete: {
+                        noteToDelete = item
+                        showDeleteConfirmation = true
+                    },
+                    onToggleSelect: {
+                        toggleSelection(for: item.id)
+                    },
+                    onRetryDownload: {
+                        vaultStore.retryCloudDownload(noteID: note.id)
+                    },
+                    onBecomeVisible: {
+                        vaultStore.prioritizeCloudDownload(noteID: note.id)
+                    }
+                )
+            }
 
         case .locked(let info):
             EncryptedCardView(
                 info: info,
-                isKeyLoaded: vaultStore.isKeyLoaded,
+                isKeyLoaded: false,
                 isSelected: isItemSelected,
-                isSelecting: isSelecting,
+                isSelecting: false,
                 onOpen: {
                     openLockedNote(info)
                 },
@@ -632,6 +629,11 @@ struct HomeView: View {
     }
 
     private func openLockedNote(_ info: EncryptedNoteInfo) {
+        guard MobileFeatureVisibility.encryptionActions else {
+            showEncryptedNoteUnavailable = true
+            return
+        }
+
         guard vaultStore.isKeyLoaded else {
             showKeyIssueAlert = true
             return
@@ -641,7 +643,7 @@ struct HomeView: View {
             do {
                 let note = try await vaultStore.openEncryptedNote(info)
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    selectedNote = note
+                    editorSheet = .edit(note)
                 }
             } catch {
                 vaultStore.lastError = "解锁失败：\(error.localizedDescription)"
@@ -650,14 +652,28 @@ struct HomeView: View {
     }
 
     private func openReadableNote(_ note: Note) {
+        guard !note.isEncrypted else {
+            showEncryptedNoteUnavailable = true
+            return
+        }
+
+        if noteWindowRegistry.contains(note.id) {
+            openWindow(id: IPadNoteWindowScene.id, value: note.id)
+            return
+        }
+
         guard vaultStore.isCloudOnly(note) else {
-            withAnimation(.easeInOut(duration: 0.2)) { selectedNote = note }
+            withAnimation(.easeInOut(duration: 0.2)) { editorSheet = .edit(note) }
             return
         }
         Task { @MainActor in
             do {
-                let loaded = try await vaultStore.openCloudOnlyNote(note)
-                withAnimation(.easeInOut(duration: 0.2)) { selectedNote = loaded }
+                let loaded = try await vaultStore.noteForEditing(noteID: note.id)
+                if noteWindowRegistry.contains(note.id) {
+                    openWindow(id: IPadNoteWindowScene.id, value: note.id)
+                } else {
+                    withAnimation(.easeInOut(duration: 0.2)) { editorSheet = .edit(loaded) }
+                }
             } catch {
                 vaultStore.lastError = "下载笔记失败：\(error.localizedDescription)"
             }
@@ -852,11 +868,17 @@ struct ErrorView: View {
 
 private extension View {
     @ViewBuilder
-    func dsSystemGlassButton() -> some View {
+    func dsProminentSystemGlassButton() -> some View {
         if #available(iOS 26.0, *) {
-            self.buttonStyle(.glass)
+            self
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.circle)
+                .tint(DS.primary)
         } else {
-            self.buttonStyle(.bordered)
+            self
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.circle)
+                .tint(DS.primary)
         }
     }
 }

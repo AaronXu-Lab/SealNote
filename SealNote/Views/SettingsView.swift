@@ -33,16 +33,18 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack(path: $path) {
             SWPanelStack {
-                if !vaultStore.isKeyLoaded && vaultStore.lockedNoteCount > 0 {
+                if MobileFeatureVisibility.encryptionActions && !vaultStore.isKeyLoaded && vaultStore.lockedNoteCount > 0 {
                     keyOverview
                 }
 
                 SWSectionPanel {
-                    settingsLink(.notes, "笔记与编辑器", subtitle: "默认模式、Markdown 与编辑行为", systemImage: "textformat", tint: DS.ai)
+                    settingsLink(.notes, "笔记与编辑器", subtitle: "Markdown 与编辑行为", systemImage: "textformat", tint: DS.ai)
+                    if MobileFeatureVisibility.encryptionActions {
+                        SWRowDivider()
+                        settingsLink(.key, "密钥与加密", subtitle: "创建、导入、移除或处理加密笔记", systemImage: "lock", tint: DS.primaryDeep)
+                    }
                     SWRowDivider()
-                    settingsLink(.key, "密钥与加密", subtitle: "创建、导入、移除或处理加密笔记", systemImage: "lock", tint: DS.primaryDeep)
-                    SWRowDivider()
-                    settingsLink(.privacy, "隐私保护", subtitle: "后台隐藏与本机密钥保护", systemImage: "hand.raised", tint: DS.pro)
+                    settingsLink(.privacy, "隐私保护", subtitle: "切换应用时隐藏笔记内容", systemImage: "hand.raised", tint: DS.pro)
                     SWRowDivider()
                     settingsLink(.data, "数据", subtitle: "回收站、同步、导出与维护", systemImage: "externaldrive", tint: DS.link)
                     SWRowDivider()
@@ -142,17 +144,19 @@ private struct NotesSettingsView: View {
 
     var body: some View {
         SWPanelStack {
-            SWSectionPanel("新建笔记", footer: "当前没有密钥时，新建笔记会保持为明文。") {
-                SWSettingsRow(
-                    "默认创建加密笔记",
-                    subtitle: vaultStore.isKeyLoaded ? "新建笔记会默认打开加密" : "需要先在密钥设置中创建或加载密钥",
-                    systemImage: "lock",
-                    trailingMinWidth: 52
-                ) {
-                    Toggle("", isOn: defaultEncryptedBinding)
-                        .labelsHidden()
-                        .tint(DS.primary)
-                        .disabled(!vaultStore.isKeyLoaded)
+            if MobileFeatureVisibility.encryptionActions {
+                SWSectionPanel("新建笔记", footer: "当前没有密钥时，新建笔记会保持为明文。") {
+                    SWSettingsRow(
+                        "默认创建加密笔记",
+                        subtitle: vaultStore.isKeyLoaded ? "新建笔记会默认打开加密" : "需要先在密钥设置中创建或加载密钥",
+                        systemImage: "lock",
+                        trailingMinWidth: 52
+                    ) {
+                        Toggle("", isOn: defaultEncryptedBinding)
+                            .labelsHidden()
+                            .tint(DS.primary)
+                            .disabled(!vaultStore.isKeyLoaded)
+                    }
                 }
             }
 
@@ -205,17 +209,6 @@ private struct NotesSettingsView: View {
                 SWRowDivider()
 
                 SWSettingsRow(
-                    "关闭空白笔记时自动丢弃",
-                    subtitle: "仅在关闭编辑器时生效，不会进入回收站。",
-                    systemImage: "trash",
-                    trailingMinWidth: 52
-                ) {
-                    settingsToggle($settings.autoDeleteEmptyNotes)
-                }
-
-                SWRowDivider()
-
-                SWSettingsRow(
                     "自动命名笔记",
                     subtitle: "保存时按正文更新标题；关闭后保留首次生成或手动设置的标题。",
                     systemImage: "text.cursor",
@@ -224,25 +217,25 @@ private struct NotesSettingsView: View {
                     settingsToggle($settings.autoRenameNotesOnSave)
                 }
 
-                SWRowDivider()
+                if MobileFeatureVisibility.tags {
+                    SWRowDivider()
 
-                SWSettingsRow(
-                    "不将 Hex 色值识别为标签",
-                    subtitle: "忽略 #RRGGBB 和 #RRGGBBAA 色值。",
-                    systemImage: "paintpalette",
-                    trailingMinWidth: 52
-                ) {
-                    settingsToggle($settings.excludeHexColorsFromTags)
+                    SWSettingsRow(
+                        "不将 Hex 色值识别为标签",
+                        subtitle: "忽略 #RRGGBB 和 #RRGGBBAA 色值。",
+                        systemImage: "paintpalette",
+                        trailingMinWidth: 52
+                    ) {
+                        settingsToggle($settings.excludeHexColorsFromTags)
+                    }
                 }
             }
 
-            SWSectionPanel("Markdown") {
-                SWSettingsRow("编辑器格式工具栏", subtitle: "可快速插入常用行内格式", systemImage: "character.cursor.ibeam") {
-                    SWStatusBadge("已开启", style: .success)
-                }
-                SWRowDivider()
-                SWSettingsRow("Markdown 预览", subtitle: "在编辑器右上角切换预览", systemImage: "play.rectangle") {
-                    SWStatusBadge("已开启", style: .success)
+            if MobileFeatureVisibility.markdownPreview {
+                SWSectionPanel("Markdown") {
+                    SWSettingsRow("Markdown 预览", subtitle: "在编辑器右上角切换预览", systemImage: "play.rectangle") {
+                        SWStatusBadge("已开启", style: .success)
+                    }
                 }
             }
         }
@@ -777,11 +770,13 @@ private struct PrivacySettingsView: View {
                         .labelsHidden()
                         .tint(DS.primary)
                 }
-                SWRowDivider()
-                SWSettingsRow("离开 App 后锁定加密笔记", subtitle: "回到 App 时需重新验证（Face ID / 密码）才能查看加密笔记", systemImage: "lock.rotation") {
-                    Toggle("", isOn: $settings.lockSessionOnBackground)
-                        .labelsHidden()
-                        .tint(DS.primary)
+                if MobileFeatureVisibility.encryptionActions {
+                    SWRowDivider()
+                    SWSettingsRow("离开 App 后锁定加密笔记", subtitle: "回到 App 时需重新验证（Face ID / 密码）才能查看加密笔记", systemImage: "lock.rotation") {
+                        Toggle("", isOn: $settings.lockSessionOnBackground)
+                            .labelsHidden()
+                            .tint(DS.primary)
+                    }
                 }
             }
         }
@@ -790,7 +785,9 @@ private struct PrivacySettingsView: View {
     }
 
     private var privacyFooter: String {
-        "锁定只会清除内存中的密钥，不会删除本机 Keychain 里的密钥；下次验证成功后即可继续查看加密笔记。"
+        MobileFeatureVisibility.encryptionActions
+            ? "锁定只会清除内存中的密钥，不会删除本机 Keychain 里的密钥；下次验证成功后即可继续查看加密笔记。"
+            : "切换到其他应用时，Seal Note 会用隐私画面遮住笔记内容。"
     }
 }
 

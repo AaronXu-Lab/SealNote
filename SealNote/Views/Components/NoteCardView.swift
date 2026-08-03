@@ -1,10 +1,14 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct NoteCardView: View {
     let note: Note
     var displayTitle: String? = nil
     var excludesHexColorsFromTags: Bool = false
     var isCloudOnly: Bool = false
+    var cloudDownloadState: CloudNoteDownloadState? = nil
     var isSelected: Bool = false
     var isSelecting: Bool = false
     var onTap: (() -> Void)?
@@ -12,6 +16,8 @@ struct NoteCardView: View {
     var onEdit: (() -> Void)?
     var onDelete: (() -> Void)?
     var onToggleSelect: (() -> Void)?
+    var onRetryDownload: (() -> Void)?
+    var onBecomeVisible: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .top, spacing: DS.s3) {
@@ -31,21 +37,7 @@ struct NoteCardView: View {
 
                     if !isSelecting {
                         Menu {
-                            if let onRename {
-                                Button { onRename() } label: {
-                                    Label("重命名", systemImage: "pencil.line")
-                                }
-                            }
-                            if let onEdit {
-                                Button { onEdit() } label: {
-                                    Label("编辑", systemImage: "pencil")
-                                }
-                            }
-                            if let onDelete {
-                                Button(role: .destructive) { onDelete() } label: {
-                                    Label("删除", systemImage: "trash")
-                                }
-                            }
+                            cardActions
                         } label: {
                             Image(systemName: "ellipsis")
                                 .font(.system(size: 15, weight: .semibold))
@@ -63,9 +55,7 @@ struct NoteCardView: View {
                             .foregroundColor(DS.textBody)
                             .lineLimit(2)
 
-                        Label("存储于 iCloud，打开时下载", systemImage: "icloud.and.arrow.down")
-                            .font(DS.caption())
-                            .foregroundColor(DS.textSubtle)
+                        cloudLoadingStatus
                     }
                 } else if note.isEncrypted {
                     VStack(alignment: .leading, spacing: DS.s2) {
@@ -79,9 +69,34 @@ struct NoteCardView: View {
                             .foregroundColor(DS.textSubtle)
                     }
                 } else {
+                    #if os(iOS)
+                    if UIDevice.current.userInterfaceIdiom == .pad {
+                        VStack(alignment: .leading, spacing: DS.s2) {
+                            Text(displayTitle ?? NoteTitleFormatter.displayTitle(from: note.body))
+                                .font(DS.body().weight(.semibold))
+                                .foregroundColor(DS.textBody)
+                                .lineLimit(2)
+
+                            if !summaryText.isEmpty {
+                                Text(summaryText)
+                                    .font(DS.body())
+                                    .foregroundColor(DS.textSecondary)
+                                    .lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    } else {
+                        Text(note.body)
+                            .font(DS.body())
+                            .foregroundColor(DS.textBody)
+                            .lineLimit(8)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    #else
                     tagAwareText(note.body)
                         .lineLimit(8)
                         .fixedSize(horizontal: false, vertical: true)
+                    #endif
                 }
             }
         }
@@ -98,12 +113,84 @@ struct NoteCardView: View {
                 onTap?()
             }
         }
+        .onAppear {
+            onBecomeVisible?()
+        }
+        #if os(iOS)
+        .contextMenu {
+            if !isSelecting {
+                cardActions
+            }
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var cloudLoadingStatus: some View {
+        switch cloudDownloadState {
+        case .downloading:
+            HStack(spacing: DS.s2) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("正在载入正文…")
+            }
+            .font(DS.caption())
+            .foregroundColor(DS.textSubtle)
+
+        case .failed:
+            HStack(spacing: DS.s2) {
+                Label("正文暂时无法载入", systemImage: "exclamationmark.icloud")
+                if let onRetryDownload {
+                    Button("重试", action: onRetryDownload)
+                        .buttonStyle(.borderless)
+                }
+            }
+            .font(DS.caption())
+            .foregroundColor(DS.textSubtle)
+
+        case .queued, .none:
+            Label("正文正在同步", systemImage: "icloud")
+                .font(DS.caption())
+                .foregroundColor(DS.textSubtle)
+        }
+    }
+
+    private var summaryText: String {
+        let lines = note.body
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard lines.count > 1 else { return "" }
+        return lines.dropFirst().joined(separator: "\n")
+    }
+
+    @ViewBuilder
+    private var cardActions: some View {
+        if let onRename {
+            Button { onRename() } label: {
+                Label("重命名", systemImage: "pencil.line")
+            }
+        }
+        if let onEdit {
+            Button { onEdit() } label: {
+                Label("编辑", systemImage: "pencil")
+            }
+        }
+        if let onDelete {
+            Button(role: .destructive) { onDelete() } label: {
+                Label("删除", systemImage: "trash")
+            }
+        }
     }
 
     private var timestampText: String {
         let timestamp = DateFormatters.formatDisplayDateTime(note.updatedAt)
             .replacingOccurrences(of: ".", with: "-")
+        #if os(iOS)
+        return timestamp
+        #else
         return note.isEncrypted ? "\(timestamp) · 加密" : timestamp
+        #endif
     }
 
     private var selectionCircle: some View {

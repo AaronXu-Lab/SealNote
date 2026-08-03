@@ -11,13 +11,22 @@ enum NoteEditorMode {
     case edit(Note)
 }
 
+enum NoteEditorPresentation: Equatable {
+    case sheet
+    case window
+}
+
 struct NoteEditorView: View {
     let mode: NoteEditorMode
     let initialBody: String
+    let presentation: NoteEditorPresentation
+    let treatsNoteAsNewFlow: Bool
     let onSave: (String, Bool) async throws -> Note?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.supportsMultipleWindows) private var supportsMultipleWindows
     @StateObject private var vaultStore = VaultStore.shared
     @StateObject private var settings = SettingsStore.shared
     @StateObject private var session: EditorSession
@@ -27,7 +36,6 @@ struct NoteEditorView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var isSaving = false
-    @State private var showDeleteConfirmation = false
     @State private var editorSelection = NSRange(location: 0, length: 0)
     @State private var persistedNote: Note?
     @State private var lastSavedBody = ""
@@ -36,6 +44,7 @@ struct NoteEditorView: View {
     @State private var didDiscardEmptyNote = false
     @State private var shouldSkipDisappearPersistence = false
     @State private var isMarkdownPreviewing = false
+    @State private var showDeleteConfirmation = false
 
     @State private var showFirstKeyPrompt = false
     @State private var showKeySettings = false
@@ -59,13 +68,26 @@ struct NoteEditorView: View {
         session.hasUnsavedChanges
     }
 
+    private var isNewFlow: Bool {
+        if case .create = mode { return true }
+        return treatsNoteAsNewFlow
+    }
+
+    #if os(iOS)
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    #endif
+
     init(
         mode: NoteEditorMode,
         initialBody: String = "",
+        presentation: NoteEditorPresentation = .sheet,
+        treatsNoteAsNewFlow: Bool = false,
         onSave: @escaping (String, Bool) async throws -> Note?
     ) {
         self.mode = mode
         self.initialBody = initialBody
+        self.presentation = presentation
+        self.treatsNoteAsNewFlow = treatsNoteAsNewFlow
         self.onSave = onSave
 
         // Existing notes must be present before SwiftUI creates the underlying
@@ -82,11 +104,15 @@ struct NoteEditorView: View {
         }
 
         let editingNote: Note? = { if case .edit(let note) = mode { return note } else { return nil } }()
+        let shouldDiscardAsNewFlow: Bool = {
+            if case .create = mode { return true }
+            return treatsNoteAsNewFlow
+        }()
         _session = StateObject(wrappedValue: EditorSession(
             initialNote: editingNote,
             initialBody: editingNote?.body ?? initialBody,
             initialEncrypted: editingNote?.isEncrypted ?? false,
-            autoDiscardEmpty: { SettingsStore.shared.autoDeleteEmptyNotes },
+            autoDiscardEmpty: { shouldDiscardAsNewFlow },
             create: onSave,
             update: { note, body in
                 try await VaultStore.shared.updateNote(note, body: body)
@@ -105,7 +131,7 @@ struct NoteEditorView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 #if os(iOS)
-                if isMarkdownPreviewing {
+                if MobileFeatureVisibility.markdownPreview && isMarkdownPreviewing {
                     markdownPreview
                 } else {
                     editorBody
@@ -114,15 +140,18 @@ struct NoteEditorView: View {
                 editorBody
                 #endif
 
-                #if os(iOS)
-                if !isMarkdownPreviewing {
-                    markdownFormatBar
-                }
-                #endif
             }
+            #if os(iOS)
+            .background(DS.surfaceRaised.ignoresSafeArea())
+            #else
             .dsCanvasBackground()
+            #endif
             .navigationBarTitleDisplayMode(.inline)
+            #if os(iOS)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            #else
             .dsLiquidGlassToolbar()
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { closeEditor() } label: {
@@ -131,57 +160,69 @@ struct NoteEditorView: View {
                     }
                     .disabled(isSaving)
                 }
-                ToolbarItemGroup(placement: .confirmationAction) {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.16)) {
-                            isMarkdownPreviewing.toggle()
+
+                #if os(iOS)
+                if presentation == .sheet && isPad && supportsMultipleWindows {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            moveEditorToWindow()
+                        } label: {
+                            Image(systemName: "rectangle.badge.plus")
+                                .font(.system(size: 16, weight: .semibold))
                         }
+                        .accessibilityLabel("在新窗口中打开")
+                        .disabled(isSaving)
+                    }
+
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .confirmationAction)
+                    }
+                }
+                #endif
+
+                ToolbarItemGroup(placement: .confirmationAction) {
+                    if MobileFeatureVisibility.markdownPreview {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.16)) {
+                                isMarkdownPreviewing.toggle()
+                            }
+                        } label: {
+                            Image(systemName: isMarkdownPreviewing ? "pencil" : "eye")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                        .accessibilityLabel(isMarkdownPreviewing ? "返回编辑" : "Markdown 预览")
+                        .disabled(isSaving)
+                    }
+
+                    Button {
+                        copyNoteText()
                     } label: {
-                        Image(systemName: isMarkdownPreviewing ? "pencil" : "eye")
+                        Image(systemName: "square.on.square")
                             .font(.system(size: 16, weight: .semibold))
                     }
-                    .accessibilityLabel(isMarkdownPreviewing ? "返回编辑" : "Markdown 预览")
-                    .disabled(isSaving)
+                    .accessibilityLabel("复制正文")
+                    .disabled(noteBody.isEmpty)
 
                     Menu {
                         Button {
                             copyNoteText()
                         } label: {
-                            Label("复制正文", systemImage: "doc.on.doc")
+                            Label("复制全部", systemImage: "square.on.square")
                         }
                         .disabled(noteBody.isEmpty)
 
-                        if let note = currentPersistedNote {
-                            Divider()
-                            if note.isEncrypted {
-                                Button {
-                                    convertCurrentNote(to: .plain)
-                                } label: {
-                                    Label("转为明文笔记", systemImage: "lock.open")
-                                }
-                                .disabled(isSaving)
-                            } else {
-                                Button {
-                                    convertCurrentNote(to: .encrypted)
-                                } label: {
-                                    Label("转为加密笔记", systemImage: "lock")
-                                }
-                                .disabled(isSaving)
-                            }
-
-                            Divider()
-                            Button(role: .destructive) {
-                                showDeleteConfirmation = true
-                            } label: {
-                                Label("移到回收站", systemImage: "trash")
-                            }
+                        Button(role: .destructive) {
+                            showDeleteConfirmation = true
+                        } label: {
+                            Label("删除笔记", systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 16, weight: .semibold))
                     }
+                    .accessibilityLabel("更多")
 
-                    if !isEditing {
+                    if MobileFeatureVisibility.encryptionActions && !isEditing {
                         Button {
                             toggleEncryption()
                         } label: {
@@ -197,6 +238,7 @@ struct NoteEditorView: View {
                     }
                 }
             }
+            .softScrollEdgeEffect()
             .onAppear { configureInitialState() }
             .onChange(of: noteBody) { _, _ in
                 guard didConfigureInitialState else { return }
@@ -219,20 +261,23 @@ struct NoteEditorView: View {
                     flushInBackground()
                 }
             }
-            .alert("删除这条笔记？", isPresented: $showDeleteConfirmation) {
-                Button("取消", role: .cancel) {}
-                Button("删除", role: .destructive) {
-                    deleteCurrentNote()
-                }
-            } message: {
-                Text("笔记将移到回收站，可以恢复。")
-            }
             .alert("保存失败", isPresented: $showError) {
                 Button("确定") {}
             } message: {
                 Text(errorMessage)
             }
-            .alert(keyPromptTitle, isPresented: $showFirstKeyPrompt) {
+            .alert("删除笔记", isPresented: $showDeleteConfirmation) {
+                Button("取消", role: .cancel) {}
+                Button("删除", role: .destructive) {
+                    deleteCurrentNote()
+                }
+            } message: {
+                Text(currentPersistedNote == nil ? "这条未保存的笔记将被丢弃。" : "删除后笔记将进入回收站。")
+            }
+            .alert(keyPromptTitle, isPresented: Binding(
+                get: { MobileFeatureVisibility.encryptionActions && showFirstKeyPrompt },
+                set: { showFirstKeyPrompt = $0 }
+            )) {
                 Button("打开密钥设置") { showKeySettings = true }
                 Button("取消", role: .cancel) {}
             } message: {
@@ -259,14 +304,15 @@ struct NoteEditorView: View {
     @ViewBuilder
     private var editorBody: some View {
         #if os(iOS)
-        // Self-scrolling UITextView fills the space above the format bar — no outer
+        // Self-scrolling UITextView fills the editor — no outer
         // ScrollView / sizeThatFits measurement (P1-1).
         NoteTextView(
             text: $noteBody,
             selectedRange: $editorSelection,
-            placeholder: "写下想法，支持 Markdown 和 #标签",
+            placeholder: "写下想法，支持 Markdown",
             fontSize: CGFloat(settings.editorFontSize),
-            lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple)
+            lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
+            autofocus: isNewFlow
         )
         .frame(maxWidth: DS.contentMax)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -338,54 +384,60 @@ struct NoteEditorView: View {
     }
     #endif
 
-    #if os(iOS)
-    private var markdownFormatBar: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(DS.line)
-                .frame(height: 0.5)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: DS.s2) {
-                    formatButton("bold", title: "粗体", command: .bold)
-                    formatButton("italic", title: "斜体", command: .italic)
-                    formatButton("underline", title: "下划线", command: .underline)
-                    formatButton("curlybraces", title: "代码", command: .inlineCode)
-                    formatButton("function", title: "行内公式", command: .inlineMath)
-                    formatButton("link", title: "链接", command: .link)
-                    formatButton("strikethrough", title: "删除线", command: .strike)
-                    formatButton("chevron.left.forwardslash.chevron.right", title: "注释", command: .htmlComment)
-                }
-                .padding(.horizontal, DS.cardPadding)
-                .padding(.vertical, DS.s2)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
+    private func closeEditor() {
+        persistCurrentSnapshot(dismissAfterSave: true, discardEmptyIfNeeded: true)
     }
 
-    private func formatButton(_ systemImage: String, title: String, command: MacMarkdownFormatCommand) -> some View {
-        Button {
-            applyMarkdown(command)
-        } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(DS.primaryDeep)
-                .frame(width: 36, height: 36)
-                .background(DS.surfaceCard.opacity(0.72))
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(DS.line, lineWidth: 0.5)
-                )
+    #if os(iOS)
+    private func moveEditorToWindow() {
+        guard presentation == .sheet, isPad, supportsMultipleWindows else { return }
+        Task {
+            do {
+                let note = try await session.prepareForWindowTransfer()
+                persistedNote = note
+                let registry = IPadNoteWindowRegistry.shared
+                registry.markOpening(note.id)
+                openWindow(id: IPadNoteWindowScene.id, value: note.id)
+                for _ in 0..<30 {
+                    if registry.isRegistered(note.id) {
+                        shouldSkipDisappearPersistence = true
+                        dismiss()
+                        return
+                    }
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                registry.cancelOpening(note.id)
+                throw EditorSessionError.windowCreationFailed
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
         }
-        .accessibilityLabel(title)
-        .buttonStyle(.plain)
     }
     #endif
 
-    private func closeEditor() {
-        persistCurrentSnapshot(dismissAfterSave: true, discardEmptyIfNeeded: true)
+    private func deleteCurrentNote() {
+        Task {
+            await session.flush(reason: .delete)
+            let note = session.persistedNote ?? currentPersistedNote
+            do {
+                if let note {
+                    if isNewFlow && noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        try await vaultStore.discardEmptyNote(note, body: noteBody)
+                    } else {
+                        try await vaultStore.deleteNote(note)
+                    }
+                    #if os(iOS)
+                    IPadTemporaryNoteRegistry.shared.finish(note.id)
+                    #endif
+                }
+                shouldSkipDisappearPersistence = true
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
     }
 
     /// Flush pending edits when leaving the foreground, protected by a background task so
@@ -450,6 +502,11 @@ struct NoteEditorView: View {
             await session.flush(reason: .background)
         }
         persistedNote = session.persistedNote
+        #if os(iOS)
+        if isNewFlow, let createdNoteID = session.createdNoteID {
+            IPadTemporaryNoteRegistry.shared.finish(createdNoteID)
+        }
+        #endif
         lastSavedBody = noteBody
         lastSavedEncrypted = isEncrypted
         if dismissAfterSave { dismiss() }
@@ -460,25 +517,6 @@ struct NoteEditorView: View {
         UIPasteboard.general.string = settings.copyAddsParagraphSpacing
             ? MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: noteBody)
             : noteBody
-        #endif
-    }
-
-    private func applyMarkdown(_ command: MacMarkdownFormatCommand) {
-        #if os(iOS)
-        let linkURL: String?
-        if case .link = command {
-            linkURL = MarkdownFormatter.webURL(fromClipboardString: UIPasteboard.general.string)
-        } else {
-            linkURL = nil
-        }
-        let result = MarkdownFormatter.apply(
-            command: command,
-            to: noteBody,
-            selection: editorSelection,
-            linkURL: linkURL
-        )
-        noteBody = result.text
-        editorSelection = result.selection
         #endif
     }
 
@@ -498,20 +536,6 @@ struct NoteEditorView: View {
                 }
             } catch {
                 errorMessage = error.localizedDescription
-                showError = true
-            }
-        }
-    }
-
-    private func deleteCurrentNote() {
-        guard let note = currentPersistedNote else { return }
-        Task {
-            do {
-                try await vaultStore.deleteNote(note)
-                shouldSkipDisappearPersistence = true
-                dismiss()
-            } catch {
-                errorMessage = "删除失败：\(error.localizedDescription)"
                 showError = true
             }
         }
@@ -540,11 +564,7 @@ struct NoteEditorView: View {
             persistedNote = note
         } else {
             noteBody = initialBody
-            if vaultStore.isKeyLoaded {
-                isEncrypted = settings.preferredNoteMode == .encrypted
-            } else {
-                isEncrypted = false
-            }
+            isEncrypted = false
 
         }
         lastSavedBody = noteBody
@@ -557,7 +577,7 @@ struct NoteEditorView: View {
     }
 
     private var shouldDiscardEmptyExistingNote: Bool {
-        settings.autoDeleteEmptyNotes
+        isNewFlow
             && !didDiscardEmptyNote
             && currentPersistedNote != nil
             && noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -582,6 +602,19 @@ struct NoteEditorView: View {
     }
 
 }
+
+#if os(iOS)
+private extension View {
+    @ViewBuilder
+    func softScrollEdgeEffect() -> some View {
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectStyle(.soft, for: .all)
+        } else {
+            self
+        }
+    }
+}
+#endif
 
 #if os(iOS)
 private class PlaceholderTextView: UITextView {
@@ -726,6 +759,7 @@ private struct NoteTextView: UIViewRepresentable {
     var placeholder: String
     var fontSize: CGFloat
     var lineHeightMultiple: CGFloat
+    var autofocus: Bool = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text, selectedRange: $selectedRange)
@@ -749,7 +783,10 @@ private struct NoteTextView: UIViewRepresentable {
         context.coordinator.isUpdating = false
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
-        textView.backgroundColor = UIColor(DS.surfaceCard)
+        textView.backgroundColor = .clear
+        if autofocus {
+            context.coordinator.requestFocusIfNeeded(for: textView)
+        }
         return textView
     }
 
@@ -775,6 +812,9 @@ private struct NoteTextView: UIViewRepresentable {
             context.coordinator.isUpdating = false
         }
         uiView.updatePlaceholderVisibility()
+        if autofocus {
+            context.coordinator.requestFocusIfNeeded(for: uiView)
+        }
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -782,10 +822,19 @@ private struct NoteTextView: UIViewRepresentable {
         var selectedRange: Binding<NSRange>
         weak var textView: PlaceholderTextView?
         var isUpdating = false
+        private var didRequestFocus = false
 
         init(text: Binding<String>, selectedRange: Binding<NSRange>) {
             self.text = text
             self.selectedRange = selectedRange
+        }
+
+        func requestFocusIfNeeded(for textView: UITextView) {
+            guard !didRequestFocus else { return }
+            didRequestFocus = true
+            DispatchQueue.main.async {
+                textView.becomeFirstResponder()
+            }
         }
 
         // ponytail: single threshold + debounce
@@ -890,6 +939,7 @@ final class EditorSession: ObservableObject {
     @Published private(set) var persistedNote: Note?
     @Published private(set) var isSaving: Bool = false
     @Published var lastSaveError: String?
+    @Published private(set) var createdNoteID: String?
 
     private let debounceInterval: TimeInterval
     private let autoDiscardEmpty: () -> Bool
@@ -979,6 +1029,7 @@ final class EditorSession: ObservableObject {
                     // Create-mode with nothing to save: mark caught up, create nothing.
                 } else {
                     persistedNote = try await create(body, encrypted)
+                    createdNoteID = persistedNote?.id
                 }
                 savedRevision = max(savedRevision, target)
                 lastSaveError = nil
@@ -1005,11 +1056,50 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    /// Flushes the current revision and guarantees a stable note identity for a
+    /// value-based iPad window. Empty create-mode editors get a tracked empty file
+    /// only at this transfer boundary.
+    func prepareForWindowTransfer() async throws -> Note {
+        debounceTask?.cancel()
+        await flush(reason: .close)
+        if let lastSaveError {
+            throw EditorSessionError.saveFailed(lastSaveError)
+        }
+        if let persistedNote { return persistedNote }
+
+        isSaving = true
+        defer { isSaving = false }
+        guard let note = try await create(currentBody, currentEncrypted) else {
+            throw EditorSessionError.noteCreationFailed
+        }
+        persistedNote = note
+        createdNoteID = note.id
+        savedRevision = revision
+        return note
+    }
+
     /// Flush pending edits, then convert the note's mode. Never dismisses (P0-5).
     func convertMode(to mode: NoteMode) async throws {
         await flush(reason: .convert)
         guard let note = persistedNote else { return }
         persistedNote = try await convert(note, currentBody, mode)
         savedRevision = revision
+    }
+}
+
+nonisolated enum EditorSessionError: Error, LocalizedError {
+    case noteCreationFailed
+    case saveFailed(String)
+    case windowCreationFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .noteCreationFailed:
+            return "无法创建笔记窗口。"
+        case .saveFailed(let message):
+            return message
+        case .windowCreationFailed:
+            return "无法创建独立窗口，当前编辑内容仍保留在这里。"
+        }
     }
 }

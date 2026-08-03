@@ -194,11 +194,11 @@ struct TrashView: View {
     private func trashCard(_ trashNote: TrashNote) -> some View {
         VStack(alignment: .leading, spacing: DS.s2) {
             HStack {
-                SWStatusBadge(
-                    trashNote.isEncrypted ? "加密笔记" : "明文笔记",
-                    systemImage: trashNote.isEncrypted ? (trashNote.isReadable ? "lock.open.fill" : "lock.fill") : "doc.text",
-                    style: trashNote.isEncrypted ? .success : .neutral
-                )
+                if trashNote.isEncrypted {
+                    Label("加密笔记", systemImage: "lock.fill")
+                        .font(DS.body().weight(.semibold))
+                        .foregroundStyle(DS.textBody)
+                }
 
                 Spacer()
 
@@ -235,9 +235,9 @@ struct TrashView: View {
             }
 
             if trashNote.isEncrypted {
-                Text(trashNote.title)
-                    .font(DS.body().weight(.semibold))
-                    .foregroundStyle(DS.textBody)
+                Text("当前版本暂不支持在 iPhone 或 iPad 上查看和编辑")
+                    .font(DS.caption())
+                    .foregroundStyle(DS.textSubtle)
                     .lineLimit(2)
             } else if let body = trashNote.body {
                 Text(body)
