@@ -137,13 +137,11 @@ final class MarkdownHighlighter {
             let totalRange = NSRange(location: blockStart, length: blockEnd - blockStart)
             totalRanges.append(totalRange)
 
-            if isOpeningFenceWithInfo(opening.line, marker: nsString.substring(with: opening.markerRange)) {
-                let markerLineRange = NSRange(
-                    location: opening.markerRange.location,
-                    length: opening.lineRange.location + opening.lineRange.length - opening.markerRange.location
-                )
-                spans.append(MarkdownHighlightSpan(range: markerLineRange, role: .codeFenceMarker))
-            }
+            let markerLineRange = NSRange(
+                location: opening.markerRange.location,
+                length: opening.lineRange.location + opening.lineRange.length - opening.markerRange.location
+            )
+            spans.append(MarkdownHighlightSpan(range: markerLineRange, role: .codeFenceMarker))
             if isClosingFenceLine(closing.line, marker: nsString.substring(with: closing.markerRange)) {
                 spans.append(MarkdownHighlightSpan(range: closing.markerRange, role: .codeFenceMarker))
             }
@@ -151,12 +149,6 @@ final class MarkdownHighlighter {
         }
 
         return BlockRanges(spans: spans, totalRanges: totalRanges)
-    }
-
-    private static func isOpeningFenceWithInfo(_ line: String, marker: String) -> Bool {
-        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix(marker), trimmed != marker else { return false }
-        return !trimmed.dropFirst(marker.count).trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private static func isClosingFenceLine(_ line: String, marker: String) -> Bool {
@@ -735,6 +727,15 @@ final class MarkdownHighlighter {
 
 #if os(macOS)
 extension MarkdownHighlighter {
+    /// Muted green chosen for WCAG AA contrast against the editor's light and dark surfaces.
+    private static let htmlCommentColor = NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let rgb: (CGFloat, CGFloat, CGFloat) = isDark
+            ? (0x76 / 255, 0xA8 / 255, 0x89 / 255)
+            : (0x39 / 255, 0x73 / 255, 0x54 / 255)
+        return NSColor(srgbRed: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+    }
+
     static func attributes(for role: MarkdownHighlightRole, fontSize: CGFloat) -> [NSAttributedString.Key: Any] {
         let bodyFont = bodyFont(size: fontSize)
         let monoFontValue = monoFont(size: fontSize)
@@ -843,7 +844,7 @@ extension MarkdownHighlighter {
             ]
         case .htmlComment:
             return [
-                .foregroundColor: NSColor.systemGreen,
+                .foregroundColor: htmlCommentColor,
                 .font: monoFontValue
             ]
         }
