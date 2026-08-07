@@ -25,6 +25,8 @@ final class LocalFallbackStorage: VaultStorage, @unchecked Sendable {
         let directories = [
             container,
             container.appendingPathComponent("trash"),
+            container.appendingPathComponent("attachments"),
+            container.appendingPathComponent("trash").appendingPathComponent("attachments"),
             container.appendingPathComponent("conflicts"),
             container.appendingPathComponent(".meta")
         ]

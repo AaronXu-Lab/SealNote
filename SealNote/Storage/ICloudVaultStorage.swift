@@ -4,9 +4,9 @@ final class ICloudVaultStorage: VaultStorage, @unchecked Sendable {
     static let shared = ICloudVaultStorage()
 
     private let containerIdentifier = "iCloud.com.xuweinan.sealnote"
-    private static let indexDownloadTimeout: TimeInterval = 8
-    private static let noteDownloadTimeout: TimeInterval = 0.8
-    private static let downloadPollInterval: TimeInterval = 0.2
+    nonisolated private static let indexDownloadTimeout: TimeInterval = 8
+    nonisolated private static let noteDownloadTimeout: TimeInterval = 0.8
+    nonisolated private static let downloadPollInterval: TimeInterval = 0.2
 
     private let ubiquityContainerURL: URL?
     private let _containerURL: URL?
@@ -56,6 +56,8 @@ final class ICloudVaultStorage: VaultStorage, @unchecked Sendable {
         let directories = [
             container,
             container.appendingPathComponent("trash"),
+            container.appendingPathComponent("attachments"),
+            container.appendingPathComponent("trash").appendingPathComponent("attachments"),
             container.appendingPathComponent(".meta")
         ]
 
@@ -195,6 +197,10 @@ final class ICloudVaultStorage: VaultStorage, @unchecked Sendable {
             || values.ubiquitousItemDownloadingStatus == .downloaded
     }
 
+    nonisolated func ensureAttachmentFileIsReadable(at url: URL) throws {
+        try ensureUbiquitousItemIsReadable(at: url, timeout: Self.noteDownloadTimeout)
+    }
+
     func saveMarkdownFile(_ file: MarkdownNoteFile, at url: URL) throws {
         let data = try file.render()
         try atomicWrite(data: data, to: url)
@@ -275,7 +281,7 @@ final class ICloudVaultStorage: VaultStorage, @unchecked Sendable {
         return try Data(contentsOf: url)
     }
 
-    private func ensureUbiquitousItemIsReadable(at url: URL, timeout: TimeInterval) throws {
+    nonisolated private func ensureUbiquitousItemIsReadable(at url: URL, timeout: TimeInterval) throws {
         let fm = FileManager.default
         let resourceKeys: Set<URLResourceKey> = [
             .isUbiquitousItemKey,

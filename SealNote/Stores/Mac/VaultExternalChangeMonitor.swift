@@ -26,7 +26,9 @@ final class VaultExternalChangeMonitor {
         monitoredRoot = root
         installLocalMutationObserver()
         addDirectorySource(for: root)
+        addDirectorySource(for: root.appendingPathComponent("attachments", isDirectory: true))
         addDirectorySource(for: root.appendingPathComponent("trash", isDirectory: true))
+        addDirectorySource(for: root.appendingPathComponent("trash/attachments", isDirectory: true))
 
         MaintenanceLogStore.shared.record("vault_external_change_monitor_started", fields: [
             "root": root.path

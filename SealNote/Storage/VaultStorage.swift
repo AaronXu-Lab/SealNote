@@ -60,6 +60,13 @@ protocol VaultStorage: Sendable {
 
     nonisolated func createConflictCopy(for url: URL) throws -> URL
     nonisolated func emptyTrash() throws
+
+    nonisolated func attachmentDirectoryURL(for noteId: String, location: NoteFileLocation) -> URL?
+    nonisolated func loadAttachmentManifest(for noteId: String, location: NoteFileLocation) throws -> NoteAttachmentManifest
+    nonisolated func saveAttachmentManifest(_ manifest: NoteAttachmentManifest, for noteId: String, location: NoteFileLocation) throws
+    nonisolated func ensureAttachmentFileIsReadable(at url: URL) throws
+    nonisolated func moveAttachmentDirectory(for noteId: String, from sourceLocation: NoteFileLocation, to destinationLocation: NoteFileLocation) throws
+    nonisolated func permanentlyDeleteAttachmentDirectory(for noteId: String, location: NoteFileLocation) throws
 }
 
 extension VaultStorage {
@@ -75,6 +82,107 @@ extension VaultStorage {
 
     nonisolated var notesIndexURL: URL? {
         containerURL?.appendingPathComponent("notes.json")
+    }
+
+    nonisolated func attachmentDirectoryURL(for noteId: String, location: NoteFileLocation = .notes) -> URL? {
+        guard let container = containerURL else { return nil }
+        let root = location == .notes
+            ? container.appendingPathComponent("attachments", isDirectory: true)
+            : container
+                .appendingPathComponent(location.rawValue, isDirectory: true)
+                .appendingPathComponent("attachments", isDirectory: true)
+        return root.appendingPathComponent(noteId, isDirectory: true)
+    }
+
+    nonisolated func attachmentManifestURL(for noteId: String, location: NoteFileLocation = .notes) -> URL? {
+        attachmentDirectoryURL(for: noteId, location: location)?.appendingPathComponent("manifest.json")
+    }
+
+    nonisolated func attachmentFileURL(
+        for noteId: String,
+        fileName: String,
+        location: NoteFileLocation = .notes
+    ) -> URL? {
+        attachmentDirectoryURL(for: noteId, location: location)?.appendingPathComponent(fileName)
+    }
+
+    nonisolated func loadAttachmentManifest(
+        for noteId: String,
+        location: NoteFileLocation = .notes
+    ) throws -> NoteAttachmentManifest {
+        guard let url = attachmentManifestURL(for: noteId, location: location) else {
+            throw StorageError.iCloudUnavailable
+        }
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return .empty(for: noteId)
+        }
+        try ensureAttachmentFileIsReadable(at: url)
+        let data = try Data(contentsOf: url)
+        let manifest = try JSONDecoder.default.decode(NoteAttachmentManifest.self, from: data)
+        guard manifest.noteId == noteId else { throw StorageError.invalidData }
+        return manifest.pruningTombstones()
+    }
+
+    nonisolated func saveAttachmentManifest(
+        _ manifest: NoteAttachmentManifest,
+        for noteId: String,
+        location: NoteFileLocation = .notes
+    ) throws {
+        guard manifest.noteId == noteId,
+              let directory = attachmentDirectoryURL(for: noteId, location: location),
+              let url = attachmentManifestURL(for: noteId, location: location) else {
+            throw StorageError.invalidData
+        }
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: directory.path) {
+            try fm.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        let data = try JSONEncoder.default.encode(manifest.pruningTombstones())
+        let tempURL = url.appendingPathExtension("tmp")
+        try data.write(to: tempURL, options: .atomic)
+        if fm.fileExists(atPath: url.path) {
+            _ = try fm.replaceItemAt(url, withItemAt: tempURL)
+        } else {
+            try fm.moveItem(at: tempURL, to: url)
+        }
+        postVaultStorageMutation(at: url)
+    }
+
+    nonisolated func ensureAttachmentFileIsReadable(at url: URL) throws {}
+
+    nonisolated func moveAttachmentDirectory(
+        for noteId: String,
+        from sourceLocation: NoteFileLocation,
+        to destinationLocation: NoteFileLocation
+    ) throws {
+        guard let source = attachmentDirectoryURL(for: noteId, location: sourceLocation),
+              let destination = attachmentDirectoryURL(for: noteId, location: destinationLocation) else {
+            throw StorageError.iCloudUnavailable
+        }
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: source.path) else { return }
+        let parent = destination.deletingLastPathComponent()
+        if !fm.fileExists(atPath: parent.path) {
+            try fm.createDirectory(at: parent, withIntermediateDirectories: true)
+        }
+        if fm.fileExists(atPath: destination.path) {
+            try fm.removeItem(at: destination)
+        }
+        try fm.moveItem(at: source, to: destination)
+        postVaultStorageMutation(at: destination)
+    }
+
+    nonisolated func permanentlyDeleteAttachmentDirectory(
+        for noteId: String,
+        location: NoteFileLocation = .notes
+    ) throws {
+        guard let directory = attachmentDirectoryURL(for: noteId, location: location) else {
+            throw StorageError.iCloudUnavailable
+        }
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: directory.path) else { return }
+        try fm.removeItem(at: directory)
+        postVaultStorageMutation(at: directory)
     }
 
     nonisolated func listMarkdownFiles(in location: NoteFileLocation) throws -> [URL] {
@@ -117,11 +225,7 @@ extension VaultStorage {
         let fm = FileManager.default
         guard fm.fileExists(atPath: trashURL.path) else { return }
         let contents = try fm.contentsOfDirectory(at: trashURL, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
-        for file in contents {
-            if file.lastPathComponent.hasSuffix(".md") {
-                try? fm.removeItem(at: file)
-            }
-        }
+        for file in contents { try? fm.removeItem(at: file) }
         postVaultStorageMutation(at: trashURL)
     }
 

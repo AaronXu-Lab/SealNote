@@ -17,6 +17,7 @@ final class StickyNoteWindowManager: NSObject {
 
     private var noteWindows: [String: NSWindow] = [:]
     private var noteIdsRememberingNewNoteSize = Set<String>()
+    private var attachmentTrayHeights: [String: CGFloat] = [:]
 
     private override init() {
         super.init()
@@ -44,8 +45,12 @@ final class StickyNoteWindowManager: NSObject {
         }
 
         MacNoteWindowStore.shared.openWindow(for: note.id, isEncrypted: note.isEncrypted)
+        attachmentTrayHeights[note.id] = VaultStore.shared.hasAttachments(for: note.id)
+            ? MacAttachmentTrayLayout.occupiedHeight
+            : 0
         let windowState = MacNoteWindowStore.shared.windowState(for: note.id)
         var frame = windowState?.frame ?? defaultWindowFrame()
+        frame = frameAdjustedForMinimumHeight(frame, noteId: note.id)
         let isPinned = windowState?.isPinned ?? true
 
         if let point = screenPoint {
@@ -125,8 +130,14 @@ final class StickyNoteWindowManager: NSObject {
         }
 
         MacNoteWindowStore.shared.openWindow(for: info.id)
+        attachmentTrayHeights[info.id] = VaultStore.shared.hasAttachments(for: info.id)
+            ? MacAttachmentTrayLayout.occupiedHeight
+            : 0
         let windowState = MacNoteWindowStore.shared.windowState(for: info.id)
-        let frame = windowState?.frame ?? defaultWindowFrame()
+        let frame = frameAdjustedForMinimumHeight(
+            windowState?.frame ?? defaultWindowFrame(),
+            noteId: info.id
+        )
         let isPinned = windowState?.isPinned ?? true
 
         let lockedNote = Note(
@@ -175,14 +186,36 @@ final class StickyNoteWindowManager: NSObject {
             window.close()
         }
         noteWindows.removeAll()
+        attachmentTrayHeights.removeAll()
         MacNoteWindowStore.shared.closeAllWindows()
+    }
+
+    func updateAttachmentTray(for noteId: String, height: CGFloat) {
+        let previousHeight = attachmentTrayHeights[noteId] ?? 0
+        attachmentTrayHeights[noteId] = height
+        guard let window = noteWindows[noteId] else { return }
+
+        let minimumHeight = minimumWindowHeight(for: noteId)
+        window.minSize = NSSize(width: Self.minimumContentSize.width, height: minimumHeight)
+
+        guard height > previousHeight, window.frame.height < minimumHeight else { return }
+        var frame = window.frame
+        frame.origin.y -= minimumHeight - frame.height
+        frame.size.height = minimumHeight
+        frame = clampedFrame(frame, on: window.screen ?? NSScreen.main)
+        window.setFrame(frame, display: true, animate: true)
+        saveWindowFrame(window, noteId: noteId)
     }
 
     func restoreDefaultWindowSizes() {
         let size = MacNoteWindowStore.defaultWindowSize
         for (noteId, window) in noteWindows {
             var frame = window.frame
-            frame.size = size
+            frame.size = NSSize(
+                width: size.width,
+                height: max(size.height, minimumWindowHeight(for: noteId))
+            )
+            frame = clampedFrame(frame, on: window.screen ?? NSScreen.main)
             window.setFrame(frame, display: true, animate: true)
             saveWindowFrame(window, noteId: noteId, persistImmediately: true)
         }
@@ -201,9 +234,12 @@ final class StickyNoteWindowManager: NSObject {
         let textWidth = max(10, targetWidth - horizontalPadding)
         let measuredHeight = measureTextHeight(text: text, width: textWidth, fontSize: fontSize)
         let verticalPadding = textContainerInset.height * 2 + DS.s4 + MacStickyEditorLayout.editorBottomInset
-        let contentHeight = measuredHeight + verticalPadding
+        let contentHeight = measuredHeight + verticalPadding + (attachmentTrayHeights[noteId] ?? 0)
 
-        var targetHeight = max(MacStickyEditorLayout.minimumFittedWindowHeight(fontSize: fontSize), contentHeight)
+        var targetHeight = max(
+            MacStickyEditorLayout.minimumFittedWindowHeight(fontSize: fontSize) + (attachmentTrayHeights[noteId] ?? 0),
+            contentHeight
+        )
         targetHeight = min(targetWidth * 4 / 3, targetHeight)
 
         let finalWidth = max(Self.minimumContentSize.width, targetWidth)
@@ -296,7 +332,7 @@ final class StickyNoteWindowManager: NSObject {
         window.titlebarSeparatorStyle = .automatic
         window.minSize = NSSize(
             width: Self.minimumContentSize.width,
-            height: Self.minimumContentSize.height
+            height: minimumWindowHeight(for: noteId)
         )
         window.standardWindowButton(.closeButton)?.isHidden = false
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
@@ -314,13 +350,47 @@ final class StickyNoteWindowManager: NSObject {
         let y = screen.midY - height / 2
         return MacWindowFrame(x: x, y: y, width: width, height: height)
     }
+
+    private func minimumWindowHeight(for noteId: String) -> CGFloat {
+        Self.minimumContentSize.height + (attachmentTrayHeights[noteId] ?? 0)
+    }
+
+    private func frameAdjustedForMinimumHeight(_ frame: MacWindowFrame, noteId: String) -> MacWindowFrame {
+        let minimumHeight = minimumWindowHeight(for: noteId)
+        guard frame.height < minimumHeight else { return frame }
+        return MacWindowFrame(
+            x: frame.x,
+            y: frame.y - Double(minimumHeight - frame.height),
+            width: frame.width,
+            height: Double(minimumHeight)
+        )
+    }
+
+    private func clampedFrame(_ frame: NSRect, on screen: NSScreen?) -> NSRect {
+        guard let visibleFrame = screen?.visibleFrame else { return frame }
+        var result = frame
+        if result.origin.y < visibleFrame.minY + 8 {
+            result.origin.y = visibleFrame.minY + 8
+        }
+        if result.maxY > visibleFrame.maxY - 8 {
+            result.origin.y = visibleFrame.maxY - result.height - 8
+        }
+        if result.origin.x < visibleFrame.minX + 8 {
+            result.origin.x = visibleFrame.minX + 8
+        }
+        if result.maxX > visibleFrame.maxX - 8 {
+            result.origin.x = visibleFrame.maxX - result.width - 8
+        }
+        return result
+    }
 }
 
 extension StickyNoteWindowManager: NSWindowDelegate {
     func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
-        NSSize(
+        let noteId = sender.identifier?.rawValue ?? ""
+        return NSSize(
             width: max(Self.minimumContentSize.width, frameSize.width),
-            height: max(Self.minimumContentSize.height, frameSize.height)
+            height: max(Self.shared.minimumWindowHeight(for: noteId), frameSize.height)
         )
     }
 
@@ -330,6 +400,7 @@ extension StickyNoteWindowManager: NSWindowDelegate {
 
         saveWindowFrame(window, noteId: id, persistImmediately: true)
         noteWindows.removeValue(forKey: id)
+        attachmentTrayHeights.removeValue(forKey: id)
         noteIdsRememberingNewNoteSize.remove(id)
         MacNoteWindowStore.shared.closeWindow(for: id)
     }

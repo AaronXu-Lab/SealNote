@@ -1,36 +1,64 @@
 import SwiftUI
 
 #if os(macOS) && DEBUG
+import AppKit
+
 struct FakeEditView: View {
     @State private var text = ""
+    @State private var isCommandPressed = false
+    @State private var isTextOverlappingAttachmentTray = false
     
     var body: some View {
-        MacTextView(
-            text: $text,
-            placeholder: "随便写点什么吧",
-            fontSize: CGFloat(SettingsStore.defaultEditorFontSize),
-            lineHeightMultiple: CGFloat(SettingsStore.defaultEditorLineHeightMultiple),
-            onChange: { newText in
-                text = newText
-                print("FakeEditView: 文本已改变")
-            },
-            onSaveShortcut: { print("FakeEditView: 保存") },
-            onApplyShortcut: { print("FakeEditView: 应用") },
-            onFitToContent: { print("FakeEditView: 适应内容") },
-            onCopyShortcut: { print("FakeEditView: 复制") },
-            onFindShortcut: { print("FakeEditView: 搜索") },
-            onToggleMarkdownPreview: { print("FakeEditView: Markdown 预览") },
-            onIncreaseFontSize: { print("FakeEditView: 增大字号") },
-            onDecreaseFontSize: { print("FakeEditView: 减小字号") },
-            onFindVisibilityChange: { isVisible in
-                print("FakeEditView: 搜索栏 \(isVisible ? "显示" : "隐藏")")
+        ZStack{
+            MacTextView(
+                text: $text,
+                placeholder: "随便写点什么吧",
+                fontSize: CGFloat(SettingsStore.defaultEditorFontSize),
+                lineHeightMultiple: CGFloat(SettingsStore.defaultEditorLineHeightMultiple),
+                bottomInset: MacStickyEditorLayout.editorBottomInset + MacAttachmentTrayLayout.occupiedHeight,
+                onChange: { newText in
+                    text = newText
+                    print("FakeEditView: 文本已改变")
+                },
+                onSaveShortcut: { print("FakeEditView: 保存") },
+                onApplyShortcut: { print("FakeEditView: 应用") },
+                onFitToContent: { print("FakeEditView: 适应内容") },
+                onCopyShortcut: { print("FakeEditView: 复制") },
+                onFindShortcut: { print("FakeEditView: 搜索") },
+                onToggleMarkdownPreview: { print("FakeEditView: Markdown 预览") },
+                onIncreaseFontSize: { print("FakeEditView: 增大字号") },
+                onDecreaseFontSize: { print("FakeEditView: 减小字号") },
+                onAttachmentOverlapChange: { isOverlapping in
+                    isTextOverlappingAttachmentTray = isOverlapping
+                },
+                onFindVisibilityChange: { isVisible in
+                    print("FakeEditView: 搜索栏 \(isVisible ? "显示" : "隐藏")")
+                }
+            )
+            VStack {
+                Spacer()
+                MacAttachmentTray(
+                    noteId: "fake-note",
+                    attachments: fakeAttachments,
+                    isCommandPressed: isCommandPressed,
+                    showsObscuringOverlay: isTextOverlappingAttachmentTray,
+                    onOpen: { _ in print("适用 QuickLook 查看图片") },
+                    onCopy: { _ in print("复制图片") },
+                    onRemove: { _ in print("移除附件") },
+                    thumbnailContent: { _ in
+                        AnyView(Rectangle().fill(Color(nsColor: .labelColor)))
+                    }
+                )
             }
-        )
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
         .ignoresSafeArea(edges: .top)
         .dsMacStickyToolbarScrollEdge()
         .navigationTitle("")
+        .onModifierKeysChanged(mask: .command) { _, modifiers in
+            isCommandPressed = modifiers.contains(.command)
+        }
         .toolbar {
             ToolbarSpacer()
             
@@ -120,6 +148,20 @@ struct FakeEditView: View {
                 .buttonBorderShape(.circle)
                 .controlSize(.small)
             }
+        }
+    }
+
+    private var fakeAttachments: [NoteAttachment] {
+        (0..<20).map { index in
+            NoteAttachment(
+                id: "fake-attachment-\(index)",
+                fileName: "fake-attachment-\(index).png",
+                originalFileName: "模拟图片 \(index + 1).png",
+                contentType: "public.png",
+                order: index,
+                byteCount: 0,
+                sha256: "fake"
+            )
         }
     }
 }

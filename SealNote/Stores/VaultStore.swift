@@ -7,6 +7,11 @@ import CryptoKit
 import UIKit
 #endif
 
+#if os(macOS)
+import ImageIO
+import UniformTypeIdentifiers
+#endif
+
 nonisolated enum VaultState: Equatable {
     case loading
     case ready
@@ -1136,6 +1141,113 @@ final class VaultStore: ObservableObject {
             : container.appendingPathComponent(location.rawValue).appendingPathComponent(fileName)
     }
 
+    nonisolated private static func cloneAttachmentDirectory(
+        fromNoteId sourceNoteId: String,
+        toNoteId destinationNoteId: String,
+        source: VaultStorage,
+        destination: VaultStorage
+    ) throws {
+        guard let sourceDirectory = source.attachmentDirectoryURL(for: sourceNoteId, location: .notes),
+              FileManager.default.fileExists(atPath: sourceDirectory.path) else {
+            return
+        }
+        guard let destinationDirectory = destination.attachmentDirectoryURL(for: destinationNoteId, location: .notes) else {
+            throw StorageError.iCloudUnavailable
+        }
+
+        let fm = FileManager.default
+        if fm.fileExists(atPath: destinationDirectory.path) {
+            try fm.removeItem(at: destinationDirectory)
+        }
+        try fm.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+
+        let manifest = try source.loadAttachmentManifest(for: sourceNoteId, location: .notes)
+        for attachment in manifest.attachments {
+            guard let sourceURL = source.attachmentFileURL(
+                for: sourceNoteId,
+                fileName: attachment.fileName,
+                location: .notes
+            ),
+            let destinationURL = destination.attachmentFileURL(
+                for: destinationNoteId,
+                fileName: attachment.fileName,
+                location: .notes
+            ),
+            fm.fileExists(atPath: sourceURL.path) else {
+                throw AttachmentError.attachmentMissing
+            }
+            try source.ensureAttachmentFileIsReadable(at: sourceURL)
+            try fm.copyItem(at: sourceURL, to: destinationURL)
+        }
+
+        let copiedManifest = NoteAttachmentManifest(
+            noteId: destinationNoteId,
+            attachments: manifest.attachments,
+            tombstones: manifest.tombstones
+        )
+        try destination.saveAttachmentManifest(copiedManifest, for: destinationNoteId, location: .notes)
+    }
+
+    nonisolated private func exportAttachmentDirectory(
+        for noteId: String,
+        to destinationDirectory: URL,
+        storage: VaultStorage
+    ) throws {
+        let manifest = try storage.loadAttachmentManifest(for: noteId, location: .notes)
+        guard !manifest.attachments.isEmpty else { return }
+
+        let fm = FileManager.default
+        try fm.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+        var usedNames = Set<String>()
+        var exportedAttachments: [NoteAttachment] = []
+        for (index, attachment) in manifest.attachments.enumerated() {
+            guard let source = storage.attachmentFileURL(
+                for: noteId,
+                fileName: attachment.fileName,
+                location: .notes
+            ),
+            fm.fileExists(atPath: source.path) else { continue }
+            try storage.ensureAttachmentFileIsReadable(at: source)
+
+            var name = URL(fileURLWithPath: attachment.originalFileName).lastPathComponent
+            if name.isEmpty { name = attachment.fileName }
+            var candidate = String(format: "%03d-%@", index + 1, name)
+            let base = URL(fileURLWithPath: candidate).deletingPathExtension().lastPathComponent
+            let ext = URL(fileURLWithPath: candidate).pathExtension
+            var suffix = 2
+            while usedNames.contains(candidate) {
+                candidate = ext.isEmpty ? "\(base)-\(suffix)" : "\(base)-\(suffix).\(ext)"
+                suffix += 1
+            }
+            usedNames.insert(candidate)
+            try fm.copyItem(at: source, to: destinationDirectory.appendingPathComponent(candidate))
+            exportedAttachments.append(NoteAttachment(
+                id: attachment.id,
+                fileName: candidate,
+                originalFileName: attachment.originalFileName,
+                contentType: attachment.contentType,
+                createdAt: attachment.createdAt,
+                order: attachment.order,
+                byteCount: attachment.byteCount,
+                pixelWidth: attachment.pixelWidth,
+                pixelHeight: attachment.pixelHeight,
+                sha256: attachment.sha256,
+                encryptionMode: attachment.encryptionMode,
+                encryptionVersion: attachment.encryptionVersion
+            ))
+        }
+
+        let manifestURL = destinationDirectory.appendingPathComponent("manifest.json")
+        let exportedManifest = NoteAttachmentManifest(
+            noteId: manifest.noteId,
+            attachments: exportedAttachments,
+            tombstones: manifest.tombstones,
+            version: manifest.version
+        )
+        let data = try JSONEncoder.default.encode(exportedManifest)
+        try data.write(to: manifestURL, options: .atomic)
+    }
+
     // MARK: - Storage-root pinning (P0-3)
 
     /// Decide which storage root to use, honoring the user's pin so the vault never
@@ -1218,11 +1330,18 @@ final class VaultStore: ObservableObject {
                 try dest.saveMarkdownFile(destFile, at: destURL)
                 let readBack = try dest.loadMarkdownFile(at: destURL)
                 guard readBack.body == mdFile.body else { continue }   // verify before delete
+                try cloneAttachmentDirectory(
+                    fromNoteId: entry.noteId,
+                    toNoteId: destNoteId,
+                    source: source,
+                    destination: dest
+                )
             } catch {
                 continue
             }
             destIndex.upsert(NoteIndexEntry(noteId: destNoteId, fileName: destFileName, mode: entry.mode, location: .notes))
             try? source.permanentlyDeleteFile(at: srcURL)
+            try? source.permanentlyDeleteAttachmentDirectory(for: entry.noteId, location: .notes)
             sourceIndex.removeEntry(for: entry.noteId)
 
             if collision { conflicted += 1 } else { merged += 1 }
@@ -2141,6 +2260,7 @@ final class VaultStore: ObservableObject {
                 ])
             }
         }
+        NotificationCenter.default.post(name: .vaultAttachmentsDidChange, object: nil)
         #endif
 
         if case .error(let message) = state {
@@ -2260,6 +2380,361 @@ final class VaultStore: ObservableObject {
             renameIfUntitled: renameIfUntitled
         )
     }
+
+    func loadAttachments(for noteId: String, location: NoteFileLocation = .notes) async -> [NoteAttachment] {
+        do {
+            return try await fileIO.perform { [storage] in
+                try storage.loadAttachmentManifest(for: noteId, location: location).attachments
+            }
+        } catch {
+            return []
+        }
+    }
+
+    #if os(macOS)
+    func hasAttachments(for noteId: String) -> Bool {
+        (try? storage.loadAttachmentManifest(for: noteId, location: .notes).attachments.isEmpty == false) ?? false
+    }
+    #endif
+
+    func attachmentURL(
+        for attachment: NoteAttachment,
+        noteId: String,
+        location: NoteFileLocation = .notes
+    ) async throws -> URL {
+        guard let url = storage.attachmentFileURL(
+            for: noteId,
+            fileName: attachment.fileName,
+            location: location
+        ) else {
+            throw StorageError.iCloudUnavailable
+        }
+        return try await fileIO.perform { [storage] in
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                throw AttachmentError.attachmentMissing
+            }
+            try storage.ensureAttachmentFileIsReadable(at: url)
+            return url
+        }
+    }
+
+    #if os(macOS)
+    nonisolated private static let maxAttachmentCount = 20
+    nonisolated private static let maxAttachmentBytes: Int64 = 25 * 1024 * 1024
+
+    func importImageAttachments(
+        from urls: [URL],
+        for note: Note,
+        currentBody: String
+    ) async throws -> AttachmentMutationResult {
+        guard vaultId != nil else { throw VaultError.notReady }
+        guard !urls.isEmpty else {
+            return AttachmentMutationResult(
+                note: note,
+                attachments: await loadAttachments(for: note.id),
+                importedCount: 0,
+                skippedCount: 0,
+                skippedReasons: []
+            )
+        }
+
+        let candidates = try await fileIO.perform {
+            Self.prepareAttachmentCandidates(
+                from: urls,
+                maxBytes: Self.maxAttachmentBytes
+            )
+        }
+        let existing = await loadAttachments(for: note.id)
+        let availableSlots = max(0, Self.maxAttachmentCount - existing.count)
+        let accepted = Array(candidates.valid.prefix(availableSlots))
+        var skippedReasons = candidates.reasons
+        if candidates.valid.count > accepted.count {
+            skippedReasons.append("已达到每篇笔记最多 \(Self.maxAttachmentCount) 张图片的限制")
+        }
+
+        guard !accepted.isEmpty else {
+            return AttachmentMutationResult(
+                note: note,
+                attachments: existing,
+                importedCount: 0,
+                skippedCount: urls.count,
+                skippedReasons: skippedReasons
+            )
+        }
+
+        let latestNote = readableNotes.first(where: { $0.id == note.id }) ?? note
+        let saved = try await saveReadableNote(
+            latestNote,
+            body: currentBody,
+            mode: latestNote.isEncrypted ? .encrypted : .plain,
+            sourceUpdatedAt: note.updatedAt,
+            renameIfUntitled: false
+        )
+
+        let result = try await fileIO.perform { [storage] in
+            try Self.executeAttachmentImport(
+                candidates: accepted,
+                note: saved.note,
+                storage: storage,
+                maxBytes: Self.maxAttachmentBytes
+            )
+        }
+        updateReadableNoteBaseline(result.note)
+        objectWillChange.send()
+        NotificationCenter.default.post(name: .vaultAttachmentsDidChange, object: note.id)
+        return AttachmentMutationResult(
+            note: result.note,
+            attachments: result.attachments,
+            importedCount: result.importedCount,
+            skippedCount: urls.count - result.importedCount,
+            skippedReasons: skippedReasons
+        )
+    }
+
+    func removeAttachment(
+        id attachmentId: String,
+        from note: Note,
+        currentBody: String
+    ) async throws -> AttachmentMutationResult {
+        guard vaultId != nil else { throw VaultError.notReady }
+        let existing = await loadAttachments(for: note.id)
+        guard existing.contains(where: { $0.id == attachmentId }) else {
+            throw AttachmentError.attachmentMissing
+        }
+
+        let latestNote = readableNotes.first(where: { $0.id == note.id }) ?? note
+        let saved = try await saveReadableNote(
+            latestNote,
+            body: currentBody,
+            mode: latestNote.isEncrypted ? .encrypted : .plain,
+            sourceUpdatedAt: note.updatedAt,
+            renameIfUntitled: false
+        )
+
+        let result = try await fileIO.perform { [storage] in
+            try Self.executeAttachmentRemoval(
+                attachmentId: attachmentId,
+                note: saved.note,
+                storage: storage
+            )
+        }
+        updateReadableNoteBaseline(result.note)
+        objectWillChange.send()
+        NotificationCenter.default.post(name: .vaultAttachmentsDidChange, object: note.id)
+        return result
+    }
+
+    private func updateReadableNoteBaseline(_ updatedNote: Note) {
+        if updatedNote.isEncrypted {
+            if let index = decryptedNotes.firstIndex(where: { $0.id == updatedNote.id }) {
+                decryptedNotes[index] = updatedNote
+            }
+        } else if let index = plainNotes.firstIndex(where: { $0.id == updatedNote.id }) {
+            plainNotes[index] = updatedNote
+        }
+    }
+
+    private struct AttachmentCandidate: Sendable {
+        let url: URL
+        let originalFileName: String
+        let contentType: String
+        let pixelWidth: Int?
+        let pixelHeight: Int?
+    }
+
+    private struct PreparedAttachmentCandidates: Sendable {
+        let valid: [AttachmentCandidate]
+        let reasons: [String]
+    }
+
+    private struct AttachmentExecutionResult: Sendable {
+        let note: Note
+        let attachments: [NoteAttachment]
+        let importedCount: Int
+    }
+
+    nonisolated private static func prepareAttachmentCandidates(
+        from urls: [URL],
+        maxBytes: Int64
+    ) -> PreparedAttachmentCandidates {
+        var valid: [AttachmentCandidate] = []
+        var reasons: [String] = []
+        let fm = FileManager.default
+
+        for url in urls {
+            guard fm.fileExists(atPath: url.path),
+                  let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentTypeKey]),
+                  let size = values.fileSize else {
+                reasons.append("找不到 \(url.lastPathComponent)")
+                continue
+            }
+
+            let byteCount = Int64(size)
+            guard byteCount <= maxBytes else {
+                reasons.append(AttachmentError.tooLarge(maxBytes: maxBytes).localizedDescription)
+                continue
+            }
+
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                  CGImageSourceGetCount(source) > 0 else {
+                reasons.append("无法读取 \(url.lastPathComponent)")
+                continue
+            }
+
+            let sourceType = CGImageSourceGetType(source).flatMap { UTType($0 as String) }
+            let type = values.contentType
+                ?? UTType(filenameExtension: url.pathExtension)
+                ?? sourceType
+                ?? .data
+            guard type.conforms(to: .image) || sourceType?.conforms(to: .image) == true else {
+                reasons.append("不支持 \(url.lastPathComponent)")
+                continue
+            }
+
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+            let width = properties?[kCGImagePropertyPixelWidth] as? Int
+            let height = properties?[kCGImagePropertyPixelHeight] as? Int
+            valid.append(AttachmentCandidate(
+                url: url,
+                originalFileName: url.lastPathComponent,
+                contentType: type.identifier,
+                pixelWidth: width,
+                pixelHeight: height
+            ))
+        }
+
+        return PreparedAttachmentCandidates(valid: valid, reasons: reasons)
+    }
+
+    nonisolated private static func executeAttachmentImport(
+        candidates: [AttachmentCandidate],
+        note: Note,
+        storage: VaultStorage,
+        maxBytes: Int64
+    ) throws -> AttachmentExecutionResult {
+        guard let directory = storage.attachmentDirectoryURL(for: note.id, location: .notes) else {
+            throw StorageError.iCloudUnavailable
+        }
+        let fm = FileManager.default
+        let manifestURL = storage.attachmentManifestURL(for: note.id, location: .notes)
+        let hadDirectory = fm.fileExists(atPath: directory.path)
+        let hadManifest = manifestURL.map { fm.fileExists(atPath: $0.path) } ?? false
+        if !fm.fileExists(atPath: directory.path) {
+            try fm.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+
+        var manifest = try storage.loadAttachmentManifest(for: note.id, location: .notes)
+        let originalManifest = manifest
+        guard manifest.attachments.count + candidates.count <= Self.maxAttachmentCount else {
+            throw AttachmentError.limitReached(maxCount: Self.maxAttachmentCount)
+        }
+        var added: [NoteAttachment] = []
+        var copiedURLs: [URL] = []
+        let startingOrder = (manifest.attachments.map(\.order).max() ?? -1) + 1
+
+        do {
+            for (offset, candidate) in candidates.enumerated() {
+                let values = try candidate.url.resourceValues(forKeys: [.fileSizeKey])
+                guard let fileSize = values.fileSize else { throw StorageError.fileReadFailed }
+                let bytes = Int64(fileSize)
+                guard bytes <= maxBytes else { throw AttachmentError.tooLarge(maxBytes: maxBytes) }
+
+                let id = UUID().uuidString
+                let sourceExtension = candidate.url.pathExtension.isEmpty
+                    ? "img"
+                    : candidate.url.pathExtension.lowercased()
+                let fileName = "\(id).\(sourceExtension)"
+                let destination = directory.appendingPathComponent(fileName)
+                try fm.copyItem(at: candidate.url, to: destination)
+                copiedURLs.append(destination)
+
+                let data = try Data(contentsOf: candidate.url)
+                let digest = SHA256.hash(data: data)
+                    .map { String(format: "%02x", $0) }
+                    .joined()
+                added.append(NoteAttachment(
+                    id: id,
+                    fileName: fileName,
+                    originalFileName: candidate.originalFileName,
+                    contentType: candidate.contentType,
+                    order: startingOrder + offset,
+                    byteCount: bytes,
+                    pixelWidth: candidate.pixelWidth,
+                    pixelHeight: candidate.pixelHeight,
+                    sha256: digest
+                ))
+            }
+
+            manifest.attachments.append(contentsOf: added)
+            try storage.saveAttachmentManifest(manifest, for: note.id, location: .notes)
+            let updatedNote = try touchNoteUpdatedAt(note, storage: storage)
+            return AttachmentExecutionResult(
+                note: updatedNote,
+                attachments: manifest.attachments.sorted { $0.order < $1.order },
+                importedCount: added.count
+            )
+        } catch {
+            for url in copiedURLs { try? fm.removeItem(at: url) }
+            if hadManifest {
+                try? storage.saveAttachmentManifest(originalManifest, for: note.id, location: .notes)
+            } else {
+                if let manifestURL { try? fm.removeItem(at: manifestURL) }
+                if !hadDirectory,
+                   let remaining = try? fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil),
+                   remaining.isEmpty {
+                    try? fm.removeItem(at: directory)
+                }
+            }
+            throw error
+        }
+    }
+
+    nonisolated private static func executeAttachmentRemoval(
+        attachmentId: String,
+        note: Note,
+        storage: VaultStorage
+    ) throws -> AttachmentMutationResult {
+        var manifest = try storage.loadAttachmentManifest(for: note.id, location: .notes)
+        guard let attachment = manifest.attachments.first(where: { $0.id == attachmentId }) else {
+            throw AttachmentError.attachmentMissing
+        }
+
+        manifest.attachments.removeAll { $0.id == attachmentId }
+        manifest.tombstones.append(NoteAttachmentTombstone(id: attachmentId))
+        try storage.saveAttachmentManifest(manifest, for: note.id, location: .notes)
+        if let fileURL = storage.attachmentFileURL(for: note.id, fileName: attachment.fileName, location: .notes) {
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+        let updatedNote = try touchNoteUpdatedAt(note, storage: storage)
+        return AttachmentMutationResult(
+            note: updatedNote,
+            attachments: manifest.attachments.sorted { $0.order < $1.order },
+            importedCount: 0,
+            skippedCount: 0,
+            skippedReasons: []
+        )
+    }
+
+    nonisolated private static func touchNoteUpdatedAt(_ note: Note, storage: VaultStorage) throws -> Note {
+        guard let entry = try storage.loadIndex()?.entry(for: note.id),
+              entry.location == .notes,
+              let container = storage.containerURL else {
+            throw StorageError.fileNotFound
+        }
+        let noteURL = container.appendingPathComponent(entry.fileName)
+        var file = try storage.loadMarkdownFile(at: noteURL)
+        let now = Date()
+        file.updatedAt = now
+        try storage.saveMarkdownFile(file, at: noteURL)
+        return Note(
+            id: note.id,
+            body: note.body,
+            createdAt: note.createdAt,
+            updatedAt: now,
+            isEncrypted: note.isEncrypted
+        )
+    }
+    #endif
 
     @discardableResult
     func updateNoteMode(_ note: Note, body: String, mode: NoteMode) async throws -> Note {
@@ -2448,6 +2923,12 @@ final class VaultStore: ObservableObject {
                         body: diskFile.body    // raw disk body — keeps encryption
                     )
                     try? storage.saveMarkdownFile(conflictFile, at: conflictURL)
+                    try? cloneAttachmentDirectory(
+                        fromNoteId: note.id,
+                        toNoteId: conflictId,
+                        source: storage,
+                        destination: storage
+                    )
                     index.upsert(NoteIndexEntry(noteId: conflictId, fileName: conflictFileName, mode: currentEntry.mode, location: .notes))
                     conflictNote = Note(
                         id: conflictId,
@@ -2574,6 +3055,11 @@ final class VaultStore: ObservableObject {
             body: mdFile.body
         )
         try storage.saveMarkdownFile(trashFile, at: trashURL)
+        try storage.moveAttachmentDirectory(
+            for: note.id,
+            from: .notes,
+            to: .trash
+        )
         try storage.permanentlyDeleteFile(at: srcURL)
 
         noteIndex.upsert(NoteIndexEntry(
@@ -2606,12 +3092,17 @@ final class VaultStore: ObservableObject {
 
     func discardEmptyNote(_ note: Note, body: String) async throws {
         guard body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if let manifest = try? storage.loadAttachmentManifest(for: note.id, location: .notes),
+           !manifest.attachments.isEmpty {
+            return
+        }
 
         if let entry = noteIndex.entry(for: note.id),
            let url = Self.urlForEntry(entry, storage: storage),
            FileManager.default.fileExists(atPath: url.path) {
             try storage.permanentlyDeleteFile(at: url)
         }
+        try? storage.permanentlyDeleteAttachmentDirectory(for: note.id, location: .notes)
         noteIndex.removeEntry(for: note.id)
         try? storage.saveIndex(noteIndex)
 
@@ -2623,6 +3114,10 @@ final class VaultStore: ObservableObject {
     func clearEmptyReadableNotes() async throws -> Int {
         let emptyNotes = readableNotes.filter { note in
             guard note.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+            if let manifest = try? storage.loadAttachmentManifest(for: note.id, location: .notes),
+               !manifest.attachments.isEmpty {
+                return false
+            }
             #if os(iOS)
             // A cloud-only placeholder has an empty body only because its content
             // hasn't downloaded yet — deleting it would lose the real note (P0-2).
@@ -2653,6 +3148,11 @@ final class VaultStore: ObservableObject {
             body: mdFile.body
         )
         try storage.saveMarkdownFile(trashFile, at: trashURL)
+        try storage.moveAttachmentDirectory(
+            for: info.id,
+            from: .notes,
+            to: .trash
+        )
         try storage.permanentlyDeleteFile(at: info.url)
 
         if let entry = noteIndex.entry(for: info.id) {
@@ -2692,6 +3192,11 @@ final class VaultStore: ObservableObject {
             body: mdFile.body
         )
         try storage.saveMarkdownFile(restoredFile, at: dstURL)
+        try storage.moveAttachmentDirectory(
+            for: trashNote.id,
+            from: .trash,
+            to: .notes
+        )
         try storage.permanentlyDeleteFile(at: srcURL)
 
         if let entry = noteIndex.entry(for: trashNote.id) {
@@ -2710,6 +3215,7 @@ final class VaultStore: ObservableObject {
 
     func permanentlyDeleteTrashNote(_ trashNote: TrashNote) async throws {
         try storage.permanentlyDeleteFile(at: trashNote.url)
+        try storage.permanentlyDeleteAttachmentDirectory(for: trashNote.id, location: .trash)
         noteIndex.removeEntry(for: trashNote.id)
         try? storage.saveIndex(noteIndex)
         trashNotes.removeAll { $0.id == trashNote.id }
@@ -2750,6 +3256,7 @@ final class VaultStore: ObservableObject {
                 if let url = storage.trashFileURL(for: entry.noteId) {
                     try? storage.permanentlyDeleteFile(at: url)
                 }
+                try? storage.permanentlyDeleteAttachmentDirectory(for: entry.noteId, location: .trash)
                 purgedIds.append(entry.noteId)
             }
         }
@@ -2894,6 +3401,16 @@ final class VaultStore: ObservableObject {
             )
             let data = try mdFile.render()
             try data.write(to: fileURL, options: .atomic)
+
+            let attachmentDirectory = tmpDir.appendingPathComponent(
+                "\(fileURL.deletingPathExtension().lastPathComponent).attachments",
+                isDirectory: true
+            )
+            try exportAttachmentDirectory(
+                for: note.id,
+                to: attachmentDirectory,
+                storage: storage
+            )
         }
 
         let zipURL = FileManager.default.temporaryDirectory

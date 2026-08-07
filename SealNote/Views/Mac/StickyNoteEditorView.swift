@@ -103,6 +103,9 @@ struct StickyNoteEditorView: View {
     @State private var markdownPreviewText = ""
     @State private var isMarkdownPreviewSwitching = false
     @State private var editorScrollY: CGFloat = 0
+    @State private var isCommandPressed = false
+    @State private var isTextOverlappingAttachmentTray = false
+    @State private var isPreviewTextOverlappingAttachmentTray = false
 
     init(note: Note, isPreview: Bool = false, startsLocked: Bool = false, initialKeyIssue: Error? = nil) {
         _viewModel = StateObject(wrappedValue: StickyNoteEditorViewModel(
@@ -115,52 +118,34 @@ struct StickyNoteEditorView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            MacTextView(
-                text: $viewModel.text,
-                placeholder: "随便写点什么吧",
-                fontSize: CGFloat(settings.editorFontSize),
-                lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
-                autoFocus: true,
-                isEditable: !viewModel.isContentLocked,
-                onChange: { viewModel.textDidChange($0) },
-                onSaveShortcut: { viewModel.saveImmediately() },
-                onApplyShortcut: { viewModel.saveImmediately() },
-                onFitToContent: { viewModel.fitWindowToContent() },
-                onCopyShortcut: { viewModel.copyNoteText() },
-                onFindShortcut: { toggleFindInterface() },
-                onToggleMarkdownPreview: { toggleMarkdownPreview() },
-                onIncreaseFontSize: { adjustFontSize(by: 1) },
-                onDecreaseFontSize: { adjustFontSize(by: -1) },
-                onFindVisibilityChange: { isVisible in
-                    isFindBarVisible = isVisible
-                    updateSystemToolbarBackground(
-                        isActive: isVisible || isToolbarHovering,
-                        showsSeparator: isVisible
-                    )
-                }
-            )
+            editorTextView
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .opacity(isMarkdownPreviewing ? 0 : 1)
             .allowsHitTesting(!isMarkdownPreviewing)
             .accessibilityHidden(isMarkdownPreviewing)
 
             if hasCreatedMarkdownPreview {
-                MacMarkdownPreview(
-                    text: markdownPreviewText,
-                    fontSize: CGFloat(settings.editorFontSize),
-                    lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
-                    scrollY: $editorScrollY
-                )
-                .background(MacMarkdownPreviewShortcutMonitor(
-                    noteId: viewModel.note.id,
-                    onCopy: { viewModel.copyNoteText() },
-                    onTogglePreview: { toggleMarkdownPreview() },
-                    isActive: isMarkdownPreviewing
-                ))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .opacity(isMarkdownPreviewing ? 1 : 0)
-                .allowsHitTesting(isMarkdownPreviewing)
-                .accessibilityHidden(!isMarkdownPreviewing)
+                markdownPreviewView
+            }
+
+            if !viewModel.attachments.isEmpty {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    MacAttachmentTray(
+                        noteId: viewModel.note.id,
+                        attachments: viewModel.attachments,
+                        isCommandPressed: isCommandPressed,
+                        showsObscuringOverlay: isMarkdownPreviewing
+                            ? isPreviewTextOverlappingAttachmentTray
+                            : isTextOverlappingAttachmentTray,
+                        onOpen: { viewModel.openAttachment($0) },
+                        onCopy: { viewModel.copyAttachment($0) },
+                        onRemove: { viewModel.removeAttachment($0) },
+                        thumbnailContent: nil
+                    )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             VStack(spacing: 0) {
@@ -192,15 +177,34 @@ struct StickyNoteEditorView: View {
                     .padding(.top, MacStickyEditorLayout.toolbarHoverRegionHeight + DS.s3)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .allowsHitTesting(false)
-            }
+                }
         }
+        .overlay(alignment: .bottom) { attachmentNoticeOverlay }
         .animation(.snappy, value: viewModel.modeConversionNotice)
         // 内容延伸到工具栏下方供系统玻璃采样；首行留白由 MacTextView 计算。
         .ignoresSafeArea(edges: .top)
         .dsMacStickyToolbarScrollEdge()
         .navigationTitle("")
-        .onAppear { viewModel.presentInitialKeyIssueIfNeeded() }
+        .onAppear {
+            viewModel.presentInitialKeyIssueIfNeeded()
+            viewModel.loadAttachments()
+        }
         .onDisappear { viewModel.onDisappear() }
+        .onModifierKeysChanged(mask: .command) { _, modifiers in
+            isCommandPressed = modifiers.contains(.command)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .vaultAttachmentsDidChange)) { notification in
+            if let noteId = notification.object as? String {
+                guard noteId == viewModel.note.id else { return }
+            }
+            viewModel.loadAttachments()
+        }
+        .onChange(of: viewModel.attachments.isEmpty) { _, isEmpty in
+            if isEmpty {
+                isTextOverlappingAttachmentTray = false
+                isPreviewTextOverlappingAttachmentTray = false
+            }
+        }
         .onChange(of: viewModel.forceClose) { _, shouldClose in
             if shouldClose {
                 StickyNoteWindowManager.shared.closeWindow(for: viewModel.note.id)
@@ -262,7 +266,7 @@ struct StickyNoteEditorView: View {
                     .frame(width: DS.macToolbarIconWidth)
                 }
                 .disabled(viewModel.isContentLocked)
-                .help(viewModel.didCopy ? "已复制" : "复制")
+                .help(viewModel.didCopy ? "已复制正文" : "复制正文")
                 .controlSize(.small)
 
                 Menu {
@@ -270,10 +274,14 @@ struct StickyNoteEditorView: View {
                         Label("重命名…", systemImage: "pencil")
                     }
 
+                    Button(action: { viewModel.presentImagePanel() }) {
+                        Label("添加图片…", systemImage: "photo.badge.plus")
+                    }
+
                     Divider()
 
-                    Button(action: { viewModel.fitWindowToContent() }) {
-                        Label("适应内容", systemImage: "arrow.up.left.and.arrow.down.right")
+                    Button("适应内容", systemImage: "arrow.up.left.and.arrow.down.right") {
+                        viewModel.fitWindowToContent()
                     }
                     .disabled(viewModel.isContentLocked)
                     
@@ -357,6 +365,80 @@ struct StickyNoteEditorView: View {
             Button("取消", role: .cancel) {}
         } message: {
             Text(viewModel.keyIssueMessage)
+        }
+    }
+
+    private var editorTextView: some View {
+        MacTextView(
+            text: $viewModel.text,
+            placeholder: "随便写点什么吧",
+            fontSize: CGFloat(settings.editorFontSize),
+            lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
+            bottomInset: MacStickyEditorLayout.editorBottomInset + viewModel.attachmentTrayHeight,
+            autoFocus: true,
+            isEditable: !viewModel.isContentLocked,
+            onChange: { viewModel.textDidChange($0) },
+            onSaveShortcut: { viewModel.saveImmediately() },
+            onApplyShortcut: { viewModel.saveImmediately() },
+            onFitToContent: { viewModel.fitWindowToContent() },
+            onCopyShortcut: { viewModel.copyNoteText() },
+            onFindShortcut: { toggleFindInterface() },
+            onToggleMarkdownPreview: { toggleMarkdownPreview() },
+            onIncreaseFontSize: { adjustFontSize(by: 1) },
+            onDecreaseFontSize: { adjustFontSize(by: -1) },
+            onImportImages: { urls in viewModel.importAttachments(from: urls) },
+            onAttachmentOverlapChange: { isOverlapping in
+                isTextOverlappingAttachmentTray = isOverlapping
+            },
+            onFindVisibilityChange: { isVisible in
+                isFindBarVisible = isVisible
+                updateSystemToolbarBackground(
+                    isActive: isVisible || isToolbarHovering,
+                    showsSeparator: isVisible
+                )
+            }
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(isMarkdownPreviewing ? 0 : 1)
+        .allowsHitTesting(!isMarkdownPreviewing)
+        .accessibilityHidden(isMarkdownPreviewing)
+    }
+
+    private var markdownPreviewView: some View {
+        MacMarkdownPreview(
+            text: markdownPreviewText,
+            fontSize: CGFloat(settings.editorFontSize),
+            lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
+            bottomInset: MacStickyEditorLayout.editorBottomInset + viewModel.attachmentTrayHeight,
+            scrollY: $editorScrollY,
+            onTextOverlapChange: { isOverlapping in
+                isPreviewTextOverlappingAttachmentTray = isOverlapping
+            }
+        )
+        .background(MacMarkdownPreviewShortcutMonitor(
+            noteId: viewModel.note.id,
+            onCopy: { viewModel.copyNoteText() },
+            onTogglePreview: { toggleMarkdownPreview() },
+            isActive: isMarkdownPreviewing
+        ))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(isMarkdownPreviewing ? 1 : 0)
+        .allowsHitTesting(isMarkdownPreviewing)
+        .accessibilityHidden(!isMarkdownPreviewing)
+    }
+
+    @ViewBuilder
+    private var attachmentNoticeOverlay: some View {
+        if let notice = viewModel.attachmentNotice {
+            Text(notice)
+                .font(DS.caption())
+                .foregroundStyle(DS.textStrong)
+                .padding(.horizontal, DS.s3)
+                .padding(.vertical, DS.s2)
+                .background(.regularMaterial, in: Capsule())
+                .padding(.bottom, viewModel.attachmentTrayHeight + DS.s3)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .allowsHitTesting(false)
         }
     }
 
@@ -552,8 +634,26 @@ struct MacMarkdownPreview: View {
     let text: String
     let fontSize: CGFloat
     let lineHeightMultiple: CGFloat
+    let bottomInset: CGFloat
     @Binding var scrollY: CGFloat
+    let onTextOverlapChange: (Bool) -> Void
     @State private var titlebarHeight: CGFloat = MacStickyEditorLayout.toolbarHoverRegionHeight
+
+    init(
+        text: String,
+        fontSize: CGFloat,
+        lineHeightMultiple: CGFloat,
+        bottomInset: CGFloat = MacStickyEditorLayout.editorBottomInset,
+        scrollY: Binding<CGFloat>,
+        onTextOverlapChange: @escaping (Bool) -> Void = { _ in }
+    ) {
+        self.text = text
+        self.fontSize = fontSize
+        self.lineHeightMultiple = lineHeightMultiple
+        self.bottomInset = bottomInset
+        self._scrollY = scrollY
+        self.onTextOverlapChange = onTextOverlapChange
+    }
 
     private var previewFont: Font {
         .system(size: fontSize)
@@ -572,45 +672,74 @@ struct MacMarkdownPreview: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text("随便写点什么吧")
-                        .font(previewFont)
-                        .foregroundColor(Color(nsColor: .placeholderTextColor))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    MarkdownView(text)
-                        .font(previewFont, for: .body)
-                        .font(codeFont, for: .codeBlock)
-                        .markdownComponentSpacing(verticalSpacing)
-                        .markdownMathRenderingEnabled()
-                        .markdownCodeBlockStyle(MacMarkdownPreviewCodeBlockStyle(
-                            theme: settings.appTheme,
-                            font: codeFont
-                        ))
-                        .foregroundStyle(DS.textBody)
-                        .markdownHeadingStyle(DS.textEmphasize, for: .h1)
-                        .markdownHeadingStyle(DS.textEmphasize, for: .h2)
-                        .markdownHeadingStyle(DS.textEmphasize, for: .h3)
-                        .markdownHeadingStyle(DS.textEmphasize, for: .h4)
-                        .markdownHeadingStyle(DS.textEmphasize, for: .h5)
-                        .markdownHeadingStyle(DS.textEmphasize, for: .h6)
-                        .tint(DS.primaryDeep)
-                        .tint(DS.link, for: .link)
-                        .tint(DS.link, for: .blockQuote)
-                        .tint(DS.primaryDeep, for: .inlineCodeBlock)
-                        .id(settings.appTheme)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+        GeometryReader { viewport in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("随便写点什么吧")
+                            .font(previewFont)
+                            .foregroundColor(Color(nsColor: .placeholderTextColor))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        MarkdownView(text)
+                            .font(previewFont, for: .body)
+                            .font(codeFont, for: .codeBlock)
+                            .markdownComponentSpacing(verticalSpacing)
+                            .markdownMathRenderingEnabled()
+                            .markdownCodeBlockStyle(MacMarkdownPreviewCodeBlockStyle(
+                                theme: settings.appTheme,
+                                font: codeFont
+                            ))
+                            .foregroundStyle(DS.textBody)
+                            .markdownHeadingStyle(DS.textEmphasize, for: .h1)
+                            .markdownHeadingStyle(DS.textEmphasize, for: .h2)
+                            .markdownHeadingStyle(DS.textEmphasize, for: .h3)
+                            .markdownHeadingStyle(DS.textEmphasize, for: .h4)
+                            .markdownHeadingStyle(DS.textEmphasize, for: .h5)
+                            .markdownHeadingStyle(DS.textEmphasize, for: .h6)
+                            .tint(DS.primaryDeep)
+                            .tint(DS.link, for: .link)
+                            .tint(DS.link, for: .blockQuote)
+                            .tint(DS.primaryDeep, for: .inlineCodeBlock)
+                            .id(settings.appTheme)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
+                .background {
+                    GeometryReader { content in
+                        Color.clear.preference(
+                            key: MacMarkdownPreviewContentFrameKey.self,
+                            value: content.frame(in: .named("macMarkdownPreview"))
+                        )
+                    }
+                }
+                .padding(.top, titlebarHeight + textInset.height)
+                .padding(.horizontal, textInset.width)
+                .padding(.bottom, bottomInset)
+                .background(MacScrollPositionProbe(scrollY: $scrollY))
             }
-            .padding(.top, titlebarHeight + textInset.height)
-            .padding(.horizontal, textInset.width)
-            .padding(.bottom, MacStickyEditorLayout.editorBottomInset)
-            .background(MacScrollPositionProbe(scrollY: $scrollY))
+            .coordinateSpace(name: "macMarkdownPreview")
+            .scrollIndicators(.hidden)
+            .background(MacTitlebarHeightReader(height: $titlebarHeight))
+            .onPreferenceChange(MacMarkdownPreviewContentFrameKey.self) { frame in
+                let trayHeight = max(0, bottomInset - MacStickyEditorLayout.editorBottomInset)
+                let trayTop = viewport.size.height - trayHeight
+                let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                let overlaps = trayHeight > 0
+                    && hasText
+                    && frame.maxY > trayTop
+                    && frame.minY < viewport.size.height
+                onTextOverlapChange(overlaps)
+            }
         }
-        .scrollIndicators(.hidden)
-        .background(MacTitlebarHeightReader(height: $titlebarHeight))
+    }
+}
+
+private struct MacMarkdownPreviewContentFrameKey: PreferenceKey {
+    static let defaultValue = CGRect.zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
     }
 }
 
@@ -1151,6 +1280,8 @@ final class StickyNoteEditorViewModel: ObservableObject {
     @Published var modeConversionNotice: MacNoteModeConversionNotice?
     @Published var showingKeyIssueAlert = false
     @Published var keyIssueMessage = "请前往密钥设置处理。"
+    @Published private(set) var attachments: [NoteAttachment] = []
+    @Published var attachmentNotice: String?
 
     private let vaultStore = VaultStore.shared
     private let windowStore = MacNoteWindowStore.shared
@@ -1166,7 +1297,11 @@ final class StickyNoteEditorViewModel: ObservableObject {
 
     var isContentEmpty: Bool {
         let body = isContentLocked ? note.body : text
-        return body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && attachments.isEmpty
+    }
+
+    var attachmentTrayHeight: CGFloat {
+        attachments.isEmpty ? 0 : MacAttachmentTrayLayout.occupiedHeight
     }
 
     init(note: Note, isPreview: Bool = false, startsLocked: Bool = false, initialKeyIssue: Error? = nil) {
@@ -1218,6 +1353,148 @@ final class StickyNoteEditorViewModel: ObservableObject {
         guard !isContentLocked else { return }
         text = newText
         debouncedSave()
+    }
+
+    func loadAttachments() {
+        let noteId = note.id
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.attachments = await self.vaultStore.loadAttachments(for: noteId)
+            StickyNoteWindowManager.shared.updateAttachmentTray(for: noteId, height: self.attachmentTrayHeight)
+        }
+    }
+
+    func presentImagePanel() {
+        guard !isContentLocked, !isPreview else { return }
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.image]
+        panel.begin { [weak self] response in
+            guard response == .OK, let self else { return }
+            let urls = panel.urls
+            Task { @MainActor in
+                self.importAttachments(from: urls)
+            }
+        }
+    }
+
+    func importAttachments(from urls: [URL]) {
+        guard !isContentLocked, !isPreview, !urls.isEmpty else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { Self.cleanupClipboardImportURLs(urls) }
+            syncStore.setSyncing()
+            guard await flushPendingBodySave() else { return }
+            let noteToUpdate = note
+            let bodySnapshot = text
+            do {
+                let result = try await vaultStore.importImageAttachments(
+                    from: urls,
+                    for: noteToUpdate,
+                    currentBody: bodySnapshot
+                )
+                note = result.note
+                attachments = result.attachments
+                StickyNoteWindowManager.shared.updateAttachmentTray(for: note.id, height: attachmentTrayHeight)
+                syncStore.setSaved()
+                if !result.skippedReasons.isEmpty {
+                    showAttachmentNotice(result.skippedReasons.joined(separator: "、"))
+                }
+            } catch {
+                syncStore.setFailed(message: error.localizedDescription)
+                showAttachmentNotice(error.localizedDescription)
+            }
+        }
+    }
+
+    private static func cleanupClipboardImportURLs(_ urls: [URL]) {
+        let prefix = "SealNote-Clipboard-"
+        for url in urls where url.deletingLastPathComponent() == FileManager.default.temporaryDirectory
+            && url.lastPathComponent.hasPrefix(prefix) {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    func openAttachment(_ attachment: NoteAttachment) {
+        guard !isContentLocked else { return }
+        MacAttachmentQuickLookController.present(
+            noteId: note.id,
+            attachments: attachments,
+            selected: attachment
+        )
+    }
+
+    func copyAttachment(_ attachment: NoteAttachment) {
+        guard !isContentLocked else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let url = try await vaultStore.attachmentURL(for: attachment, noteId: note.id)
+                let data = try Data(contentsOf: url)
+                let item = NSPasteboardItem()
+                item.setData(data, forType: NSPasteboard.PasteboardType(rawValue: attachment.contentType))
+                if let image = NSImage(data: data), let tiff = image.tiffRepresentation {
+                    item.setData(tiff, forType: .tiff)
+                }
+                item.setString(url.absoluteString, forType: .fileURL)
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.writeObjects([item])
+                showAttachmentNotice("已复制图片")
+            } catch {
+                showAttachmentNotice(error.localizedDescription)
+            }
+        }
+    }
+
+    func removeAttachment(_ attachment: NoteAttachment) {
+        guard !isContentLocked, !isPreview else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            syncStore.setSyncing()
+            guard await flushPendingBodySave() else { return }
+            let noteToUpdate = note
+            let bodySnapshot = text
+            do {
+                let result = try await vaultStore.removeAttachment(
+                    id: attachment.id,
+                    from: noteToUpdate,
+                    currentBody: bodySnapshot
+                )
+                note = result.note
+                attachments = result.attachments
+                StickyNoteWindowManager.shared.updateAttachmentTray(for: note.id, height: attachmentTrayHeight)
+                syncStore.setSaved()
+            } catch {
+                syncStore.setFailed(message: error.localizedDescription)
+                showAttachmentNotice(error.localizedDescription)
+            }
+        }
+    }
+
+    private func flushPendingBodySave() async -> Bool {
+        let pendingSave = saveTask
+        pendingSave?.cancel()
+        saveTask = nil
+        _ = await pendingSave?.value
+
+        guard !isContentLocked else { return false }
+        let bodySnapshot = text
+        let noteToUpdate = note
+        guard bodySnapshot != noteToUpdate.body else { return true }
+        return await saveSnapshot(bodySnapshot, note: noteToUpdate)
+    }
+
+    private func showAttachmentNotice(_ message: String) {
+        attachmentNotice = message
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            if self?.attachmentNotice == message {
+                self?.attachmentNotice = nil
+            }
+        }
     }
 
     func copyNoteText() {
@@ -1604,7 +1881,9 @@ final class StickyNoteEditorViewModel: ObservableObject {
             return
         }
 
-        guard settings.autoDeleteEmptyNotes && snapshot.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard settings.autoDeleteEmptyNotes,
+              snapshot.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              attachments.isEmpty else {
             saveAndGenerateLocalTitleOnClose(snapshot: snapshot)
             return
         }
@@ -1732,8 +2011,22 @@ private final class ToolbarInsetScrollView: NSScrollView {
     var baseInsets = NSEdgeInsets() {
         didSet { applyToolbarTopInset() }
     }
+    var bottomInset: CGFloat = MacStickyEditorLayout.editorBottomInset {
+        didSet {
+            applyToolbarTopInset()
+            scheduleAttachmentOverlapUpdate()
+        }
+    }
+    var attachmentTrayHeight: CGFloat = 0 {
+        didSet { scheduleAttachmentOverlapUpdate() }
+    }
+    var onAttachmentOverlapChange: ((Bool) -> Void)?
     var onFindVisibilityChange: ((Bool) -> Void)?
     private var lastFindBarVisibility: Bool?
+    private weak var observedAttachmentClipView: NSClipView?
+    private var attachmentBoundsObserver: NSObjectProtocol?
+    private var attachmentOverlapUpdateScheduled = false
+    private var lastAttachmentOverlap = false
 
     override var isFindBarVisible: Bool {
         didSet {
@@ -1745,6 +2038,18 @@ private final class ToolbarInsetScrollView: NSScrollView {
         super.viewDidMoveToWindow()
         applyToolbarTopInset()
         syncFindToolbarAppearance()
+        if window == nil {
+            stopObservingAttachmentBounds()
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.observeAttachmentBoundsIfNeeded()
+                self?.scheduleAttachmentOverlapUpdate()
+            }
+        }
+    }
+
+    deinit {
+        stopObservingAttachmentBounds()
     }
 
     override func layout() {
@@ -1754,6 +2059,8 @@ private final class ToolbarInsetScrollView: NSScrollView {
         }
         applyToolbarTopInset()
         syncFindToolbarAppearance()
+        observeAttachmentBoundsIfNeeded()
+        scheduleAttachmentOverlapUpdate()
     }
 
     func syncDocumentSize(_ textView: NSTextView? = nil) {
@@ -1776,6 +2083,7 @@ private final class ToolbarInsetScrollView: NSScrollView {
         if textView.frame != frame {
             textView.frame = frame
         }
+        scheduleAttachmentOverlapUpdate()
     }
 
     func preservingVisibleOrigin(_ changes: () -> Void) {
@@ -1789,6 +2097,12 @@ private final class ToolbarInsetScrollView: NSScrollView {
         )
         contentView.scroll(to: boundedOrigin)
         reflectScrolledClipView(contentView)
+        scheduleAttachmentOverlapUpdate()
+    }
+
+    override func reflectScrolledClipView(_ clipView: NSClipView) {
+        super.reflectScrolledClipView(clipView)
+        scheduleAttachmentOverlapUpdate()
     }
 
     func syncFindToolbarAppearance() {
@@ -1816,12 +2130,109 @@ private final class ToolbarInsetScrollView: NSScrollView {
         let target = NSEdgeInsets(
             top: top,
             left: baseInsets.left,
-            bottom: MacStickyEditorLayout.editorBottomInset,
+            bottom: bottomInset,
             right: baseInsets.right
         )
         guard !insetsEqual(contentInsets, target) else { return }
         contentInsets = target
         scrollerInsets = target
+    }
+
+    private func observeAttachmentBoundsIfNeeded() {
+        guard window != nil else { return }
+        if observedAttachmentClipView === contentView, attachmentBoundsObserver != nil {
+            return
+        }
+
+        stopObservingAttachmentBounds()
+        let clipView = contentView
+        clipView.postsBoundsChangedNotifications = true
+        observedAttachmentClipView = clipView
+        attachmentBoundsObserver = NotificationCenter.default.addObserver(
+            forName: NSView.boundsDidChangeNotification,
+            object: clipView,
+            queue: .main
+        ) { [weak self] _ in
+            self?.scheduleAttachmentOverlapUpdate()
+        }
+    }
+
+    private func stopObservingAttachmentBounds() {
+        if let attachmentBoundsObserver {
+            NotificationCenter.default.removeObserver(attachmentBoundsObserver)
+            self.attachmentBoundsObserver = nil
+        }
+        observedAttachmentClipView = nil
+        attachmentOverlapUpdateScheduled = false
+    }
+
+    private func scheduleAttachmentOverlapUpdate() {
+        guard !attachmentOverlapUpdateScheduled else { return }
+        attachmentOverlapUpdateScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.attachmentOverlapUpdateScheduled = false
+            self.updateAttachmentOverlap()
+        }
+    }
+
+    private func updateAttachmentOverlap() {
+        guard attachmentTrayHeight > 0,
+              let textView = documentView as? NSTextView,
+              let layoutManager = textView.layoutManager,
+              let textContainer = textView.textContainer,
+              window != nil,
+              !textView.string.isEmpty,
+              contentView.bounds.width > 0,
+              contentView.bounds.height > 0 else {
+            publishAttachmentOverlap(false)
+            return
+        }
+
+        layoutManager.ensureLayout(for: textContainer)
+        let glyphRange = layoutManager.glyphRange(for: textContainer)
+        guard glyphRange.length > 0 else {
+            publishAttachmentOverlap(false)
+            return
+        }
+
+        let visibleFrameInWindow = contentView.convert(contentView.bounds, to: nil)
+        let trayHeight = min(attachmentTrayHeight, visibleFrameInWindow.height)
+        let trayBand = NSRect(
+            x: visibleFrameInWindow.minX,
+            y: visibleFrameInWindow.minY,
+            width: visibleFrameInWindow.width,
+            height: trayHeight
+        )
+
+        let sourceText = textView.string as NSString
+        var overlaps = false
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { lineRect, _, _, lineGlyphRange, stop in
+            guard lineGlyphRange.length > 0 else { return }
+            let boundedRange = NSIntersectionRange(
+                lineGlyphRange,
+                NSRange(location: 0, length: sourceText.length)
+            )
+            guard boundedRange.length > 0 else { return }
+            let lineText = sourceText.substring(with: boundedRange)
+            guard lineText.rangeOfCharacter(from: .whitespacesAndNewlines.inverted) != nil else {
+                return
+            }
+
+            let lineInWindow = textView.convert(lineRect, to: nil)
+            if lineInWindow.intersects(trayBand) {
+                overlaps = true
+                stop.pointee = true
+            }
+        }
+
+        publishAttachmentOverlap(overlaps)
+    }
+
+    private func publishAttachmentOverlap(_ overlaps: Bool) {
+        guard lastAttachmentOverlap != overlaps else { return }
+        lastAttachmentOverlap = overlaps
+        onAttachmentOverlapChange?(overlaps)
     }
 
     private func insetsEqual(_ a: NSEdgeInsets, _ b: NSEdgeInsets) -> Bool {
@@ -1834,6 +2245,7 @@ struct MacTextView: NSViewRepresentable {
     let placeholder: String
     let fontSize: CGFloat
     let lineHeightMultiple: CGFloat
+    let bottomInset: CGFloat
     let autoFocus: Bool
     let isEditable: Bool
     let onChange: (String) -> Void
@@ -1845,6 +2257,8 @@ struct MacTextView: NSViewRepresentable {
     let onToggleMarkdownPreview: () -> Void
     let onIncreaseFontSize: () -> Void
     let onDecreaseFontSize: () -> Void
+    let onImportImages: ([URL]) -> Void
+    let onAttachmentOverlapChange: (Bool) -> Void
     let onFindVisibilityChange: (Bool) -> Void
 
     init(
@@ -1852,6 +2266,7 @@ struct MacTextView: NSViewRepresentable {
         placeholder: String,
         fontSize: CGFloat,
         lineHeightMultiple: CGFloat,
+        bottomInset: CGFloat = MacStickyEditorLayout.editorBottomInset,
         autoFocus: Bool = true,
         isEditable: Bool = true,
         onChange: @escaping (String) -> Void,
@@ -1863,12 +2278,15 @@ struct MacTextView: NSViewRepresentable {
         onToggleMarkdownPreview: @escaping () -> Void,
         onIncreaseFontSize: @escaping () -> Void,
         onDecreaseFontSize: @escaping () -> Void,
+        onImportImages: @escaping ([URL]) -> Void = { _ in },
+        onAttachmentOverlapChange: @escaping (Bool) -> Void = { _ in },
         onFindVisibilityChange: @escaping (Bool) -> Void
     ) {
         self._text = text
         self.placeholder = placeholder
         self.fontSize = fontSize
         self.lineHeightMultiple = lineHeightMultiple
+        self.bottomInset = bottomInset
         self.autoFocus = autoFocus
         self.isEditable = isEditable
         self.onChange = onChange
@@ -1880,6 +2298,8 @@ struct MacTextView: NSViewRepresentable {
         self.onToggleMarkdownPreview = onToggleMarkdownPreview
         self.onIncreaseFontSize = onIncreaseFontSize
         self.onDecreaseFontSize = onDecreaseFontSize
+        self.onImportImages = onImportImages
+        self.onAttachmentOverlapChange = onAttachmentOverlapChange
         self.onFindVisibilityChange = onFindVisibilityChange
     }
 
@@ -1897,11 +2317,19 @@ struct MacTextView: NSViewRepresentable {
         scrollView.autoresizesSubviews = true
         scrollView.autoresizingMask = [.width, .height]
         scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.bottomInset = bottomInset
+        scrollView.attachmentTrayHeight = max(0, bottomInset - MacStickyEditorLayout.editorBottomInset)
+        scrollView.onAttachmentOverlapChange = onAttachmentOverlapChange
         scrollView.onFindVisibilityChange = onFindVisibilityChange
 
         let textView = AutoFocusTextView()
         textView.coordinator = context.coordinator
         textView.isAutoFocusEnabled = autoFocus
+        textView.registerForDraggedTypes([
+            .fileURL,
+            .png,
+            .tiff
+        ])
 
         textView.isEditable = isEditable
         textView.isSelectable = isEditable
@@ -1953,6 +2381,24 @@ struct MacTextView: NSViewRepresentable {
 
         context.coordinator.parent = self
         scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.attachmentTrayHeight = max(0, bottomInset - MacStickyEditorLayout.editorBottomInset)
+        scrollView.onAttachmentOverlapChange = onAttachmentOverlapChange
+        if scrollView.bottomInset != bottomInset {
+            let previousBottomInset = scrollView.bottomInset
+            let textLength = (textView.string as NSString).length
+            let selection = textView.selectedRange()
+            let caretIsAtEnd = selection.location >= textLength
+            scrollView.preservingVisibleOrigin {
+                scrollView.bottomInset = bottomInset
+                scrollView.syncDocumentSize(textView)
+            }
+            if bottomInset > previousBottomInset, caretIsAtEnd,
+               textView.window?.firstResponder === textView {
+                textView.scrollRangeToVisible(NSRange(location: textLength, length: 0))
+            }
+        } else {
+            scrollView.bottomInset = bottomInset
+        }
         scrollView.onFindVisibilityChange = onFindVisibilityChange
         textView.isEditable = isEditable
         textView.isSelectable = isEditable
@@ -2146,7 +2592,7 @@ extension MacTextView {
         }
     }
 
-        override func viewDidMoveToSuperview() {
+    override func viewDidMoveToSuperview() {
             super.viewDidMoveToSuperview()
             if placeholderLabel.superview == nil {
             placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -2159,6 +2605,85 @@ extension MacTextView {
             ])
             }
         }
+
+    override func paste(_ sender: Any?) {
+        guard isEditable else { return }
+        let pasteboard = NSPasteboard.general
+        if let string = pasteboard.string(forType: .string), !string.isEmpty {
+            super.paste(sender)
+            return
+        }
+
+        if let urls = imageURLs(from: pasteboard), !urls.isEmpty {
+            coordinator?.parent.onImportImages(urls)
+            return
+        }
+
+        if let temporaryURL = clipboardImageURL(from: pasteboard) {
+            coordinator?.parent.onImportImages([temporaryURL])
+            return
+        }
+
+        super.paste(sender)
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard isEditable,
+              let urls = imageURLs(from: sender.draggingPasteboard),
+              !urls.isEmpty else {
+            return []
+        }
+        return .copy
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        guard isEditable else { return false }
+        let pasteboard = sender.draggingPasteboard
+        if let urls = imageURLs(from: pasteboard), !urls.isEmpty {
+            coordinator?.parent.onImportImages(urls)
+            return true
+        }
+        if let temporaryURL = clipboardImageURL(from: pasteboard) {
+            coordinator?.parent.onImportImages([temporaryURL])
+            return true
+        }
+        return false
+    }
+
+    private func imageURLs(from pasteboard: NSPasteboard) -> [URL]? {
+        guard let objects = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [NSURL] else {
+            return nil
+        }
+        let urls = objects.compactMap(\.filePathURL).filter { url in
+            guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
+            return type.conforms(to: .image)
+        }
+        return urls
+    }
+
+    private func clipboardImageURL(from pasteboard: NSPasteboard) -> URL? {
+        let imageData = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff)
+        guard let imageData,
+              let bitmap = NSBitmapImageRep(data: imageData),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+            return nil
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SealNote-Clipboard-\(UUID().uuidString).png")
+        do {
+            try pngData.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
+    }
 
         override func becomeFirstResponder() -> Bool {
             super.becomeFirstResponder()
