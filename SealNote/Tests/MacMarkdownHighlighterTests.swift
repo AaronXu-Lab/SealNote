@@ -62,15 +62,23 @@ final class MacMarkdownHighlighterTests: XCTestCase {
         XCTAssertFalse(s.contains { $0.role == .codeBlockText })
     }
 
-    func testPlainCodeFenceOpeningMarkerIsNotHighlighted() {
+    func testPlainCodeFenceOpeningAndClosingMarkersAreHighlighted() {
         let text = "```\nlet x = 1\n```\n"
         let s = spans(text)
         let nsText = text as NSString
         let openFenceLoc = nsText.range(of: "```").location
         let closeFenceLoc = nsText.range(of: "```", options: .backwards).location
 
-        XCTAssertFalse(s.contains { $0.role == .codeFenceMarker && $0.range.location == openFenceLoc })
+        XCTAssertTrue(s.contains { $0.role == .codeFenceMarker && $0.range.location == openFenceLoc })
         XCTAssertTrue(s.contains { $0.role == .codeFenceMarker && $0.range.location == closeFenceLoc })
+    }
+
+    func testPlainCodeFenceOpeningIsHighlightedForCSSVariableContent() {
+        let text = "```\n  shell-max: 1180px\n  max-wide: 1080px\n  max-extra-wide: 1600px\n```"
+        let s = spans(text)
+        let openingRange = (text as NSString).range(of: "```")
+
+        XCTAssertTrue(s.contains { $0.role == .codeFenceMarker && $0.range == openingRange })
     }
 
     func testMultipleMarkdownFenceOpeningsAreHighlighted() {
@@ -287,10 +295,48 @@ final class MacMarkdownHighlighterTests: XCTestCase {
     }
 
     #if os(macOS)
-    func testHTMLCommentUsesGreenTextColor() {
+    func testHTMLCommentColorMeetsWCAGAAAgainstEditorSurface() {
         let attributed = MarkdownHighlighter.makeHighlightedAttributedString(text: "<!--待办-->", fontSize: 14)
         let color = attributed.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
-        XCTAssertEqual(color, NSColor.systemGreen)
+        XCTAssertNotNil(color)
+
+        let appearances: [(NSAppearance.Name, NSColor)] = [
+            (.aqua, NSColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)),
+            (.darkAqua, NSColor(srgbRed: 32 / 255, green: 32 / 255, blue: 32 / 255, alpha: 1))
+        ]
+
+        for (appearanceName, background) in appearances {
+            let appearance = try! XCTUnwrap(NSAppearance(named: appearanceName))
+            let resolved = color!.resolvedColor(with: appearance)
+            XCTAssertGreaterThanOrEqual(
+                contrastRatio(resolved, background),
+                4.5,
+                "HTML comments must meet WCAG AA for normal text in \(appearanceName.rawValue)"
+            )
+            XCTAssertLessThan(
+                relativeLuminance(resolved),
+                relativeLuminance(NSColor.systemGreen.resolvedColor(with: appearance)),
+                "HTML comments should be quieter than the system green"
+            )
+        }
+    }
+
+    private func contrastRatio(_ lhs: NSColor, _ rhs: NSColor) -> CGFloat {
+        let lighter = max(relativeLuminance(lhs), relativeLuminance(rhs))
+        let darker = min(relativeLuminance(lhs), relativeLuminance(rhs))
+        return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    private func relativeLuminance(_ color: NSColor) -> CGFloat {
+        let rgb = color.usingColorSpace(.sRGB)!
+        func linearize(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linearize(rgb.redComponent)
+            + 0.7152 * linearize(rgb.greenComponent)
+            + 0.0722 * linearize(rgb.blueComponent)
     }
     #endif
 
