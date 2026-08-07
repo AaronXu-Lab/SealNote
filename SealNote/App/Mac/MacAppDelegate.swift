@@ -40,6 +40,11 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
                     menuBarController.openSettingsWindow()
                 }
             }
+            if CommandLine.arguments.contains("--open-fake-edit-view") {
+                await MainActor.run {
+                    menuBarController.openFakeEditWindow()
+                }
+            }
             #endif
         }
     }

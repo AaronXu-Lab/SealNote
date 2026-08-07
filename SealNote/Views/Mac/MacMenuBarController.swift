@@ -21,6 +21,9 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
     private var settingsWindow: NSWindow?
     private var componentCatalogWindow: NSWindow?
     private var introWindow: NSWindow?
+#if DEBUG
+    private var fakeEditWindow: NSWindow?
+#endif
 
     private enum RecentMenuNote {
         case readable(Note)
@@ -146,6 +149,16 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(trashItem)
 
         menu.addItem(.separator())
+
+#if DEBUG
+        let fakeEditItem = NSMenuItem(
+            title: "测试 EditView…",
+            action: #selector(showFakeEditView),
+            keyEquivalent: ""
+        )
+        fakeEditItem.target = self
+        menu.addItem(fakeEditItem)
+#endif
 
         let settingsItem = NSMenuItem(title: "设置…", action: #selector(showSettings), keyEquivalent: ",")
         settingsItem.keyEquivalentModifierMask = [.command]
@@ -329,6 +342,47 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
         openSettingsWindow()
     }
 
+#if DEBUG
+    @objc private func showFakeEditView() {
+        openFakeEditWindow()
+    }
+
+    func openFakeEditWindow() {
+        if fakeEditWindow == nil {
+            let defaultSize = MacNoteWindowStore.defaultWindowSize
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: defaultSize.width, height: 520),
+                styleMask: StickyNoteWindowManager.windowStyleMask,
+                backing: .buffered,
+                defer: false
+            )
+            window.title = ""
+            window.contentView = NSHostingView(rootView: FakeEditView())
+            window.minSize = NSSize(width: 200, height: 200)
+            window.center()
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            window.isMovableByWindowBackground = true
+            window.tabbingMode = .disallowed
+            window.isOpaque = true
+            window.backgroundColor = .textBackgroundColor
+            window.hasShadow = true
+            window.titleVisibility = .visible
+            window.titlebarAppearsTransparent = true
+            window.toolbarStyle = .unified
+            window.titlebarSeparatorStyle = .automatic
+            window.standardWindowButton(.closeButton)?.isHidden = false
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.miniaturizeButton)?.isEnabled = false
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isEnabled = false
+            fakeEditWindow = window
+        }
+        fakeEditWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+#endif
+
     func openSettingsWindow(selectedTab: MacSettingsView.Tab = .general) {
         let rootView = MacSettingsView(selectedTab: selectedTab)
         if settingsWindow == nil {
@@ -478,5 +532,10 @@ extension MacMenuBarController: NSWindowDelegate {
         } else if window == introWindow {
             introWindow = nil
         }
+#if DEBUG
+        if window == fakeEditWindow {
+            fakeEditWindow = nil
+        }
+#endif
     }
 }
