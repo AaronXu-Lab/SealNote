@@ -239,7 +239,6 @@ struct StickyNoteEditorView: View {
                 )
                 .macKeyboardShortcut(markdownPreviewShortcut)
                 .help(isMarkdownPreviewing ? "返回编辑" : "Markdown 预览")
-                .controlSize(.small)
             }
             ToolbarSpacer()
             ToolbarItemGroup(placement: .primaryAction) {
@@ -254,7 +253,6 @@ struct StickyNoteEditorView: View {
                     }
                     .disabled(viewModel.isEncryptionToggling)
                     .help(viewModel.isContentLocked ? "解锁" : "上锁")
-                    .controlSize(.small)
                 }
 
                 Button(action: { viewModel.copyNoteText() }) {
@@ -267,7 +265,6 @@ struct StickyNoteEditorView: View {
                 }
                 .disabled(viewModel.isContentLocked)
                 .help(viewModel.didCopy ? "已复制正文" : "复制正文")
-                .controlSize(.small)
 
                 Menu {
                     Button(action: { viewModel.beginRenaming() }) {
@@ -320,7 +317,6 @@ struct StickyNoteEditorView: View {
                 .disabled(viewModel.isContentLocked)
                 .menuIndicator(.hidden)
                 .help("更多")
-                .controlSize(.small)
             }
             ToolbarSpacer()
             ToolbarItem {
@@ -334,7 +330,6 @@ struct StickyNoteEditorView: View {
                     .buttonStyle(.glassProminent)
                     .buttonBorderShape(.circle)
                     .tint(DS.primary)
-                    .controlSize(.small)
                 } else {
                     Button(action: { viewModel.togglePin() }) {
                         Label("置顶", systemImage: "pin.fill")
@@ -344,7 +339,6 @@ struct StickyNoteEditorView: View {
                     .help("置顶")
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
-                    .controlSize(.small)
                 }
             }
         }
