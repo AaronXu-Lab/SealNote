@@ -46,6 +46,7 @@ struct MacAttachmentTray: View {
                         }
                     }
                     .padding(.horizontal)
+                    .padding(.vertical, MacAttachmentTrayLayout.verticalPadding)
                 }
                 .scrollIndicators(.hidden)
                 .onAppear {
@@ -60,8 +61,7 @@ struct MacAttachmentTray: View {
                     }
                 }
             }
-            .frame(height: MacAttachmentTrayLayout.thumbnailSize)
-            .padding(.vertical, MacAttachmentTrayLayout.verticalPadding)
+            .frame(height: MacAttachmentTrayLayout.occupiedHeight)
             .background {
                 Rectangle()
                     .fill(.ultraThinMaterial)
@@ -97,62 +97,80 @@ private struct MacAttachmentThumbnail: View {
     @State private var isUnavailable = false
 
     var body: some View {
-        Button(action: performPrimaryAction) {
-            ZStack {
-                if let thumbnailContent {
-                    thumbnailContent
-                        .frame(width: MacAttachmentTrayLayout.thumbnailSize, height: MacAttachmentTrayLayout.thumbnailSize)
-                } else if let imageData, let image = NSImage(data: imageData) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: MacAttachmentTrayLayout.thumbnailSize, height: MacAttachmentTrayLayout.thumbnailSize)
-                        .clipped()
-                } else if isUnavailable {
-                    ZStack {
+        ZStack(alignment: .topTrailing) {
+            Button(action: performPrimaryAction) {
+                ZStack {
+                    if let thumbnailContent {
+                        thumbnailContent
+                            .frame(width: MacAttachmentTrayLayout.thumbnailSize, height: MacAttachmentTrayLayout.thumbnailSize)
+                    } else if let imageData, let image = NSImage(data: imageData) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: MacAttachmentTrayLayout.thumbnailSize, height: MacAttachmentTrayLayout.thumbnailSize)
+                            .clipped()
+                    } else if isUnavailable {
+                        ZStack {
+                            Rectangle()
+                                .fill(Color(nsColor: .quaternaryLabelColor))
+                            Image(systemName: "photo.badge.exclamationmark")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
                         Rectangle()
                             .fill(Color(nsColor: .quaternaryLabelColor))
-                        Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 22, weight: .medium))
-                            .foregroundStyle(.secondary)
+                        ProgressView()
+                            .controlSize(.small)
                     }
-                } else {
-                    Rectangle()
-                        .fill(Color(nsColor: .quaternaryLabelColor))
-                    ProgressView()
-                        .controlSize(.small)
-                }
 
-                if isHovering && isCommandPressed {
                     Image(systemName: didCopy ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(.primary)
                         .frame(width: 34, height: 34)
                         .background(.regularMaterial, in: Circle())
                         .contentTransition(.symbolEffect(.replace))
+                        .opacity(isHovering && isCommandPressed ? 1 : 0)
+                        .allowsHitTesting(false)
                 }
+                .frame(width: MacAttachmentTrayLayout.thumbnailSize, height: MacAttachmentTrayLayout.thumbnailSize)
+                .clipShape(thumbnailShape)
+                .contentShape(thumbnailShape)
             }
-            .frame(width: MacAttachmentTrayLayout.thumbnailSize, height: MacAttachmentTrayLayout.thumbnailSize)
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: MacAttachmentTrayLayout.thumbnailCornerRadius,
-                    style: .continuous
-                )
+            .buttonStyle(.plain)
+            .help(isCommandPressed ? "复制图片" : "使用 Quick Look 查看图片")
+            .shadow(
+                color: isHovering ? .black.opacity(0.12) : .clear,
+                radius: isHovering ? 4 : 0,
+                y: isHovering ? 1 : 0
             )
-            .contentShape(
-                RoundedRectangle(
-                    cornerRadius: MacAttachmentTrayLayout.thumbnailCornerRadius,
-                    style: .continuous
-                )
-            )
+            .animation(.easeOut(duration: 0.16), value: isHovering)
+
+            Button(role: .destructive, action: onRemove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .regular))
+                    .foregroundStyle(.primary)
+                    .frame(width: 24, height: 24)
+                    .background(.regularMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help("移除附件")
+            .accessibilityLabel("移除附件")
+            .accessibilityHidden(!showsRemoveButton)
+            .opacity(showsRemoveButton ? 1 : 0)
+            .allowsHitTesting(showsRemoveButton)
+            .padding(6)
         }
-        .buttonStyle(.plain)
-        .help(isCommandPressed ? "复制图片" : "使用 Quick Look 查看图片")
+        .frame(width: MacAttachmentTrayLayout.thumbnailSize, height: MacAttachmentTrayLayout.thumbnailSize)
+        .contentShape(thumbnailShape)
         .contextMenu {
-            Button("快速查看", systemImage: "eye") { onOpen() }
-            Button("复制图片", systemImage: "doc.on.doc") { onCopy() }
+            Button(action: onCopy) {
+                Label("复制图片", systemImage: "doc.on.doc")
+            }
             Divider()
-            Button("移除附件", systemImage: "trash", role: .destructive) { onRemove() }
+            Button(role: .destructive, action: onRemove) {
+                Label("移除附件", systemImage: "trash")
+            }
         }
         .onHover { hovering in
             isHovering = hovering
@@ -167,6 +185,17 @@ private struct MacAttachmentThumbnail: View {
         }
         .accessibilityLabel(attachment.originalFileName)
         .accessibilityHint(isCommandPressed ? "按下以复制图片" : "按下以使用 Quick Look 查看图片")
+    }
+
+    private var thumbnailShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: MacAttachmentTrayLayout.thumbnailCornerRadius,
+            style: .continuous
+        )
+    }
+
+    private var showsRemoveButton: Bool {
+        isHovering && !isCommandPressed
     }
 
     private func performPrimaryAction() {
