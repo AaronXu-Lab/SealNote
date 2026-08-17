@@ -1,9 +1,7 @@
 import SwiftUI
-import Combine
 
 #if os(iOS)
 import UIKit
-import MarkdownView
 #endif
 
 enum NoteEditorMode {
@@ -44,6 +42,7 @@ struct NoteEditorView: View {
     @State private var didDiscardEmptyNote = false
     @State private var shouldSkipDisappearPersistence = false
     @State private var isMarkdownPreviewing = false
+    @State private var isTextEditing = false
     @State private var showDeleteConfirmation = false
 
     @State private var showFirstKeyPrompt = false
@@ -130,16 +129,7 @@ struct NoteEditorView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                #if os(iOS)
-                if MobileFeatureVisibility.markdownPreview && isMarkdownPreviewing {
-                    markdownPreview
-                } else {
-                    editorBody
-                }
-                #else
                 editorBody
-                #endif
-
             }
             #if os(iOS)
             .background(DS.surfaceRaised.ignoresSafeArea())
@@ -238,7 +228,6 @@ struct NoteEditorView: View {
                     }
                 }
             }
-            .softScrollEdgeEffect()
             .onAppear { configureInitialState() }
             .onChange(of: noteBody) { _, _ in
                 guard didConfigureInitialState else { return }
@@ -292,7 +281,11 @@ struct NoteEditorView: View {
             }
         }
         .interactiveDismissDisabled(
-            isSaving || hasUnsavedChanges || shouldCreateInitialNote || shouldDiscardEmptyExistingNote
+            isSaving
+                || hasUnsavedChanges
+                || shouldCreateInitialNote
+                || shouldDiscardEmptyExistingNote
+                || (presentation == .sheet && isTextEditing)
         )
         .sheet(isPresented: $showTrashFromKeySettings) {
             TrashView()
@@ -304,18 +297,15 @@ struct NoteEditorView: View {
     @ViewBuilder
     private var editorBody: some View {
         #if os(iOS)
-        // Self-scrolling UITextView fills the editor — no outer
-        // ScrollView / sizeThatFits measurement (P1-1).
-        NoteTextView(
+        NoteEditorContentView(
             text: $noteBody,
             selectedRange: $editorSelection,
-            placeholder: "写下想法，支持 Markdown",
+            isEditing: $isTextEditing,
+            isPreviewing: MobileFeatureVisibility.markdownPreview && isMarkdownPreviewing,
             fontSize: CGFloat(settings.editorFontSize),
             lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
             autofocus: isNewFlow
         )
-        .frame(maxWidth: DS.contentMax)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         #else
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -341,48 +331,6 @@ struct NoteEditorView: View {
         }
         #endif
     }
-
-    #if os(iOS)
-    private var markdownPreview: some View {
-        ScrollView {
-            Group {
-                if noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Text("随便写点什么吧")
-                        .font(.system(size: CGFloat(settings.editorFontSize)))
-                        .foregroundColor(DS.textSubtle)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    MarkdownView(noteBody)
-                        .font(.system(size: CGFloat(settings.editorFontSize)), for: .body)
-                        .font(
-                            .system(size: max(11, CGFloat(settings.editorFontSize) - 1), design: .monospaced),
-                            for: .codeBlock
-                        )
-                        .markdownComponentSpacing(
-                            max(8, CGFloat(settings.editorFontSize) * (CGFloat(settings.editorLineHeightMultiple) - 0.7))
-                        )
-                        .markdownMathRenderingEnabled()
-                        .foregroundStyle(DS.textBody)
-                        .headingStyle(DS.textEmphasize, for: .h1)
-                        .headingStyle(DS.textEmphasize, for: .h2)
-                        .headingStyle(DS.textEmphasize, for: .h3)
-                        .headingStyle(DS.textEmphasize, for: .h4)
-                        .headingStyle(DS.textEmphasize, for: .h5)
-                        .headingStyle(DS.textEmphasize, for: .h6)
-                        .tint(DS.primaryDeep)
-                        .tint(DS.link, for: .link)
-                        .tint(DS.link, for: .blockQuote)
-                        .tint(DS.primaryDeep, for: .inlineCodeBlock)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .padding(DS.cardPadding * 2)
-            .frame(maxWidth: DS.contentMax, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .scrollIndicators(.hidden)
-    }
-    #endif
 
     private func closeEditor() {
         persistCurrentSnapshot(dismissAfterSave: true, discardEmptyIfNeeded: true)
@@ -601,505 +549,4 @@ struct NoteEditorView: View {
         return "需要先前往设置页创建或加载密钥。"
     }
 
-}
-
-#if os(iOS)
-private extension View {
-    @ViewBuilder
-    func softScrollEdgeEffect() -> some View {
-        if #available(iOS 26.0, *) {
-            scrollEdgeEffectStyle(.soft, for: .all)
-        } else {
-            self
-        }
-    }
-}
-#endif
-
-#if os(iOS)
-private class PlaceholderTextView: UITextView {
-    var placeholder: String = "" {
-        didSet { placeholderLabel.text = placeholder }
-    }
-    private let placeholderLabel = UILabel()
-    private(set) var editorFontSize: CGFloat = 15
-    private(set) var editorLineHeightMultiple: CGFloat = 1.3
-
-    override init(frame: CGRect, textContainer: NSTextContainer?) {
-        super.init(frame: frame, textContainer: textContainer)
-        setup()
-    }
-
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setup()
-    }
-
-    private func setup() {
-        isEditable = true
-        isSelectable = true
-        backgroundColor = .clear
-        isScrollEnabled = true
-        showsVerticalScrollIndicator = true
-        showsHorizontalScrollIndicator = false
-        alwaysBounceVertical = true
-        keyboardDismissMode = .interactive
-        isFindInteractionEnabled = true
-        autocapitalizationType = .sentences
-        smartDashesType = .no
-        smartQuotesType = .no
-        smartInsertDeleteType = .no
-        autocorrectionType = .default
-        setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        setContentHuggingPriority(.defaultLow, for: .horizontal)
-
-        let font = UIFont.systemFont(ofSize: editorFontSize)
-        self.font = font
-        typingAttributes = MarkdownHighlighter.iosTypingAttributes(
-            fontSize: editorFontSize,
-            lineHeightMultiple: editorLineHeightMultiple
-        )
-
-        textContainer.lineFragmentPadding = 0
-        textContainer.lineBreakMode = .byWordWrapping
-        textContainer.widthTracksTextView = true
-        textContainerInset = UIEdgeInsets(top: DS.cardPadding, left: DS.cardPadding, bottom: DS.cardPadding, right: DS.cardPadding)
-
-        placeholderLabel.textColor = UIColor(DS.textSubtle)
-        placeholderLabel.font = font
-        placeholderLabel.numberOfLines = 0
-        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(placeholderLabel)
-
-        NSLayoutConstraint.activate([
-            placeholderLabel.topAnchor.constraint(equalTo: topAnchor, constant: DS.cardPadding),
-            placeholderLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: DS.cardPadding),
-            placeholderLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -DS.cardPadding)
-        ])
-
-        layer.cornerRadius = DS.rMd
-        layer.borderWidth = 0.5
-        layer.borderColor = UIColor(DS.line).cgColor
-
-        updatePlaceholderVisibility()
-    }
-
-    func applyMarkdownHighlighting(
-        text newText: String,
-        selectedRange range: NSRange,
-        fontSize: CGFloat,
-        lineHeightMultiple: CGFloat
-    ) {
-        editorFontSize = fontSize
-        editorLineHeightMultiple = lineHeightMultiple
-        placeholderLabel.font = UIFont.systemFont(ofSize: fontSize)
-        let attributed = MarkdownHighlighter.makeIOSHighlightedAttributedString(
-            text: newText,
-            fontSize: fontSize,
-            lineHeightMultiple: lineHeightMultiple
-        )
-        let preservedContentOffset = contentOffset
-        let undoManager = undoManager
-        let shouldRestoreUndoRegistration = undoManager?.isUndoRegistrationEnabled == true
-        if shouldRestoreUndoRegistration {
-            undoManager?.disableUndoRegistration()
-        }
-        textStorage.setAttributedString(attributed)
-        if shouldRestoreUndoRegistration, undoManager?.isUndoRegistrationEnabled == false {
-            undoManager?.enableUndoRegistration()
-        }
-        typingAttributes = MarkdownHighlighter.iosTypingAttributes(
-            fontSize: fontSize,
-            lineHeightMultiple: lineHeightMultiple
-        )
-        selectedRange = safeRange(range, in: newText)
-        setContentOffset(preservedContentOffset, animated: false)
-        updatePlaceholderVisibility()
-    }
-
-    /// Re-highlight only the paragraph around the caret, in place — no `setAttributedString`
-    /// per keystroke (P1-1). Spans are computed globally so fences/tables stay correct.
-    func applyIncrementalHighlighting() {
-        let ns = text as NSString
-        typingAttributes = MarkdownHighlighter.iosTypingAttributes(
-            fontSize: editorFontSize,
-            lineHeightMultiple: editorLineHeightMultiple
-        )
-        guard ns.length > 0 else { return }
-        let caret = min(max(0, selectedRange.location), ns.length)
-        let dirtyRange = ns.paragraphRange(for: NSRange(location: caret, length: 0))
-        MarkdownHighlighter.applyIOSHighlighting(
-            to: textStorage,
-            text: text,
-            dirtyRange: dirtyRange,
-            fontSize: editorFontSize,
-            lineHeightMultiple: editorLineHeightMultiple
-        )
-    }
-
-    func usesStyle(fontSize: CGFloat, lineHeightMultiple: CGFloat) -> Bool {
-        editorFontSize == fontSize && editorLineHeightMultiple == lineHeightMultiple
-    }
-
-    func updatePlaceholderVisibility() {
-        placeholderLabel.isHidden = !text.isEmpty
-    }
-
-    private func safeRange(_ range: NSRange, in text: String) -> NSRange {
-        let length = (text as NSString).length
-        let location = min(max(0, range.location), length)
-        let maxLength = max(0, length - location)
-        return NSRange(location: location, length: min(range.length, maxLength))
-    }
-}
-
-private struct NoteTextView: UIViewRepresentable {
-    @Binding var text: String
-    @Binding var selectedRange: NSRange
-    var placeholder: String
-    var fontSize: CGFloat
-    var lineHeightMultiple: CGFloat
-    var autofocus: Bool = false
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, selectedRange: $selectedRange)
-    }
-
-    func makeUIView(context: Context) -> PlaceholderTextView {
-        let textView = PlaceholderTextView()
-        textView.placeholder = placeholder
-        // Configure the initial attributed text before installing the delegate.
-        // `textStorage.setAttributedString` can synchronously emit
-        // `textViewDidChange`; installing the delegate first would make that
-        // callback reapply the attributed text recursively and freeze the UI.
-        context.coordinator.isUpdating = true
-        textView.applyMarkdownHighlighting(
-            text: text,
-            selectedRange: selectedRange,
-            fontSize: fontSize,
-            lineHeightMultiple: lineHeightMultiple
-        )
-        textView.selectedRange = selectedRange
-        context.coordinator.isUpdating = false
-        textView.delegate = context.coordinator
-        context.coordinator.textView = textView
-        textView.backgroundColor = .clear
-        if autofocus {
-            context.coordinator.requestFocusIfNeeded(for: textView)
-        }
-        return textView
-    }
-
-    func updateUIView(_ uiView: PlaceholderTextView, context: Context) {
-        uiView.placeholder = placeholder
-        let styleChanged = !uiView.usesStyle(
-            fontSize: fontSize,
-            lineHeightMultiple: lineHeightMultiple
-        )
-        if (uiView.text != text || styleChanged) && !context.coordinator.isUpdating {
-            context.coordinator.isUpdating = true
-            uiView.applyMarkdownHighlighting(
-                text: text,
-                selectedRange: selectedRange,
-                fontSize: fontSize,
-                lineHeightMultiple: lineHeightMultiple
-            )
-            context.coordinator.isUpdating = false
-        }
-        if uiView.selectedRange != selectedRange {
-            context.coordinator.isUpdating = true
-            uiView.selectedRange = selectedRange
-            context.coordinator.isUpdating = false
-        }
-        uiView.updatePlaceholderVisibility()
-        if autofocus {
-            context.coordinator.requestFocusIfNeeded(for: uiView)
-        }
-    }
-
-    final class Coordinator: NSObject, UITextViewDelegate {
-        var text: Binding<String>
-        var selectedRange: Binding<NSRange>
-        weak var textView: PlaceholderTextView?
-        var isUpdating = false
-        private var didRequestFocus = false
-
-        init(text: Binding<String>, selectedRange: Binding<NSRange>) {
-            self.text = text
-            self.selectedRange = selectedRange
-        }
-
-        func requestFocusIfNeeded(for textView: UITextView) {
-            guard !didRequestFocus else { return }
-            didRequestFocus = true
-            DispatchQueue.main.async {
-                textView.becomeFirstResponder()
-            }
-        }
-
-        // ponytail: single threshold + debounce
-        private static let largeDocThreshold = 30_000
-        private var highlightWorkItem: DispatchWorkItem?
-
-        func textViewDidChange(_ textView: UITextView) {
-            guard !isUpdating else { return }
-            isUpdating = true
-            let newText = textView.text ?? ""
-            let newSelection = textView.selectedRange
-            text.wrappedValue = newText
-            selectedRange.wrappedValue = newSelection
-            if textView.markedTextRange != nil {
-                (textView as? PlaceholderTextView)?.updatePlaceholderVisibility()
-                isUpdating = false
-                return
-            }
-            if let ptv = textView as? PlaceholderTextView {
-                scheduleIncrementalHighlight(for: ptv)
-                ptv.updatePlaceholderVisibility()
-            }
-            isUpdating = false
-        }
-
-        private func scheduleIncrementalHighlight(for textView: PlaceholderTextView) {
-            highlightWorkItem?.cancel()
-            if (textView.text as NSString).length <= Self.largeDocThreshold {
-                textView.applyIncrementalHighlighting()
-            } else {
-                // Large document: debounce; typing still shows via typingAttributes meanwhile.
-                let work = DispatchWorkItem { [weak textView] in textView?.applyIncrementalHighlighting() }
-                highlightWorkItem = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
-            }
-        }
-
-        func textView(
-            _ textView: UITextView,
-            shouldChangeTextIn range: NSRange,
-            replacementText replacement: String
-        ) -> Bool {
-            guard replacement == "\n", range.length == 0,
-                  textView.markedTextRange == nil,
-                  let textView = textView as? PlaceholderTextView else {
-                return true
-            }
-
-            let currentText = textView.text ?? ""
-            let currentSelection = NSRange(location: range.location, length: 0)
-            let result: MacMarkdownFormatResult?
-            if let completion = MarkdownFormatter.completeCodeFenceIfNeeded(
-                in: currentText,
-                selection: currentSelection
-            ) {
-                result = MacMarkdownFormatResult(
-                    text: completion.text,
-                    selection: completion.selection
-                )
-            } else if let continuation = MarkdownFormatter.continueListIfNeeded(
-                in: currentText,
-                selection: currentSelection
-            ) {
-                result = MacMarkdownFormatResult(
-                    text: continuation.text,
-                    selection: continuation.selection
-                )
-            } else {
-                result = nil
-            }
-
-            guard let result else { return true }
-            isUpdating = true
-            text.wrappedValue = result.text
-            selectedRange.wrappedValue = result.selection
-            textView.applyMarkdownHighlighting(
-                text: result.text,
-                selectedRange: result.selection,
-                fontSize: textView.editorFontSize,
-                lineHeightMultiple: textView.editorLineHeightMultiple
-            )
-            isUpdating = false
-            return false
-        }
-
-        func textViewDidChangeSelection(_ textView: UITextView) {
-            guard !isUpdating else { return }
-            selectedRange.wrappedValue = textView.selectedRange
-        }
-    }
-}
-#endif
-
-/// Owns the editor's autosave lifecycle (P0-5): debounced saves so edits survive an app
-/// kill, a single in-flight save where the newest revision always wins (no dropped
-/// concurrent saves), an idempotent `close()`, and mode conversion that never dismisses.
-/// Persistence is injected as closures so the logic is testable without a store.
-@MainActor
-final class EditorSession: ObservableObject {
-    enum FlushReason { case debounce, background, close, convert, delete }
-
-    @Published private(set) var persistedNote: Note?
-    @Published private(set) var isSaving: Bool = false
-    @Published var lastSaveError: String?
-    @Published private(set) var createdNoteID: String?
-
-    private let debounceInterval: TimeInterval
-    private let autoDiscardEmpty: () -> Bool
-    private let create: (String, Bool) async throws -> Note?
-    private let update: (Note, String) async throws -> Note
-    private let convert: (Note, String, NoteMode) async throws -> Note
-    private let discardEmpty: (Note, String) async throws -> Void
-
-    private var currentBody: String
-    private var currentEncrypted: Bool
-    private var revision = 0
-    private var savedRevision = 0
-    private var debounceTask: Task<Void, Never>?
-    private var drainTask: Task<Void, Never>?
-    private var closeRequested = false
-
-    init(
-        initialNote: Note?,
-        initialBody: String = "",
-        initialEncrypted: Bool = false,
-        debounceInterval: TimeInterval = 0.5,
-        autoDiscardEmpty: @escaping () -> Bool = { false },
-        create: @escaping (String, Bool) async throws -> Note?,
-        update: @escaping (Note, String) async throws -> Note,
-        convert: @escaping (Note, String, NoteMode) async throws -> Note,
-        discardEmpty: @escaping (Note, String) async throws -> Void
-    ) {
-        self.persistedNote = initialNote
-        self.currentBody = initialBody
-        self.currentEncrypted = initialEncrypted
-        self.debounceInterval = debounceInterval
-        self.autoDiscardEmpty = autoDiscardEmpty
-        self.create = create
-        self.update = update
-        self.convert = convert
-        self.discardEmpty = discardEmpty
-    }
-
-    var hasUnsavedChanges: Bool { revision != savedRevision }
-
-    func noteDidChange(body: String, isEncrypted: Bool) {
-        currentBody = body
-        currentEncrypted = isEncrypted
-        revision += 1
-        debounceTask?.cancel()
-        let interval = debounceInterval
-        debounceTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
-            guard !Task.isCancelled, let self else { return }
-            await self.flush(reason: .debounce)
-        }
-    }
-
-    /// Persist until `savedRevision == revision`. A single drain loop does the saving;
-    /// concurrent callers await the same drain, so there is never a double-save.
-    func flush(reason: FlushReason) async {
-        debounceTask?.cancel()
-        if savedRevision == revision { return }
-        let task: Task<Void, Never>
-        if let drainTask {
-            task = drainTask
-        } else {
-            let created = Task { [weak self] in
-                guard let self else { return }
-                await self.drainLoop()
-            }
-            drainTask = created
-            task = created
-        }
-        await task.value
-    }
-
-    private func drainLoop() async {
-        isSaving = true
-        while savedRevision != revision {
-            let target = revision
-            let body = currentBody
-            let encrypted = currentEncrypted
-            do {
-                if let note = persistedNote {
-                    if note.isEncrypted != encrypted {
-                        persistedNote = try await convert(note, body, encrypted ? .encrypted : .plain)
-                    } else {
-                        persistedNote = try await update(note, body)
-                    }
-                } else if body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    // Create-mode with nothing to save: mark caught up, create nothing.
-                } else {
-                    persistedNote = try await create(body, encrypted)
-                    createdNoteID = persistedNote?.id
-                }
-                savedRevision = max(savedRevision, target)
-                lastSaveError = nil
-            } catch {
-                lastSaveError = error.localizedDescription
-                break   // leave savedRevision behind; a later change/flush retries
-            }
-        }
-        isSaving = false
-        drainTask = nil
-    }
-
-    /// Idempotent. Flushes pending edits, then applies the auto-discard-empty rule.
-    func close() async {
-        guard !closeRequested else { return }
-        closeRequested = true
-        debounceTask?.cancel()
-        await flush(reason: .close)
-        if autoDiscardEmpty(),
-           let note = persistedNote,
-           currentBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            try? await discardEmpty(note, currentBody)
-            persistedNote = nil
-        }
-    }
-
-    /// Flushes the current revision and guarantees a stable note identity for a
-    /// value-based iPad window. Empty create-mode editors get a tracked empty file
-    /// only at this transfer boundary.
-    func prepareForWindowTransfer() async throws -> Note {
-        debounceTask?.cancel()
-        await flush(reason: .close)
-        if let lastSaveError {
-            throw EditorSessionError.saveFailed(lastSaveError)
-        }
-        if let persistedNote { return persistedNote }
-
-        isSaving = true
-        defer { isSaving = false }
-        guard let note = try await create(currentBody, currentEncrypted) else {
-            throw EditorSessionError.noteCreationFailed
-        }
-        persistedNote = note
-        createdNoteID = note.id
-        savedRevision = revision
-        return note
-    }
-
-    /// Flush pending edits, then convert the note's mode. Never dismisses (P0-5).
-    func convertMode(to mode: NoteMode) async throws {
-        await flush(reason: .convert)
-        guard let note = persistedNote else { return }
-        persistedNote = try await convert(note, currentBody, mode)
-        savedRevision = revision
-    }
-}
-
-nonisolated enum EditorSessionError: Error, LocalizedError {
-    case noteCreationFailed
-    case saveFailed(String)
-    case windowCreationFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .noteCreationFailed:
-            return "无法创建笔记窗口。"
-        case .saveFailed(let message):
-            return message
-        case .windowCreationFailed:
-            return "无法创建独立窗口，当前编辑内容仍保留在这里。"
-        }
-    }
 }
