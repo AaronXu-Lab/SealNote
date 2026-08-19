@@ -25,7 +25,6 @@ struct FakeEditView: View {
                 onFitToContent: { print("FakeEditView: 适应内容") },
                 onCopyShortcut: { print("FakeEditView: 复制") },
                 onFindShortcut: { print("FakeEditView: 搜索") },
-                onToggleMarkdownPreview: { print("FakeEditView: Markdown 预览") },
                 onIncreaseFontSize: { print("FakeEditView: 增大字号") },
                 onDecreaseFontSize: { print("FakeEditView: 减小字号") },
                 onAttachmentOverlapChange: { isOverlapping in
@@ -60,20 +59,6 @@ struct FakeEditView: View {
             isCommandPressed = modifiers.contains(.command)
         }
         .toolbar {
-            ToolbarSpacer()
-            
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    print("FakeEditView: Markdown 预览")
-                } label: {
-                    Label("预览", systemImage: "play.fill")
-                        .labelStyle(.iconOnly)
-                        .frame(width: DS.macToolbarIconWidth)
-                }
-                .help("Markdown 预览")
-                .controlSize(.small)
-            }
-            
             ToolbarSpacer()
             
             ToolbarItemGroup(placement: .primaryAction) {

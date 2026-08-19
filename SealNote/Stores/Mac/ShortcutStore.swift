@@ -57,13 +57,13 @@ enum MarkdownShortcutAction: String, CaseIterable, Identifiable, Codable {
 }
 
 enum EditorShortcutAction: String, CaseIterable, Identifiable, Codable {
-    case markdownPreview
+    case quickLineComment
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .markdownPreview: return "切换 Markdown 预览"
+        case .quickLineComment: return "快速注释当前行"
         }
     }
 }
@@ -261,7 +261,7 @@ final class ShortcutStore: ObservableObject {
 
     static var defaultEditorShortcuts: [EditorShortcutAction: MarkdownShortcut] {
         [
-            .markdownPreview: MarkdownShortcut(keyCode: 44, modifiers: UInt32(cmdKey), keyEquivalent: "/")
+            .quickLineComment: MarkdownShortcut(keyCode: 44, modifiers: UInt32(cmdKey), keyEquivalent: "/")
         ]
     }
 

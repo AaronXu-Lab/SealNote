@@ -582,7 +582,6 @@ struct HomeView: View {
                     displayTitle: vaultStore.displayTitle(for: note),
                     excludesHexColorsFromTags: settings.excludeHexColorsFromTags,
                     isCloudOnly: vaultStore.isCloudOnly(note),
-                    cloudDownloadState: vaultStore.cloudDownloadState(for: note.id),
                     isSelected: isItemSelected,
                     isSelecting: MobileFeatureVisibility.bulkActions && isSelecting,
                     onTap: {
@@ -598,9 +597,6 @@ struct HomeView: View {
                     },
                     onToggleSelect: {
                         toggleSelection(for: item.id)
-                    },
-                    onRetryDownload: {
-                        vaultStore.retryCloudDownload(noteID: note.id)
                     },
                     onBecomeVisible: {
                         vaultStore.prioritizeCloudDownload(noteID: note.id)

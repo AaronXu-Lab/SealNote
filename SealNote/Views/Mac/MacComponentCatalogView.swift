@@ -63,7 +63,6 @@ struct MacComponentCatalogView: View {
         ComponentEntry(name: "AllNotesListRow", description: "全部笔记窗口的自定义列表项。", source: "Views/Mac/AllNotesWindow.swift", kind: .custom),
         ComponentEntry(name: "MacListSearchBar", description: "macOS 列表窗口搜索栏。", source: "Views/Mac/AllNotesWindow.swift", kind: .custom),
         ComponentEntry(name: "TrashListRow", description: "回收站窗口的自定义列表项。", source: "Views/Mac/TrashWindow.swift", kind: .custom),
-        ComponentEntry(name: "MacMarkdownPreview", description: "macOS Markdown 预览视图。", source: "Views/Mac/StickyNoteEditorView.swift", kind: .custom)
     ]
 
     var body: some View {
@@ -221,7 +220,6 @@ private struct MacComponentPreviewView: View {
     @State private var secureValue = "seal-note-key"
     @State private var draft = "快速记录一条 #想法"
     @State private var pickerValue = "明文"
-    @State private var markdownScrollY: CGFloat = 0
     @State private var isToolbarHovered = false
     @State private var isAlertPresented = false
     @State private var isSheetPresented = false
@@ -497,7 +495,6 @@ private struct MacComponentPreviewView: View {
                 onFitToContent: {},
                 onCopyShortcut: {},
                 onFindShortcut: {},
-                onToggleMarkdownPreview: {},
                 onIncreaseFontSize: {},
                 onDecreaseFontSize: {},
                 onFindVisibilityChange: { _ in }
@@ -664,20 +661,9 @@ private struct MacComponentPreviewView: View {
                 onFitToContent: {},
                 onCopyShortcut: {},
                 onFindShortcut: {},
-                onToggleMarkdownPreview: {},
                 onIncreaseFontSize: {},
                 onDecreaseFontSize: {},
                 onFindVisibilityChange: { _ in }
-            )
-            .frame(width: 520, height: 360)
-            .background(Color(nsColor: .textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: DS.rMd, style: .continuous))
-        case "MacMarkdownPreview":
-            MacMarkdownPreview(
-                text: "# Markdown 预览\n\n- **粗体** 与 *斜体*\n- `inline code`\n\n> 这是实际的 Markdown 渲染组件。",
-                fontSize: 16,
-                lineHeightMultiple: 1.35,
-                scrollY: $markdownScrollY
             )
             .frame(width: 520, height: 360)
             .background(Color(nsColor: .textBackgroundColor))

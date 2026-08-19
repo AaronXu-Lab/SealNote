@@ -74,6 +74,71 @@ final class MarkdownFormatter {
         }
     }
 
+    static func toggleLineComment(in text: String, selection: NSRange) -> MacMarkdownFormatResult {
+        let nsText = text as NSString
+        let safeLocation = max(0, min(selection.location, nsText.length))
+        let safeLength = max(0, min(selection.length, nsText.length - safeLocation))
+        let safeSelection = NSRange(location: safeLocation, length: safeLength)
+        let lineRange = nsText.lineRange(for: NSRange(location: safeLocation, length: 0))
+
+        var contentLength = lineRange.length
+        while contentLength > 0 {
+            let character = nsText.character(at: lineRange.location + contentLength - 1)
+            guard character == 10 || character == 13 else { break }
+            contentLength -= 1
+        }
+
+        let contentRange = NSRange(location: lineRange.location, length: contentLength)
+        let line = nsText.substring(with: contentRange) as NSString
+        var indentationLength = 0
+        while indentationLength < line.length {
+            let character = line.character(at: indentationLength)
+            guard character == 32 || character == 9 else { break }
+            indentationLength += 1
+        }
+
+        let indentation = line.substring(to: indentationLength)
+        let body = line.substring(from: indentationLength)
+        let replacement: String
+        let selectionOffset: Int
+
+        if body.hasPrefix("<!--"), body.hasSuffix("-->"), (body as NSString).length >= 7 {
+            let bodyText = body as NSString
+            var innerStart = 4
+            var innerLength = bodyText.length - 7
+            if innerLength >= 2,
+               bodyText.character(at: innerStart) == 32,
+               bodyText.character(at: innerStart + innerLength - 1) == 32 {
+                innerStart += 1
+                innerLength -= 2
+            }
+            replacement = indentation + bodyText.substring(with: NSRange(location: innerStart, length: innerLength))
+            selectionOffset = -innerStart
+        } else {
+            replacement = indentation + "<!-- " + body + " -->"
+            selectionOffset = 5
+        }
+
+        let mutableText = NSMutableString(string: text)
+        mutableText.replaceCharacters(in: contentRange, with: replacement)
+
+        let bodyStart = lineRange.location + indentationLength
+        let adjustedLocation: Int
+        if safeSelection.location < bodyStart {
+            adjustedLocation = safeSelection.location
+        } else {
+            adjustedLocation = max(bodyStart, safeSelection.location + selectionOffset)
+        }
+        let newLength = (mutableText as NSString).length
+        let clampedLocation = min(adjustedLocation, newLength)
+        let clampedSelectionLength = min(safeSelection.length, newLength - clampedLocation)
+
+        return MacMarkdownFormatResult(
+            text: mutableText as String,
+            selection: NSRange(location: clampedLocation, length: clampedSelectionLength)
+        )
+    }
+
     private static func applyWrapper(text: String, selection: NSRange, open: String, close: String, placeholder: String, supportsToggle: Bool) -> MacMarkdownFormatResult {
         let nsText = text as NSString
         let selectedText = safeSubstring(nsText: nsText, range: selection)

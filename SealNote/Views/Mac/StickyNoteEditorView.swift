@@ -3,32 +3,9 @@ import SwiftUI
 import AppKit
 import Combine
 import Carbon
-import MarkdownView
 import UniformTypeIdentifiers
 
 #if os(macOS)
-
-private extension View {
-    @ViewBuilder
-    func macKeyboardShortcut(_ shortcut: MarkdownShortcut) -> some View {
-        if let key = shortcut.keyEquivalent.first {
-            keyboardShortcut(KeyEquivalent(key), modifiers: SwiftUI.EventModifiers(carbonModifiers: shortcut.modifiers))
-        } else {
-            self
-        }
-    }
-}
-
-private extension SwiftUI.EventModifiers {
-    init(carbonModifiers: UInt32) {
-        var modifiers: SwiftUI.EventModifiers = []
-        if carbonModifiers & UInt32(controlKey) != 0 { modifiers.insert(.control) }
-        if carbonModifiers & UInt32(optionKey) != 0 { modifiers.insert(.option) }
-        if carbonModifiers & UInt32(shiftKey) != 0 { modifiers.insert(.shift) }
-        if carbonModifiers & UInt32(cmdKey) != 0 { modifiers.insert(.command) }
-        self = modifiers
-    }
-}
 
 enum MacNoteModeConversionNotice: Equatable {
     case encrypted
@@ -93,19 +70,12 @@ private struct MacNoteModeConversionToast: View {
 
 struct StickyNoteEditorView: View {
     @ObservedObject private var settings = SettingsStore.shared
-    @ObservedObject private var shortcutStore = ShortcutStore.shared
     @ObservedObject private var syncStore = SyncStatusStore.shared
     @StateObject private var viewModel: StickyNoteEditorViewModel
     @State private var isToolbarHovering = false
     @State private var isFindBarVisible = false
-    @State private var isMarkdownPreviewing = false
-    @State private var hasCreatedMarkdownPreview = false
-    @State private var markdownPreviewText = ""
-    @State private var isMarkdownPreviewSwitching = false
-    @State private var editorScrollY: CGFloat = 0
     @State private var isCommandPressed = false
     @State private var isTextOverlappingAttachmentTray = false
-    @State private var isPreviewTextOverlappingAttachmentTray = false
 
     init(note: Note, isPreview: Bool = false, startsLocked: Bool = false, initialKeyIssue: Error? = nil) {
         _viewModel = StateObject(wrappedValue: StickyNoteEditorViewModel(
@@ -119,14 +89,7 @@ struct StickyNoteEditorView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             editorTextView
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .opacity(isMarkdownPreviewing ? 0 : 1)
-            .allowsHitTesting(!isMarkdownPreviewing)
-            .accessibilityHidden(isMarkdownPreviewing)
-
-            if hasCreatedMarkdownPreview {
-                markdownPreviewView
-            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if !viewModel.attachments.isEmpty {
                 VStack(spacing: 0) {
@@ -135,9 +98,7 @@ struct StickyNoteEditorView: View {
                         noteId: viewModel.note.id,
                         attachments: viewModel.attachments,
                         isCommandPressed: isCommandPressed,
-                        showsObscuringOverlay: isMarkdownPreviewing
-                            ? isPreviewTextOverlappingAttachmentTray
-                            : isTextOverlappingAttachmentTray,
+                        showsObscuringOverlay: isTextOverlappingAttachmentTray,
                         onOpen: { viewModel.openAttachment($0) },
                         onCopy: { viewModel.copyAttachment($0) },
                         onRemove: { viewModel.removeAttachment($0) },
@@ -202,7 +163,6 @@ struct StickyNoteEditorView: View {
         .onChange(of: viewModel.attachments.isEmpty) { _, isEmpty in
             if isEmpty {
                 isTextOverlappingAttachmentTray = false
-                isPreviewTextOverlappingAttachmentTray = false
             }
         }
         .onChange(of: viewModel.forceClose) { _, shouldClose in
@@ -212,34 +172,10 @@ struct StickyNoteEditorView: View {
         }
         .onChange(of: viewModel.isContentLocked) { _, locked in
             if locked {
-                isMarkdownPreviewing = false
                 hideFindInterface()
             }
         }
-        .onChange(of: viewModel.isEncryptionToggling) { _, isToggling in
-            if isToggling {
-                isMarkdownPreviewing = false
-            }
-        }
         .toolbar {
-            ToolbarSpacer()
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: { toggleMarkdownPreview() }) {
-                    Label(
-                        isMarkdownPreviewing ? "返回编辑" : "预览",
-                        systemImage: isMarkdownPreviewing ? "stop.fill" : "play.fill"
-                    )
-                    .labelStyle(.iconOnly)
-                    .frame(width: DS.macToolbarIconWidth)
-                }
-                .disabled(
-                    viewModel.isContentLocked
-                    || viewModel.isEncryptionToggling
-                    || isMarkdownPreviewSwitching
-                )
-                .macKeyboardShortcut(markdownPreviewShortcut)
-                .help(isMarkdownPreviewing ? "返回编辑" : "Markdown 预览")
-            }
             ToolbarSpacer()
             ToolbarItemGroup(placement: .primaryAction) {
                 if viewModel.note.isEncrypted {
@@ -286,7 +222,7 @@ struct StickyNoteEditorView: View {
                         Label("搜索", systemImage: "magnifyingglass")
                     }
                     .keyboardShortcut("f", modifiers: .command)
-                    .disabled(viewModel.isContentLocked || isMarkdownPreviewing)
+                    .disabled(viewModel.isContentLocked)
 
                     if viewModel.note.isEncrypted {
                         Divider()
@@ -377,7 +313,6 @@ struct StickyNoteEditorView: View {
             onFitToContent: { viewModel.fitWindowToContent() },
             onCopyShortcut: { viewModel.copyNoteText() },
             onFindShortcut: { toggleFindInterface() },
-            onToggleMarkdownPreview: { toggleMarkdownPreview() },
             onIncreaseFontSize: { adjustFontSize(by: 1) },
             onDecreaseFontSize: { adjustFontSize(by: -1) },
             onImportImages: { urls in viewModel.importAttachments(from: urls) },
@@ -393,32 +328,6 @@ struct StickyNoteEditorView: View {
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .opacity(isMarkdownPreviewing ? 0 : 1)
-        .allowsHitTesting(!isMarkdownPreviewing)
-        .accessibilityHidden(isMarkdownPreviewing)
-    }
-
-    private var markdownPreviewView: some View {
-        MacMarkdownPreview(
-            text: markdownPreviewText,
-            fontSize: CGFloat(settings.editorFontSize),
-            lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
-            bottomInset: MacStickyEditorLayout.editorBottomInset + viewModel.attachmentTrayHeight,
-            scrollY: $editorScrollY,
-            onTextOverlapChange: { isOverlapping in
-                isPreviewTextOverlappingAttachmentTray = isOverlapping
-            }
-        )
-        .background(MacMarkdownPreviewShortcutMonitor(
-            noteId: viewModel.note.id,
-            onCopy: { viewModel.copyNoteText() },
-            onTogglePreview: { toggleMarkdownPreview() },
-            isActive: isMarkdownPreviewing
-        ))
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .opacity(isMarkdownPreviewing ? 1 : 0)
-        .allowsHitTesting(isMarkdownPreviewing)
-        .accessibilityHidden(!isMarkdownPreviewing)
     }
 
     @ViewBuilder
@@ -453,59 +362,7 @@ struct StickyNoteEditorView: View {
         settings.editorFontSize = SettingsStore.clampedFontSize(settings.editorFontSize + delta)
     }
 
-    private var markdownPreviewShortcut: MarkdownShortcut {
-        shortcutStore.shortcut(for: .markdownPreview)
-    }
-
-    private func toggleMarkdownPreview() {
-        guard !viewModel.isContentLocked,
-              !viewModel.isEncryptionToggling,
-              !isMarkdownPreviewSwitching else { return }
-        isMarkdownPreviewSwitching = true
-
-        if isMarkdownPreviewing {
-            isMarkdownPreviewing = false
-            restoreEditorScrollYAfterLayout()
-        } else {
-            editorScrollY = currentEditorScrollY()
-            markdownPreviewText = viewModel.text
-            hasCreatedMarkdownPreview = true
-            viewModel.saveImmediately()
-            hideFindInterface()
-            isMarkdownPreviewing = true
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            isMarkdownPreviewSwitching = false
-        }
-    }
-
-    private func currentEditorScrollY() -> CGFloat {
-        guard let window = editorWindow(),
-              let textView = editorTextView(in: window),
-              let scrollView = textView.enclosingScrollView else {
-            return editorScrollY
-        }
-        return scrollView.contentView.bounds.origin.y
-    }
-
-    private func restoreEditorScrollYAfterLayout() {
-        let targetY = editorScrollY
-        DispatchQueue.main.async {
-            guard let window = editorWindow(),
-                  let textView = editorTextView(in: window),
-                  let scrollView = textView.enclosingScrollView else { return }
-            let maxY = max(0, (scrollView.documentView?.bounds.height ?? 0) - scrollView.contentView.bounds.height)
-            scrollView.contentView.scroll(to: NSPoint(x: 0, y: min(max(0, targetY), maxY)))
-            scrollView.reflectScrolledClipView(scrollView.contentView)
-            window.makeFirstResponder(textView)
-        }
-    }
-
     private func toggleEncryptionLock() {
-        if isMarkdownPreviewing {
-            isMarkdownPreviewing = false
-        }
         viewModel.toggleEncryptionLock()
     }
 
@@ -524,7 +381,7 @@ struct StickyNoteEditorView: View {
     }
 
     private func toggleFindInterface() {
-        guard !viewModel.isContentLocked, !isMarkdownPreviewing else { return }
+        guard !viewModel.isContentLocked else { return }
         guard let window = NSApp.keyWindow else { return }
         guard let textView = editorTextView(in: window) else {
             let sender = FindPanelActionSender(tag: NSTextFinder.Action.showFindInterface.rawValue)
@@ -620,484 +477,6 @@ enum MacStickyEditorLayout {
             width: baseInset.width + editorHorizontalInset,
             height: baseInset.height
         )
-    }
-}
-
-struct MacMarkdownPreview: View {
-    @ObservedObject private var settings = SettingsStore.shared
-    let text: String
-    let fontSize: CGFloat
-    let lineHeightMultiple: CGFloat
-    let bottomInset: CGFloat
-    @Binding var scrollY: CGFloat
-    let onTextOverlapChange: (Bool) -> Void
-    @State private var titlebarHeight: CGFloat = MacStickyEditorLayout.toolbarHoverRegionHeight
-
-    init(
-        text: String,
-        fontSize: CGFloat,
-        lineHeightMultiple: CGFloat,
-        bottomInset: CGFloat = MacStickyEditorLayout.editorBottomInset,
-        scrollY: Binding<CGFloat>,
-        onTextOverlapChange: @escaping (Bool) -> Void = { _ in }
-    ) {
-        self.text = text
-        self.fontSize = fontSize
-        self.lineHeightMultiple = lineHeightMultiple
-        self.bottomInset = bottomInset
-        self._scrollY = scrollY
-        self.onTextOverlapChange = onTextOverlapChange
-    }
-
-    private var previewFont: Font {
-        .system(size: fontSize)
-    }
-
-    private var codeFont: Font {
-        .system(size: max(11, fontSize - 1), design: .monospaced)
-    }
-
-    private var verticalSpacing: CGFloat {
-        max(8, fontSize * (lineHeightMultiple - 0.7))
-    }
-
-    private var textInset: NSSize {
-        MacStickyEditorLayout.textContainerInset(fontSize: fontSize)
-    }
-
-    var body: some View {
-        GeometryReader { viewport in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("随便写点什么吧")
-                            .font(previewFont)
-                            .foregroundColor(Color(nsColor: .placeholderTextColor))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        MarkdownView(text)
-                            .font(previewFont, for: .body)
-                            .font(codeFont, for: .codeBlock)
-                            .markdownComponentSpacing(verticalSpacing)
-                            .markdownMathRenderingEnabled()
-                            .markdownCodeBlockStyle(MacMarkdownPreviewCodeBlockStyle(
-                                theme: settings.appTheme,
-                                font: codeFont
-                            ))
-                            .foregroundStyle(DS.textBody)
-                            .markdownHeadingStyle(DS.textEmphasize, for: .h1)
-                            .markdownHeadingStyle(DS.textEmphasize, for: .h2)
-                            .markdownHeadingStyle(DS.textEmphasize, for: .h3)
-                            .markdownHeadingStyle(DS.textEmphasize, for: .h4)
-                            .markdownHeadingStyle(DS.textEmphasize, for: .h5)
-                            .markdownHeadingStyle(DS.textEmphasize, for: .h6)
-                            .tint(DS.primaryDeep)
-                            .tint(DS.link, for: .link)
-                            .tint(DS.link, for: .blockQuote)
-                            .tint(DS.primaryDeep, for: .inlineCodeBlock)
-                            .id(settings.appTheme)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .background {
-                    GeometryReader { content in
-                        Color.clear.preference(
-                            key: MacMarkdownPreviewContentFrameKey.self,
-                            value: content.frame(in: .named("macMarkdownPreview"))
-                        )
-                    }
-                }
-                .padding(.top, titlebarHeight + textInset.height)
-                .padding(.horizontal, textInset.width)
-                .padding(.bottom, bottomInset)
-                .background(MacScrollPositionProbe(scrollY: $scrollY))
-            }
-            .coordinateSpace(name: "macMarkdownPreview")
-            .scrollIndicators(.hidden)
-            .background(MacTitlebarHeightReader(height: $titlebarHeight))
-            .onPreferenceChange(MacMarkdownPreviewContentFrameKey.self) { frame in
-                let trayHeight = max(0, bottomInset - MacStickyEditorLayout.editorBottomInset)
-                let trayTop = viewport.size.height - trayHeight
-                let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                let overlaps = trayHeight > 0
-                    && hasText
-                    && frame.maxY > trayTop
-                    && frame.minY < viewport.size.height
-                onTextOverlapChange(overlaps)
-            }
-        }
-    }
-}
-
-private struct MacMarkdownPreviewContentFrameKey: PreferenceKey {
-    static let defaultValue = CGRect.zero
-
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
-        value = nextValue()
-    }
-}
-
-private struct MacMarkdownPreviewCodeBlockStyle: MarkdownCodeBlockStyle {
-    let theme: AppTheme
-    let font: Font
-
-    func makeBody(configuration: Configuration) -> some View {
-        MacMarkdownPreviewCodeBlock(configuration: configuration, theme: theme, font: font)
-    }
-}
-
-private struct MacMarkdownPreviewCodeBlock: View {
-    let configuration: MarkdownCodeBlockStyleConfiguration
-    let theme: AppTheme
-    let font: Font
-    @State private var didCopy = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            codeBlockHeader
-
-            ScrollView(.horizontal) {
-                Text(verbatim: configuration.code)
-                    .font(font)
-                    .foregroundStyle(DS.textBody)
-                    .padding(DS.s3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .background(DS.surfaceSunken)
-        .clipShape(RoundedRectangle(cornerRadius: DS.rMd, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
-                .stroke(DS.primary.opacity(0.22), lineWidth: 0.5)
-        }
-        .id(theme)
-    }
-
-    private var codeBlockHeader: some View {
-        HStack(spacing: DS.s2) {
-            if let language = configuration.language {
-                Text(language.localizedLowercase)
-                    .foregroundStyle(DS.textSubtle)
-            }
-            Spacer(minLength: DS.s3)
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(configuration.code, forType: .string)
-                didCopy = true
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(2))
-                    didCopy = false
-                }
-            } label: {
-                Label(didCopy ? "已复制" : "复制", systemImage: didCopy ? "checkmark" : "square.on.square")
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.accessoryBar)
-        }
-        .font(.callout.weight(.medium))
-        .padding(.horizontal, DS.s3)
-        .padding(.vertical, DS.s2)
-        .background(DS.primaryContainer.opacity(0.45))
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(DS.line)
-                .frame(height: 0.5)
-        }
-    }
-}
-
-private struct MacScrollPositionProbe: NSViewRepresentable {
-    @Binding var scrollY: CGFloat
-
-    func makeNSView(context: Context) -> MacScrollPositionProbeView {
-        let view = MacScrollPositionProbeView()
-        view.onScroll = { scrollY = $0 }
-        view.setTargetY(scrollY)
-        return view
-    }
-
-    func updateNSView(_ nsView: MacScrollPositionProbeView, context: Context) {
-        nsView.onScroll = { scrollY = $0 }
-        nsView.setTargetY(scrollY)
-    }
-
-    static func dismantleNSView(_ nsView: MacScrollPositionProbeView, coordinator: ()) {
-        nsView.stopObserving()
-    }
-}
-
-private final class MacScrollPositionProbeView: NSView {
-    var onScroll: ((CGFloat) -> Void)?
-    private var targetY: CGFloat = 0
-    private weak var observedClipView: NSClipView?
-    private weak var observedDocumentView: NSView?
-    private var didApplyTarget = false
-    private var appliedTargetY: CGFloat?
-    private var restoreGeneration = 0
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        if window == nil {
-            stopObserving()
-        } else {
-            DispatchQueue.main.async { [weak self] in
-                self?.observeScrollViewIfNeeded()
-                self?.scheduleApplyTarget()
-            }
-        }
-    }
-
-    override func layout() {
-        super.layout()
-        scheduleApplyTarget()
-    }
-
-    deinit {
-        stopObserving()
-    }
-
-    func stopObserving() {
-        if let observedClipView {
-            NotificationCenter.default.removeObserver(
-                self,
-                name: NSView.boundsDidChangeNotification,
-                object: observedClipView
-            )
-        }
-        if let observedDocumentView {
-            NotificationCenter.default.removeObserver(
-                self,
-                name: NSView.frameDidChangeNotification,
-                object: observedDocumentView
-            )
-        }
-        observedClipView = nil
-        observedDocumentView = nil
-        didApplyTarget = false
-        appliedTargetY = nil
-        restoreGeneration += 1
-    }
-
-    func setTargetY(_ value: CGFloat) {
-        if abs(value - targetY) > 0.5 {
-            targetY = value
-            didApplyTarget = false
-            appliedTargetY = nil
-            restoreGeneration += 1
-        }
-        scheduleApplyTarget()
-    }
-
-    private func scheduleApplyTarget(retry: Int = 0) {
-        let generation = restoreGeneration
-        DispatchQueue.main.async { [weak self] in
-            self?.applyTargetIfNeeded(generation: generation, retry: retry)
-        }
-    }
-
-    private func applyTargetIfNeeded(generation: Int, retry: Int) {
-        guard generation == restoreGeneration else { return }
-        if let appliedTargetY, abs(appliedTargetY - targetY) > 0.5 {
-            didApplyTarget = false
-            self.appliedTargetY = nil
-        }
-        guard !didApplyTarget else { return }
-        guard let scrollView = enclosingScrollView() else {
-            if retry < 30 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.016) { [weak self] in
-                    self?.applyTargetIfNeeded(generation: generation, retry: retry + 1)
-                }
-            }
-            return
-        }
-        observeScrollViewIfNeeded()
-        let maxY = max(0, (scrollView.documentView?.bounds.height ?? 0) - scrollView.contentView.bounds.height)
-        if targetY > 0, maxY <= 0, retry < 30 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.016) { [weak self] in
-                self?.applyTargetIfNeeded(generation: generation, retry: retry + 1)
-            }
-            return
-        }
-        didApplyTarget = true
-        appliedTargetY = targetY
-        scrollView.contentView.scroll(to: NSPoint(x: 0, y: min(max(0, targetY), maxY)))
-        scrollView.reflectScrolledClipView(scrollView.contentView)
-    }
-
-    private func observeScrollViewIfNeeded() {
-        guard let scrollView = enclosingScrollView() else { return }
-        if observedClipView == nil {
-            let clipView = scrollView.contentView
-            observedClipView = clipView
-            clipView.postsBoundsChangedNotifications = true
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(boundsDidChange(_:)),
-                name: NSView.boundsDidChangeNotification,
-                object: clipView
-            )
-        }
-        if observedDocumentView == nil, let documentView = scrollView.documentView {
-            observedDocumentView = documentView
-            documentView.postsFrameChangedNotifications = true
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(documentFrameDidChange(_:)),
-                name: NSView.frameDidChangeNotification,
-                object: documentView
-            )
-        }
-    }
-
-    @objc private func boundsDidChange(_ notification: Notification) {
-        guard let clipView = notification.object as? NSClipView else { return }
-        onScroll?(clipView.bounds.origin.y)
-    }
-
-    @objc private func documentFrameDidChange(_ notification: Notification) {
-        scheduleApplyTarget()
-    }
-
-    private func enclosingScrollView() -> NSScrollView? {
-        var nextView = superview
-        while let view = nextView {
-            if let scrollView = view as? NSScrollView {
-                return scrollView
-            }
-            nextView = view.superview
-        }
-        return nil
-    }
-}
-
-private struct MacTitlebarHeightReader: NSViewRepresentable {
-    @Binding var height: CGFloat
-
-    func makeNSView(context: Context) -> MacTitlebarHeightProbeView {
-        let view = MacTitlebarHeightProbeView()
-        view.onHeightChange = { height = $0 }
-        return view
-    }
-
-    func updateNSView(_ nsView: MacTitlebarHeightProbeView, context: Context) {
-        nsView.onHeightChange = { height = $0 }
-        nsView.updateHeight()
-    }
-}
-
-private final class MacTitlebarHeightProbeView: NSView {
-    var onHeightChange: ((CGFloat) -> Void)?
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        updateHeight()
-    }
-
-    override func layout() {
-        super.layout()
-        updateHeight()
-    }
-
-    func updateHeight() {
-        guard let window else { return }
-        let height = max(0, window.frame.height - window.contentLayoutRect.height)
-        onHeightChange?(height)
-    }
-}
-
-private struct MacMarkdownPreviewShortcutMonitor: NSViewRepresentable {
-    let noteId: String
-    let onCopy: () -> Void
-    let onTogglePreview: () -> Void
-    let isActive: Bool
-
-    func makeNSView(context: Context) -> MacMarkdownPreviewShortcutMonitorView {
-        let view = MacMarkdownPreviewShortcutMonitorView()
-        view.noteId = noteId
-        view.onCopy = onCopy
-        view.onTogglePreview = onTogglePreview
-        view.isActive = isActive
-        return view
-    }
-
-    func updateNSView(_ nsView: MacMarkdownPreviewShortcutMonitorView, context: Context) {
-        nsView.noteId = noteId
-        nsView.onCopy = onCopy
-        nsView.onTogglePreview = onTogglePreview
-        nsView.isActive = isActive
-    }
-
-    static func dismantleNSView(_ nsView: MacMarkdownPreviewShortcutMonitorView, coordinator: ()) {
-        nsView.removeMonitor()
-    }
-}
-
-private final class MacMarkdownPreviewShortcutMonitorView: NSView {
-    var noteId = ""
-    var onCopy: (() -> Void)?
-    var onTogglePreview: (() -> Void)?
-    var isActive = false
-    private var monitor: Any?
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        if window == nil {
-            removeMonitor()
-        } else {
-            installMonitorIfNeeded()
-        }
-    }
-
-    deinit {
-        removeMonitor()
-    }
-
-    func removeMonitor() {
-        if let monitor {
-            NSEvent.removeMonitor(monitor)
-            self.monitor = nil
-        }
-    }
-
-    private func installMonitorIfNeeded() {
-        guard monitor == nil else { return }
-        monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self else { return event }
-            return self.handle(event)
-        }
-    }
-
-    private func handle(_ event: NSEvent) -> NSEvent? {
-        guard isActive else { return event }
-        guard isEventInCurrentNoteWindow(event) else { return event }
-        guard let chars = event.charactersIgnoringModifiers, !chars.isEmpty else { return event }
-
-        let flags = event.modifierFlags
-        let cmd = flags.contains(.command)
-        let ctrl = flags.contains(.control)
-        let opt = flags.contains(.option)
-
-        if cmd, !ctrl, !opt, chars.lowercased() == "c" {
-            onCopy?()
-            return nil
-        }
-
-        if let action = ShortcutStore.shared.editorAction(matching: event) {
-            switch action {
-            case .markdownPreview:
-                onTogglePreview?()
-                return nil
-            }
-        }
-
-        return event
-    }
-
-    private func isEventInCurrentNoteWindow(_ event: NSEvent) -> Bool {
-        if let eventWindow = event.window {
-            return eventWindow === window || eventWindow.identifier?.rawValue == noteId
-        }
-        return NSApp.keyWindow === window || NSApp.keyWindow?.identifier?.rawValue == noteId
     }
 }
 
@@ -2248,7 +1627,6 @@ struct MacTextView: NSViewRepresentable {
     let onFitToContent: () -> Void
     let onCopyShortcut: () -> Void
     let onFindShortcut: () -> Void
-    let onToggleMarkdownPreview: () -> Void
     let onIncreaseFontSize: () -> Void
     let onDecreaseFontSize: () -> Void
     let onImportImages: ([URL]) -> Void
@@ -2269,7 +1647,6 @@ struct MacTextView: NSViewRepresentable {
         onFitToContent: @escaping () -> Void,
         onCopyShortcut: @escaping () -> Void,
         onFindShortcut: @escaping () -> Void,
-        onToggleMarkdownPreview: @escaping () -> Void,
         onIncreaseFontSize: @escaping () -> Void,
         onDecreaseFontSize: @escaping () -> Void,
         onImportImages: @escaping ([URL]) -> Void = { _ in },
@@ -2289,7 +1666,6 @@ struct MacTextView: NSViewRepresentable {
         self.onFitToContent = onFitToContent
         self.onCopyShortcut = onCopyShortcut
         self.onFindShortcut = onFindShortcut
-        self.onToggleMarkdownPreview = onToggleMarkdownPreview
         self.onIncreaseFontSize = onIncreaseFontSize
         self.onDecreaseFontSize = onDecreaseFontSize
         self.onImportImages = onImportImages
@@ -2731,8 +2107,8 @@ extension MacTextView {
 
         if let action = ShortcutStore.shared.editorAction(matching: event) {
             switch action {
-            case .markdownPreview:
-                coordinator?.parent.onToggleMarkdownPreview(); return
+            case .quickLineComment:
+                toggleCurrentLineComment(); return
             }
         }
 
@@ -2811,7 +2187,7 @@ extension MacTextView {
         return true
     }
 
-        private func applyFormat(_ command: MacMarkdownFormatCommand) {
+    private func applyFormat(_ command: MacMarkdownFormatCommand) {
         guard isEditable else { return }
         guard !hasMarkedText() else { return }
 
@@ -2832,6 +2208,12 @@ extension MacTextView {
             linkURL: linkURL
         )
 
+        applyTextResult(result.text, selection: result.selection)
+    }
+
+    private func toggleCurrentLineComment() {
+        guard isEditable, !hasMarkedText() else { return }
+        let result = MarkdownFormatter.toggleLineComment(in: string, selection: selectedRange())
         applyTextResult(result.text, selection: result.selection)
     }
 

@@ -3,6 +3,51 @@ import XCTest
 
 final class MacMarkdownFormatterTests: XCTestCase {
 
+    // MARK: - Quick line comment
+
+    func testQuickLineCommentWrapsCurrentLineAndKeepsCaretPosition() {
+        let text = "first\nsecond\nthird"
+        let result = MarkdownFormatter.toggleLineComment(
+            in: text,
+            selection: NSRange(location: 8, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "first\n<!-- second -->\nthird")
+        XCTAssertEqual(result.selection, NSRange(location: 13, length: 0))
+    }
+
+    func testQuickLineCommentTogglesExistingCommentOff() {
+        let text = "first\n<!-- second -->\nthird"
+        let result = MarkdownFormatter.toggleLineComment(
+            in: text,
+            selection: NSRange(location: 13, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "first\nsecond\nthird")
+        XCTAssertEqual(result.selection, NSRange(location: 8, length: 0))
+    }
+
+    func testQuickLineCommentPreservesIndentation() {
+        let text = "  nested"
+        let result = MarkdownFormatter.toggleLineComment(
+            in: text,
+            selection: NSRange(location: 4, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "  <!-- nested -->")
+        XCTAssertEqual(result.selection, NSRange(location: 9, length: 0))
+    }
+
+    func testQuickLineCommentOnEmptyLinePlacesCaretInsideComment() {
+        let result = MarkdownFormatter.toggleLineComment(
+            in: "",
+            selection: NSRange(location: 0, length: 0)
+        )
+
+        XCTAssertEqual(result.text, "<!--  -->")
+        XCTAssertEqual(result.selection, NSRange(location: 5, length: 0))
+    }
+
     // MARK: - Empty selection: insert placeholder
 
     func testBoldEmptySelectionInsertsPlaceholder() {

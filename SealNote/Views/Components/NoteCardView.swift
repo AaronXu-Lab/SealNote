@@ -8,7 +8,6 @@ struct NoteCardView: View {
     var displayTitle: String? = nil
     var excludesHexColorsFromTags: Bool = false
     var isCloudOnly: Bool = false
-    var cloudDownloadState: CloudNoteDownloadState? = nil
     var isSelected: Bool = false
     var isSelecting: Bool = false
     var onTap: (() -> Void)?
@@ -16,7 +15,6 @@ struct NoteCardView: View {
     var onEdit: (() -> Void)?
     var onDelete: (() -> Void)?
     var onToggleSelect: (() -> Void)?
-    var onRetryDownload: (() -> Void)?
     var onBecomeVisible: (() -> Void)?
 
     var body: some View {
@@ -49,14 +47,10 @@ struct NoteCardView: View {
                 }
 
                 if isCloudOnly {
-                    VStack(alignment: .leading, spacing: DS.s2) {
-                        Text(displayTitle ?? NoteTitleFormatter.emptyTitle)
-                            .font(DS.body().weight(.semibold))
-                            .foregroundColor(DS.textBody)
-                            .lineLimit(2)
-
-                        cloudLoadingStatus
-                    }
+                    Text(displayTitle ?? NoteTitleFormatter.emptyTitle)
+                        .font(DS.body().weight(.semibold))
+                        .foregroundColor(DS.textBody)
+                        .lineLimit(2)
                 } else if note.isEncrypted {
                     VStack(alignment: .leading, spacing: DS.s2) {
                         Text(displayTitle ?? NoteTitleFormatter.displayTitle(from: note.body))
@@ -70,28 +64,7 @@ struct NoteCardView: View {
                     }
                 } else {
                     #if os(iOS)
-                    if UIDevice.current.userInterfaceIdiom == .pad {
-                        VStack(alignment: .leading, spacing: DS.s2) {
-                            Text(displayTitle ?? NoteTitleFormatter.displayTitle(from: note.body))
-                                .font(DS.body().weight(.semibold))
-                                .foregroundColor(DS.textBody)
-                                .lineLimit(2)
-
-                            if !summaryText.isEmpty {
-                                Text(summaryText)
-                                    .font(DS.body())
-                                    .foregroundColor(DS.textSecondary)
-                                    .lineLimit(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    } else {
-                        Text(note.body)
-                            .font(DS.body())
-                            .foregroundColor(DS.textBody)
-                            .lineLimit(8)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    MarkdownCardBody(source: note.body)
                     #else
                     tagAwareText(note.body)
                         .lineLimit(8)
@@ -123,45 +96,6 @@ struct NoteCardView: View {
             }
         }
         #endif
-    }
-
-    @ViewBuilder
-    private var cloudLoadingStatus: some View {
-        switch cloudDownloadState {
-        case .downloading:
-            HStack(spacing: DS.s2) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("正在载入正文…")
-            }
-            .font(DS.caption())
-            .foregroundColor(DS.textSubtle)
-
-        case .failed:
-            HStack(spacing: DS.s2) {
-                Label("正文暂时无法载入", systemImage: "exclamationmark.icloud")
-                if let onRetryDownload {
-                    Button("重试", action: onRetryDownload)
-                        .buttonStyle(.borderless)
-                }
-            }
-            .font(DS.caption())
-            .foregroundColor(DS.textSubtle)
-
-        case .queued, .none:
-            Label("正文正在同步", systemImage: "icloud")
-                .font(DS.caption())
-                .foregroundColor(DS.textSubtle)
-        }
-    }
-
-    private var summaryText: String {
-        let lines = note.body
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard lines.count > 1 else { return "" }
-        return lines.dropFirst().joined(separator: "\n")
     }
 
     @ViewBuilder
@@ -243,3 +177,86 @@ struct NoteCardView: View {
         return result
     }
 }
+
+#if os(iOS)
+private struct MarkdownCardBody: View {
+    private static let collapsedLineLimit = 5
+
+    let source: String
+    private let highlightedText: NSAttributedString
+
+    @State private var isExpanded = false
+    @State private var renderedLineCount = 0
+
+    init(source: String) {
+        self.source = source
+        highlightedText = MarkdownHighlighter.makeIOSHighlightedAttributedString(
+            text: source,
+            fontSize: 15,
+            lineHeightMultiple: 1.3
+        )
+    }
+
+    private var remainingLineCount: Int {
+        max(0, renderedLineCount - Self.collapsedLineLimit)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.s2) {
+            Text(AttributedString(highlightedText))
+                .lineLimit(isExpanded ? nil : Self.collapsedLineLimit)
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear {
+                                updateRenderedLineCount(for: proxy.size.width)
+                            }
+                            .onChange(of: proxy.size.width) { _, width in
+                                updateRenderedLineCount(for: width)
+                            }
+                    }
+                }
+
+            if !isExpanded, remainingLineCount > 0 {
+                Button("展开剩余 \(remainingLineCount) 行") {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded = true
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(DS.caption().weight(.semibold))
+                .foregroundColor(DS.primaryDeep)
+                .accessibilityHint("显示卡片中隐藏的 Markdown 内容")
+            }
+        }
+        .onChange(of: source) { _, _ in
+            isExpanded = false
+            renderedLineCount = 0
+        }
+    }
+
+    private func updateRenderedLineCount(for width: CGFloat) {
+        guard width > 0 else { return }
+
+        let textStorage = NSTextStorage(attributedString: highlightedText)
+        let layoutManager = NSLayoutManager()
+        let textContainer = NSTextContainer(
+            size: CGSize(width: width, height: .greatestFiniteMagnitude)
+        )
+        textContainer.lineFragmentPadding = 0
+        textContainer.maximumNumberOfLines = 0
+        textContainer.lineBreakMode = .byWordWrapping
+        layoutManager.addTextContainer(textContainer)
+        textStorage.addLayoutManager(layoutManager)
+        layoutManager.ensureLayout(for: textContainer)
+
+        var count = 0
+        let glyphRange = layoutManager.glyphRange(for: textContainer)
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, _, _, _, _ in
+            count += 1
+        }
+        renderedLineCount = count
+    }
+}
+#endif
