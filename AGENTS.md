@@ -33,6 +33,12 @@ SealNote（“Seal Note”）是一款基于 SwiftUI 的、采用端到端加密
 
 新增或调整 macOS 快捷键时，默认必须同步接入设置页的“快捷键”配置，并通过 `ShortcutStore` 作为单一来源读取实际按键；除非用户明确要求不要提供设置入口。不要只在 View、菜单或事件监听器中写死新的快捷键。
 
+## 编辑器架构
+
+- iOS/iPadOS 的 `NoteEditorView` 和 macOS 的 `StickyNoteEditorView` 共用 `NoteEditorContentView`，平台容器只负责导航、窗口和平台专属命令；编辑器正文、预览及格式化行为应优先在共享组件中实现。
+- `EditorSession` 是编辑期间正文状态与保存调度的唯一写入者。它负责防抖、串行保存、保存期间的新修改续写，以及关闭前刷新；不要在 View 中新增并行的自动保存任务或直接绕过会话写入 `VaultStore`。
+- Markdown 格式化的纯文本操作集中在 `MarkdownFormatter`，新增语法操作时应补充 `MacMarkdownFormatterTests`，并在涉及 macOS Target 时同步覆盖 `SealNoteMacTests`。
+
 ## 备注
 
 - 规划文档（`开发计划.md`、`macOS开发计划.md`、`Seal Note_PRD_*.md`）使用中文编写，描述产品意图和路线图；它们可能包含历史阶段内容，若与当前代码或用户明确需求冲突，以当前代码和用户需求为准。iOS 稳定化及 iPad 状态参考 `docs/ios-stabilization.md`。
