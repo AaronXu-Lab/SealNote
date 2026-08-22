@@ -220,7 +220,7 @@ private final class PlaceholderTextView: UITextView {
         updatePlaceholderVisibility()
     }
 
-    func applyIncrementalHighlighting() {
+    func applyIncrementalHighlighting(changedRange: NSRange? = nil) {
         let nsText = text as NSString
         typingAttributes = MarkdownHighlighter.iosTypingAttributes(
             fontSize: editorFontSize,
@@ -229,7 +229,14 @@ private final class PlaceholderTextView: UITextView {
         guard nsText.length > 0 else { return }
 
         let caret = min(max(0, selectedRange.location), nsText.length)
-        let dirtyRange = nsText.paragraphRange(for: NSRange(location: caret, length: 0))
+        let safeChangedRange = changedRange.map { range in
+            let location = min(max(0, range.location), nsText.length)
+            let length = min(range.length, max(0, nsText.length - location))
+            return NSRange(location: location, length: length)
+        }
+        let dirtyRange = nsText.paragraphRange(
+            for: safeChangedRange ?? NSRange(location: caret, length: 0)
+        )
         MarkdownHighlighter.applyIOSHighlighting(
             to: textStorage,
             text: text,
@@ -386,7 +393,9 @@ private struct NoteTextView: UIViewRepresentable {
             guard !isUpdating else { return }
             isUpdating = true
 
+            let oldText = text.wrappedValue
             let newText = textView.text ?? ""
+            let changedRange = MarkdownHighlighter.changedRange(from: oldText, to: newText)
             text.wrappedValue = newText
             selectedRange.wrappedValue = textView.selectedRange
             if textView.markedTextRange != nil {
@@ -395,7 +404,7 @@ private struct NoteTextView: UIViewRepresentable {
                 return
             }
             if let placeholderTextView = textView as? PlaceholderTextView {
-                scheduleIncrementalHighlight(for: placeholderTextView)
+                scheduleIncrementalHighlight(for: placeholderTextView, changedRange: changedRange)
                 placeholderTextView.updatePlaceholderVisibility()
             }
             isUpdating = false
@@ -463,13 +472,13 @@ private struct NoteTextView: UIViewRepresentable {
             }
         }
 
-        private func scheduleIncrementalHighlight(for textView: PlaceholderTextView) {
+        private func scheduleIncrementalHighlight(for textView: PlaceholderTextView, changedRange: NSRange) {
             highlightWorkItem?.cancel()
             if (textView.text as NSString).length <= Self.largeDocumentThreshold {
-                textView.applyIncrementalHighlighting()
+                textView.applyIncrementalHighlighting(changedRange: changedRange)
             } else {
                 let work = DispatchWorkItem { [weak textView] in
-                    textView?.applyIncrementalHighlighting()
+                    textView?.applyIncrementalHighlighting(changedRange: changedRange)
                 }
                 highlightWorkItem = work
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)

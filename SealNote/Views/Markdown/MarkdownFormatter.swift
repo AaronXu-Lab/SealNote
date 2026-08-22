@@ -300,7 +300,7 @@ final class MarkdownFormatter {
         )
     }
 
-    static func stringByAddingMarkdownParagraphSpacing(to text: String) -> String {
+    static func normalizeFormatting(in text: String) -> String {
         let lines = text
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")

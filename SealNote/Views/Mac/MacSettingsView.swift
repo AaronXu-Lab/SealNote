@@ -415,7 +415,12 @@ struct MacSettingsView: View {
             }
 
             macPanel("编辑行为") {
-                toggleRow("复制为更宽松的 Markdown 段落", subtitle: "复制时自动补充段落空行，便于粘贴到 Typora 等 Markdown 编辑器使用。", systemImage: "doc.on.clipboard", isOn: $settings.copyAddsParagraphSpacing)
+                toggleRow(
+                    "限制笔记最大宽度",
+                    subtitle: "窗口较宽时，将可编辑区域限制为约 30 个字号宽度。",
+                    systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right",
+                    isOn: $settings.limitEditorMaximumWidth
+                )
 
                 SWRowDivider()
 

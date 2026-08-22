@@ -53,6 +53,7 @@ final class SettingsStoreTests: XCTestCase {
         store.resetForTesting()
         XCTAssertEqual(store.editorFontSize, 14)
         XCTAssertEqual(store.editorLineHeightMultiple, 1.5, accuracy: 0.0001)
+        XCTAssertFalse(store.limitEditorMaximumWidth)
     }
 
     func testPersistedFontSizeIsLoaded() {
@@ -88,9 +89,17 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.editorLineHeightMultiple, 1.5, accuracy: 0.0001)
     }
 
+    func testEditorMaximumWidthLimitDefaultsOffAndPersists() {
+        let store = makeStore()
+        XCTAssertFalse(store.limitEditorMaximumWidth)
+
+        store.limitEditorMaximumWidth = true
+
+        XCTAssertTrue(makeStore().limitEditorMaximumWidth)
+    }
+
     func testNewMacSettingsDefaults() {
         let store = makeStore()
-        XCTAssertFalse(store.copyAddsParagraphSpacing)
         XCTAssertTrue(store.autoDeleteEmptyNotes)
         XCTAssertFalse(store.autoRenameNotesOnSave)
         XCTAssertTrue(store.excludeHexColorsFromTags)
@@ -109,7 +118,6 @@ final class SettingsStoreTests: XCTestCase {
         let store = makeStore()
         store.preferredNoteMode = .encrypted
         store.hideContentOnBackground = false
-        store.copyAddsParagraphSpacing = true
         store.autoDeleteEmptyNotes = false
         store.autoRenameNotesOnSave = true
         store.excludeHexColorsFromTags = false
@@ -118,7 +126,6 @@ final class SettingsStoreTests: XCTestCase {
         let reloaded = makeStore()
         XCTAssertEqual(reloaded.preferredNoteMode, .encrypted)
         XCTAssertFalse(reloaded.hideContentOnBackground)
-        XCTAssertTrue(reloaded.copyAddsParagraphSpacing)
         XCTAssertFalse(reloaded.autoDeleteEmptyNotes)
         XCTAssertTrue(reloaded.autoRenameNotesOnSave)
         XCTAssertFalse(reloaded.excludeHexColorsFromTags)

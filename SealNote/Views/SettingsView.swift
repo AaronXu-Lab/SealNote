@@ -198,17 +198,6 @@ private struct NotesSettingsView: View {
 
             SWSectionPanel("编辑行为") {
                 SWSettingsRow(
-                    "复制为宽松 Markdown 段落",
-                    subtitle: "复制时自动补充段落空行，便于粘贴到其他 Markdown 编辑器。",
-                    systemImage: "doc.on.clipboard",
-                    trailingMinWidth: 52
-                ) {
-                    settingsToggle($settings.copyAddsParagraphSpacing)
-                }
-
-                SWRowDivider()
-
-                SWSettingsRow(
                     "自动命名笔记",
                     subtitle: "保存时按正文更新标题；关闭后保留首次生成或手动设置的标题。",
                     systemImage: "text.cursor",

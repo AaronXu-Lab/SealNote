@@ -36,6 +36,29 @@ struct MarkdownHighlightSpan {
 }
 
 final class MarkdownHighlighter {
+    /// Returns the UTF-16 range occupied by the replacement in `newText`.
+    /// This is used by incremental highlighting so a multi-line paste refreshes
+    /// every inserted line instead of only the final caret paragraph.
+    static func changedRange(from oldText: String, to newText: String) -> NSRange {
+        let old = oldText as NSString
+        let new = newText as NSString
+        var prefix = 0
+        while prefix < old.length,
+              prefix < new.length,
+              old.character(at: prefix) == new.character(at: prefix) {
+            prefix += 1
+        }
+
+        var suffix = 0
+        while suffix < old.length - prefix,
+              suffix < new.length - prefix,
+              old.character(at: old.length - suffix - 1) == new.character(at: new.length - suffix - 1) {
+            suffix += 1
+        }
+
+        return NSRange(location: prefix, length: new.length - prefix - suffix)
+    }
+
     private enum RegexCache {
         static let codeFence = try! NSRegularExpression(pattern: "^([ \\t]{0,3})(```|~~~)([^`~\\n]*)$", options: [.anchorsMatchLines])
         static let heading = try! NSRegularExpression(pattern: "^(\\s{0,3})(#{1,6})(\\s+)(.*)$", options: [.anchorsMatchLines])

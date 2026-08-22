@@ -3345,10 +3345,7 @@ final class VaultStore: ObservableObject {
                     // Encrypted, or a not-yet-downloaded cloud placeholder (empty body) — skip (P0-2).
                     skipped += 1
                 } else {
-                    let copiedBody = settings.copyAddsParagraphSpacing
-                        ? MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: note.body)
-                        : note.body
-                    plainBodies.append(copiedBody)
+                    plainBodies.append(note.body)
                 }
             case .locked:
                 skipped += 1

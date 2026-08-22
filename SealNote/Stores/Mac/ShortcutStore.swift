@@ -58,12 +58,14 @@ enum MarkdownShortcutAction: String, CaseIterable, Identifiable, Codable {
 
 enum EditorShortcutAction: String, CaseIterable, Identifiable, Codable {
     case quickLineComment
+    case normalizeFormatting
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .quickLineComment: return "快速注释当前行"
+        case .normalizeFormatting: return "规范格式"
         }
     }
 }
@@ -261,7 +263,8 @@ final class ShortcutStore: ObservableObject {
 
     static var defaultEditorShortcuts: [EditorShortcutAction: MarkdownShortcut] {
         [
-            .quickLineComment: MarkdownShortcut(keyCode: 44, modifiers: UInt32(cmdKey), keyEquivalent: "/")
+            .quickLineComment: MarkdownShortcut(keyCode: 44, modifiers: UInt32(cmdKey), keyEquivalent: "/"),
+            .normalizeFormatting: MarkdownShortcut(keyCode: 3, modifiers: UInt32(cmdKey | shiftKey), keyEquivalent: "f")
         ]
     }
 

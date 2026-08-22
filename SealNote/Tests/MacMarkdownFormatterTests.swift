@@ -437,15 +437,15 @@ final class MacMarkdownFormatterTests: XCTestCase {
         XCTAssertNil(result)
     }
 
-    // MARK: - Copy spacing
+    // MARK: - Normalize formatting
 
-    func testCopySpacingAddsBlankLinesBetweenParagraphLines() {
+    func testNormalizeFormattingAddsBlankLinesBetweenParagraphLines() {
         let text = "第一段\n第二段\n\n- item\n- item2\n\n```swift\nlet x = 1\nlet y = 2\n```"
-        let result = MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: text)
+        let result = MarkdownFormatter.normalizeFormatting(in: text)
         XCTAssertEqual(result, "第一段\n\n第二段\n\n- item\n- item2\n\n```swift\nlet x = 1\nlet y = 2\n```\n")
     }
 
-    func testCopySpacingMatchesPRDSample() {
+    func testNormalizeFormattingMatchesPRDSample() {
         let text = """
         # Seal Note 更新需求 0701
         1. 取消代码块的背景。高亮语法仅针对“```markdown”和"```"结束部分
@@ -459,7 +459,7 @@ final class MacMarkdownFormatterTests: XCTestCase {
         **需求 7**：设置页增加维护日志开关
         用户可以开启维护日志，辅助排查同步与存储问题；默认关闭，不影响正常使用。
         """
-        let result = MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: text)
+        let result = MarkdownFormatter.normalizeFormatting(in: text)
         XCTAssertEqual(result, """
         # Seal Note 更新需求 0701
 
@@ -484,7 +484,7 @@ final class MacMarkdownFormatterTests: XCTestCase {
         """)
     }
 
-    func testCopySpacingHandlesMarkdownBlocksWithoutInternalBlankLines() {
+    func testNormalizeFormattingHandlesMarkdownBlocksWithoutInternalBlankLines() {
         let text = """
         正文
         # 标题
@@ -502,7 +502,7 @@ final class MacMarkdownFormatterTests: XCTestCase {
         ```
         正文
         """
-        let result = MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: text)
+        let result = MarkdownFormatter.normalizeFormatting(in: text)
         XCTAssertEqual(result, """
         正文
 
@@ -530,7 +530,7 @@ final class MacMarkdownFormatterTests: XCTestCase {
         """)
     }
 
-    func testCopySpacingPreservesNestedListsAndListNumberingAcrossRule() {
+    func testNormalizeFormattingPreservesNestedListsAndListNumberingAcrossRule() {
         let text = """
         正文
         1. 第一项
@@ -540,7 +540,7 @@ final class MacMarkdownFormatterTests: XCTestCase {
         ---
         4. 第四项
         """
-        let result = MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: text)
+        let result = MarkdownFormatter.normalizeFormatting(in: text)
         XCTAssertEqual(result, """
         正文
 
@@ -556,20 +556,20 @@ final class MacMarkdownFormatterTests: XCTestCase {
         """)
     }
 
-    func testCopySpacingDoesNotTreatInlineTripleBackticksAsFence() {
+    func testNormalizeFormattingDoesNotTreatInlineTripleBackticksAsFence() {
         let text = "注意到 ```内容``` 这种格式会被错误识别。\n下一句"
-        let result = MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: text)
+        let result = MarkdownFormatter.normalizeFormatting(in: text)
         XCTAssertEqual(result, "注意到 ```内容``` 这种格式会被错误识别。\n\n下一句\n")
     }
 
-    func testCopySpacingCompressesBlankLinesAndTrimsLeadingBlanks() {
+    func testNormalizeFormattingCompressesBlankLinesAndTrimsLeadingBlanks() {
         let text = "\n\n第一段\n\n\n第二段\n\n"
-        let result = MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: text)
+        let result = MarkdownFormatter.normalizeFormatting(in: text)
         XCTAssertEqual(result, "第一段\n\n第二段\n")
     }
 
-    func testCopySpacingReturnsEmptyStringForBlankInput() {
-        XCTAssertEqual(MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: ""), "")
-        XCTAssertEqual(MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: "\n \n\t\n"), "")
+    func testNormalizeFormattingReturnsEmptyStringForBlankInput() {
+        XCTAssertEqual(MarkdownFormatter.normalizeFormatting(in: ""), "")
+        XCTAssertEqual(MarkdownFormatter.normalizeFormatting(in: "\n \n\t\n"), "")
     }
 }

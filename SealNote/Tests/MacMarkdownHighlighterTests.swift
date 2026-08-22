@@ -193,6 +193,16 @@ final class MacMarkdownHighlighterTests: XCTestCase {
         XCTAssertEqual(style.maximumLineHeight, ceil(14 * 1.5))
     }
 
+    func testChangedRangeCoversEntireMultilinePaste() {
+        let oldText = "Before\nAfter"
+        let pasted = "# Heading\n\n- one\n- two\n"
+        let newText = "Before\n\(pasted)After"
+
+        let range = MarkdownHighlighter.changedRange(from: oldText, to: newText)
+
+        XCTAssertEqual((newText as NSString).substring(with: range), pasted)
+    }
+
     func testLimitedHighlightMatchesFullHighlightForEditedLongPlainMarkdownLine() {
         let prefix = Array(repeating: "ordinary text line", count: 260).joined(separator: "\n")
         let editedLine = "A **bold** line with [link](https://example.com) and `code`"

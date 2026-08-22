@@ -83,6 +83,7 @@ final class SettingsStore: ObservableObject {
     static let editorFontSizeStep: Double = 1
     static let defaultEditorFontSize: Double = 14
     static let defaultEditorLineHeightMultiple: Double = 1.5
+    static let defaultLimitEditorMaximumWidth = false
     static let editorLineHeightRange: ClosedRange<Double> = 1.2...2.0
     static let defaultAppTheme: AppTheme = .pink
     static let macThemeDefaultsKey = "SNMacTheme"
@@ -170,8 +171,8 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var copyAddsParagraphSpacing: Bool {
-        didSet { defaults.set(copyAddsParagraphSpacing, forKey: Keys.copyAddsParagraphSpacing) }
+    @Published var limitEditorMaximumWidth: Bool {
+        didSet { defaults.set(limitEditorMaximumWidth, forKey: Keys.limitEditorMaximumWidth) }
     }
 
     @Published var autoDeleteEmptyNotes: Bool {
@@ -292,7 +293,9 @@ final class SettingsStore: ObservableObject {
             self.editorLineHeightMultiple = Self.defaultEditorLineHeightMultiple
         }
 
-        self.copyAddsParagraphSpacing = defaults.object(forKey: Keys.copyAddsParagraphSpacing) as? Bool ?? false
+        self.limitEditorMaximumWidth = defaults.object(forKey: Keys.limitEditorMaximumWidth) as? Bool
+            ?? Self.defaultLimitEditorMaximumWidth
+
         self.autoDeleteEmptyNotes = defaults.object(forKey: Keys.autoDeleteEmptyNotes) as? Bool ?? true
         self.autoRenameNotesOnSave = defaults.object(forKey: Keys.autoRenameNotesOnSave) as? Bool ?? false
         self.excludeHexColorsFromTags = defaults.object(forKey: Keys.excludeHexColorsFromTags) as? Bool ?? true
@@ -350,7 +353,7 @@ final class SettingsStore: ObservableObject {
         pinnedStorageRoot = nil
         editorFontSize = Self.defaultEditorFontSize
         editorLineHeightMultiple = Self.defaultEditorLineHeightMultiple
-        copyAddsParagraphSpacing = false
+        limitEditorMaximumWidth = Self.defaultLimitEditorMaximumWidth
         autoDeleteEmptyNotes = true
         autoRenameNotesOnSave = false
         excludeHexColorsFromTags = true
@@ -383,7 +386,7 @@ final class SettingsStore: ObservableObject {
         hasSeenFirstKeyPrompt = false
         editorFontSize = Self.defaultEditorFontSize
         editorLineHeightMultiple = Self.defaultEditorLineHeightMultiple
-        copyAddsParagraphSpacing = false
+        limitEditorMaximumWidth = Self.defaultLimitEditorMaximumWidth
         autoDeleteEmptyNotes = true
         autoRenameNotesOnSave = false
         excludeHexColorsFromTags = true
@@ -486,7 +489,7 @@ final class SettingsStore: ObservableObject {
         static let pinnedStorageRoot = "SNPinnedStorageRoot"
         static let editorFontSize = "SNMacEditorFontSize"
         static let editorLineHeightMultiple = "SNMacEditorLineHeightMultiple"
-        static let copyAddsParagraphSpacing = "SNCopyAddsParagraphSpacing"
+        static let limitEditorMaximumWidth = "SNLimitEditorMaximumWidth"
         static let autoDeleteEmptyNotes = "SNAutoDeleteEmptyNotes"
         static let autoRenameNotesOnSave = "SNAutoRenameNotesOnSave"
         static let excludeHexColorsFromTags = "SNExcludeHexColorsFromTags"

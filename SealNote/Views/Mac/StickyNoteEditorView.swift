@@ -70,6 +70,7 @@ private struct MacNoteModeConversionToast: View {
 
 struct StickyNoteEditorView: View {
     @ObservedObject private var settings = SettingsStore.shared
+    @ObservedObject private var shortcutStore = ShortcutStore.shared
     @ObservedObject private var syncStore = SyncStatusStore.shared
     @StateObject private var viewModel: StickyNoteEditorViewModel
     @State private var isToolbarHovering = false
@@ -89,7 +90,8 @@ struct StickyNoteEditorView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             editorTextView
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: editorMaximumWidth, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
             if !viewModel.attachments.isEmpty {
                 VStack(spacing: 0) {
@@ -224,6 +226,12 @@ struct StickyNoteEditorView: View {
                     .keyboardShortcut("f", modifiers: .command)
                     .disabled(viewModel.isContentLocked)
 
+                    Button(action: { normalizeEditorFormatting() }) {
+                        Label("规范格式", systemImage: "text.alignleft")
+                    }
+                    .keyboardShortcut(normalizeFormattingShortcut)
+                    .disabled(viewModel.isContentLocked)
+
                     if viewModel.note.isEncrypted {
                         Divider()
 
@@ -328,6 +336,32 @@ struct StickyNoteEditorView: View {
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var editorMaximumWidth: CGFloat {
+        guard settings.limitEditorMaximumWidth else { return .infinity }
+        return MacStickyEditorLayout.fittedWindowWidth(fontSize: CGFloat(settings.editorFontSize))
+    }
+
+    private var normalizeFormattingShortcut: KeyboardShortcut {
+        let shortcut = shortcutStore.shortcut(for: .normalizeFormatting)
+        return KeyboardShortcut(
+            KeyEquivalent(shortcut.keyEquivalent.first ?? "f"),
+            modifiers: swiftUIEventModifiers(from: shortcut.modifiers)
+        )
+    }
+
+    private func swiftUIEventModifiers(from carbonModifiers: UInt32) -> SwiftUI.EventModifiers {
+        var modifiers: SwiftUI.EventModifiers = []
+        if carbonModifiers & UInt32(controlKey) != 0 { modifiers.insert(.control) }
+        if carbonModifiers & UInt32(optionKey) != 0 { modifiers.insert(.option) }
+        if carbonModifiers & UInt32(shiftKey) != 0 { modifiers.insert(.shift) }
+        if carbonModifiers & UInt32(cmdKey) != 0 { modifiers.insert(.command) }
+        return modifiers
+    }
+
+    private func normalizeEditorFormatting() {
+        NSApp.sendAction(Selector(("markdownNormalizeFormatting:")), to: nil, from: nil)
     }
 
     @ViewBuilder
@@ -872,11 +906,8 @@ final class StickyNoteEditorViewModel: ObservableObject {
 
     func copyNoteText() {
         guard !isContentLocked else { return }
-        let copiedText = settings.copyAddsParagraphSpacing
-            ? MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: text)
-            : text
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(copiedText, forType: .string)
+        NSPasteboard.general.setString(text, forType: .string)
 
         didCopy = true
         copyResetTask?.cancel()
@@ -1916,6 +1947,7 @@ extension MacTextView {
             textView.isUpdating = true
             defer { textView.isUpdating = false }
             let newText = textView.string
+            let changedRange = MarkdownHighlighter.changedRange(from: lastText, to: newText)
             parent.onChange(newText)
             lastText = newText
             let scrollView = textView.enclosingScrollView as? ToolbarInsetScrollView
@@ -1923,7 +1955,7 @@ extension MacTextView {
                 MarkdownHighlighter.applyMarkdownHighlighting(
                     to: textView,
                     lineHeightMultiple: self.parent.lineHeightMultiple,
-                    limitedTo: textView.selectedRange()
+                    limitedTo: changedRange
                 )
                 self.markStyleRendered(fontSize: self.parent.fontSize, lineHeightMultiple: self.parent.lineHeightMultiple)
                 textView.typingAttributes = Self.typingAttributes(fontSize: self.parent.fontSize, lineHeightMultiple: self.parent.lineHeightMultiple)
@@ -2109,6 +2141,8 @@ extension MacTextView {
             switch action {
             case .quickLineComment:
                 toggleCurrentLineComment(); return
+            case .normalizeFormatting:
+                normalizeFormatting(); return
             }
         }
 
@@ -2217,6 +2251,20 @@ extension MacTextView {
         applyTextResult(result.text, selection: result.selection)
     }
 
+    private func normalizeFormatting() {
+        guard isEditable, !hasMarkedText() else { return }
+        let normalized = MarkdownFormatter.normalizeFormatting(in: string)
+        guard normalized != string else { return }
+        let currentSelection = selectedRange()
+        let normalizedLength = (normalized as NSString).length
+        let selectionLocation = min(currentSelection.location, normalizedLength)
+        let selectionLength = min(currentSelection.length, normalizedLength - selectionLocation)
+        applyTextResult(
+            normalized,
+            selection: NSRange(location: selectionLocation, length: selectionLength)
+        )
+    }
+
     private func applyTextResult(_ text: String, selection: NSRange) {
         isUpdating = true
         let fontSize = (coordinator?.parent.fontSize) ?? 14
@@ -2280,6 +2328,7 @@ extension MacTextView {
     @objc func markdownStrike(_ sender: Any?) { applyFormat(.strike) }
     @objc func markdownHTMLComment(_ sender: Any?) { applyFormat(.htmlComment) }
     @objc func markdownLink(_ sender: Any?) { applyFormat(.link) }
+    @objc func markdownNormalizeFormatting(_ sender: Any?) { normalizeFormatting() }
     @objc func markdownSave(_ sender: Any?) { coordinator?.parent.onSaveShortcut() }
     @objc func markdownApply(_ sender: Any?) { coordinator?.parent.onApplyShortcut() }
     @objc func markdownFitToContent(_ sender: Any?) { coordinator?.parent.onFitToContent() }
@@ -2298,6 +2347,7 @@ extension MacTextView {
                 #selector(markdownStrike(_:)),
                 #selector(markdownHTMLComment(_:)),
                 #selector(markdownLink(_:)),
+                #selector(markdownNormalizeFormatting(_:)),
                 #selector(markdownSave(_:)),
                 #selector(markdownApply(_:)),
                 #selector(markdownFitToContent(_:))

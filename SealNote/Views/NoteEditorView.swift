@@ -462,9 +462,7 @@ struct NoteEditorView: View {
 
     private func copyNoteText() {
         #if os(iOS)
-        UIPasteboard.general.string = settings.copyAddsParagraphSpacing
-            ? MarkdownFormatter.stringByAddingMarkdownParagraphSpacing(to: noteBody)
-            : noteBody
+        UIPasteboard.general.string = noteBody
         #endif
     }
 
