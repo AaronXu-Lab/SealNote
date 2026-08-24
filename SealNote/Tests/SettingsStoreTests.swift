@@ -141,6 +141,18 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(reloaded.iOSAppIconName, IOSAppIconChoice.cyan.iconName)
         XCTAssertEqual(IOSAppIconChoice.choice(for: reloaded.iOSAppIconName), .cyan)
     }
+
+    func testIPadDoubleColumnLayoutDefaultsOnAndPersists() {
+        let store = makeStore()
+        XCTAssertTrue(store.iPadDoubleColumnLayoutEnabled)
+
+        store.iPadDoubleColumnLayoutEnabled = false
+
+        let reloaded = makeStore()
+        XCTAssertFalse(reloaded.iPadDoubleColumnLayoutEnabled)
+        reloaded.resetForTesting()
+        XCTAssertTrue(reloaded.iPadDoubleColumnLayoutEnabled)
+    }
     #endif
 
     func testRecentNotesLimitIsClamped() {

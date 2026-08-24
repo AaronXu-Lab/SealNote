@@ -4,6 +4,7 @@ struct EncryptedCardView: View {
     private let info: EncryptedNoteInfo?
     private let updatedAt: Date
     var isKeyLoaded: Bool = false
+    var usesIPadGridLayout: Bool = false
     var isSelected: Bool = false
     var isSelecting: Bool = false
     var onOpen: (() -> Void)?
@@ -13,6 +14,7 @@ struct EncryptedCardView: View {
     init(
         info: EncryptedNoteInfo,
         isKeyLoaded: Bool = false,
+        usesIPadGridLayout: Bool = false,
         isSelected: Bool = false,
         isSelecting: Bool = false,
         onOpen: (() -> Void)? = nil,
@@ -22,6 +24,7 @@ struct EncryptedCardView: View {
         self.info = info
         self.updatedAt = info.updatedAt
         self.isKeyLoaded = isKeyLoaded
+        self.usesIPadGridLayout = usesIPadGridLayout
         self.isSelected = isSelected
         self.isSelecting = isSelecting
         self.onOpen = onOpen
@@ -29,9 +32,10 @@ struct EncryptedCardView: View {
         self.onToggleSelect = onToggleSelect
     }
 
-    init(note: Note, onOpen: (() -> Void)? = nil) {
+    init(note: Note, usesIPadGridLayout: Bool = false, onOpen: (() -> Void)? = nil) {
         self.info = nil
         self.updatedAt = note.updatedAt
+        self.usesIPadGridLayout = usesIPadGridLayout
         self.onOpen = onOpen
     }
 
@@ -71,6 +75,11 @@ struct EncryptedCardView: View {
         }
         .padding(DS.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(
+            minHeight: usesIPadGridLayout ? DS.iPadGridCardHeight : nil,
+            maxHeight: usesIPadGridLayout ? DS.iPadGridCardHeight : nil,
+            alignment: .topLeading
+        )
         .dsCardSurface(shadow: false)
         .contentShape(Rectangle())
         .onTapGesture {

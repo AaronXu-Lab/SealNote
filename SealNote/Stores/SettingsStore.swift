@@ -89,6 +89,9 @@ final class SettingsStore: ObservableObject {
     static let macThemeDefaultsKey = "SNMacTheme"
     static let macRecentNotesLimitOptions = [5, 10, 15]
     static let defaultMacRecentNotesLimit = 5
+    #if os(iOS)
+    static let defaultIPadDoubleColumnLayoutEnabled = true
+    #endif
     #if os(macOS)
     static let defaultLaunchAtLogin = false
     static let defaultPinNewNotes = true
@@ -226,6 +229,12 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    #if os(iOS)
+    @Published var iPadDoubleColumnLayoutEnabled: Bool {
+        didSet { defaults.set(iPadDoubleColumnLayoutEnabled, forKey: Keys.iPadDoubleColumnLayoutEnabled) }
+    }
+    #endif
+
     #if os(macOS)
     @Published private(set) var launchAtLogin: Bool {
         didSet { defaults.set(launchAtLogin, forKey: Keys.launchAtLogin) }
@@ -306,6 +315,10 @@ final class SettingsStore: ObservableObject {
             ? Self.clampedRecentNotesLimit(storedRecentNotesLimit)
             : Self.defaultMacRecentNotesLimit
         self.iOSAppIconName = defaults.string(forKey: Keys.iOSAppIconName)
+        #if os(iOS)
+        self.iPadDoubleColumnLayoutEnabled = defaults.object(forKey: Keys.iPadDoubleColumnLayoutEnabled) as? Bool
+            ?? Self.defaultIPadDoubleColumnLayoutEnabled
+        #endif
         #if os(macOS)
         self.launchAtLogin = defaults.object(forKey: Keys.launchAtLogin) as? Bool ?? Self.defaultLaunchAtLogin
         self.pinNewNotesByDefault = defaults.object(forKey: Keys.pinNewNotesByDefault) as? Bool ?? Self.defaultPinNewNotes
@@ -361,6 +374,9 @@ final class SettingsStore: ObservableObject {
         appTheme = Self.defaultAppTheme
         macRecentNotesLimit = Self.defaultMacRecentNotesLimit
         iOSAppIconName = nil
+        #if os(iOS)
+        iPadDoubleColumnLayoutEnabled = Self.defaultIPadDoubleColumnLayoutEnabled
+        #endif
         #if os(macOS)
         launchAtLogin = Self.defaultLaunchAtLogin
         pinNewNotesByDefault = Self.defaultPinNewNotes
@@ -496,6 +512,9 @@ final class SettingsStore: ObservableObject {
         static let maintenanceLoggingEnabled = "SNMaintenanceLoggingEnabled"
         static let macRecentNotesLimit = "SNMacRecentNotesLimit"
         static let iOSAppIconName = "SNIOSAppIconName"
+        #if os(iOS)
+        static let iPadDoubleColumnLayoutEnabled = "SNIPadDoubleColumnLayoutEnabled"
+        #endif
         #if os(macOS)
         static let launchAtLogin = "SNLaunchAtLogin"
         static let pinNewNotesByDefault = "SNPinNewNotesByDefault"

@@ -8,6 +8,7 @@ struct NoteCardView: View {
     var displayTitle: String? = nil
     var excludesHexColorsFromTags: Bool = false
     var isCloudOnly: Bool = false
+    var usesIPadGridLayout: Bool = false
     var isSelected: Bool = false
     var isSelecting: Bool = false
     var onTap: (() -> Void)?
@@ -64,7 +65,24 @@ struct NoteCardView: View {
                     }
                 } else {
                     #if os(iOS)
-                    MarkdownCardBody(source: note.body)
+                    if usesIPadGridLayout {
+                        VStack(alignment: .leading, spacing: DS.s2) {
+                            Text(displayTitle ?? NoteTitleFormatter.displayTitle(from: note.body))
+                                .font(DS.body().weight(.semibold))
+                                .foregroundColor(DS.textBody)
+                                .lineLimit(2)
+
+                            if !summaryText.isEmpty {
+                                Text(summaryText)
+                                    .font(DS.body())
+                                    .foregroundColor(DS.textSecondary)
+                                    .lineLimit(usesIPadGridLayout ? 4 : 3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    } else {
+                        MarkdownCardBody(source: note.body)
+                    }
                     #else
                     tagAwareText(note.body)
                         .lineLimit(8)
@@ -76,6 +94,11 @@ struct NoteCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, DS.cardPadding)
         .padding(.vertical, DS.cardPadding)
+        .frame(
+            minHeight: usesIPadGridLayout ? DS.iPadGridCardHeight : nil,
+            maxHeight: usesIPadGridLayout ? DS.iPadGridCardHeight : nil,
+            alignment: .topLeading
+        )
         .dsCardSurface(shadow: false)
         .animation(.easeInOut(duration: 0.2), value: isSelected)
         .contentShape(Rectangle())
@@ -134,6 +157,15 @@ struct NoteCardView: View {
             .frame(width: 28, height: 28)
             .contentShape(Rectangle())
             .onTapGesture { onToggleSelect?() }
+    }
+
+    private var summaryText: String {
+        let lines = note.body
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard lines.count > 1 else { return "" }
+        return lines.dropFirst().joined(separator: "\n")
     }
 
     private func tagAwareText(_ source: String) -> Text {

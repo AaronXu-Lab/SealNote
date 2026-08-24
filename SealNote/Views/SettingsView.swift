@@ -144,6 +144,21 @@ private struct NotesSettingsView: View {
 
     var body: some View {
         SWPanelStack {
+            #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                SWSectionPanel("列表布局") {
+                    SWSettingsRow(
+                        "双列卡片",
+                        subtitle: "按从新到旧的顺序，从左到右、从上到下排列固定高度的卡片。",
+                        systemImage: "rectangle.grid.2x2",
+                        trailingMinWidth: 52
+                    ) {
+                        settingsToggle($settings.iPadDoubleColumnLayoutEnabled)
+                    }
+                }
+            }
+            #endif
+
             if MobileFeatureVisibility.encryptionActions {
                 SWSectionPanel("新建笔记", footer: "当前没有密钥时，新建笔记会保持为明文。") {
                     SWSettingsRow(

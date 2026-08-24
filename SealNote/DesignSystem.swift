@@ -123,6 +123,10 @@ enum DS {
     static let sidebarRowHeight: CGFloat = 40
     static let sidebarRowRadius: CGFloat = 26
     static let contentMax: CGFloat = 720
+    /// iPad 双列卡片容纳最多约 30 个 15pt 中文字符，并保留两侧内边距。
+    static let iPadGridCardMaxWidth: CGFloat = 30 * 15 + cardPadding * 2
+    /// 时间行加六行正文，共七个 24pt 行高，并保留上下内边距。
+    static let iPadGridCardHeight: CGFloat = 7 * 24 + cardPadding * 2
     static let navbarHeight: CGFloat = 52
     /// 固定 toolbar 图标宽度，避免状态切换时按钮组跳动。
     static let macToolbarIconWidth: CGFloat = 18

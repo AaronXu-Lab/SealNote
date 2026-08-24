@@ -56,6 +56,25 @@ struct HomeView: View {
         filteredItems.filter { selectedIDs.contains($0.id) }
     }
 
+    private var usesIPadDoubleColumnLayout: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+            && settings.iPadDoubleColumnLayoutEnabled
+    }
+
+    private var noteGridColumns: [GridItem] {
+        [
+            GridItem(.flexible(maximum: DS.iPadGridCardMaxWidth), spacing: DS.memoGap),
+            GridItem(.flexible(maximum: DS.iPadGridCardMaxWidth))
+        ]
+    }
+
+    private var noteFeedMaxWidth: CGFloat {
+        if usesIPadDoubleColumnLayout {
+            return DS.iPadGridCardMaxWidth * 2 + DS.memoGap
+        }
+        return DS.contentMax
+    }
+
     var body: some View {
         ZStack {
             mainContent
@@ -427,6 +446,13 @@ struct HomeView: View {
 
                 if filteredItems.isEmpty {
                     emptyState
+                } else if usesIPadDoubleColumnLayout {
+                    LazyVGrid(columns: noteGridColumns, spacing: DS.memoGap) {
+                        ForEach(filteredItems) { item in
+                            noteRow(item)
+                                .frame(maxWidth: DS.iPadGridCardMaxWidth)
+                        }
+                    }
                 } else {
                     LazyVStack(spacing: DS.memoGap) {
                         ForEach(filteredItems) { item in
@@ -438,7 +464,7 @@ struct HomeView: View {
             .padding(.horizontal, DS.s3)
             .padding(.top, DS.s3)
             .padding(.bottom, DS.s4)
-            .frame(maxWidth: DS.contentMax)
+            .frame(maxWidth: noteFeedMaxWidth)
             .frame(maxWidth: .infinity)
         }
         .refreshable {
@@ -450,6 +476,7 @@ struct HomeView: View {
         .animation(.easeInOut(duration: 0.2), value: filteredItems.count)
         .animation(.easeInOut(duration: 0.2), value: isSelecting)
         .animation(.easeInOut(duration: 0.2), value: selectedIDs)
+        .animation(.easeInOut(duration: 0.2), value: usesIPadDoubleColumnLayout)
     }
 
     private var tagChips: some View {
@@ -573,7 +600,7 @@ struct HomeView: View {
         switch item {
         case .readable(let note):
             if note.isEncrypted {
-                EncryptedCardView(note: note) {
+                EncryptedCardView(note: note, usesIPadGridLayout: usesIPadDoubleColumnLayout) {
                     showEncryptedNoteUnavailable = true
                 }
             } else {
@@ -582,6 +609,7 @@ struct HomeView: View {
                     displayTitle: vaultStore.displayTitle(for: note),
                     excludesHexColorsFromTags: settings.excludeHexColorsFromTags,
                     isCloudOnly: vaultStore.isCloudOnly(note),
+                    usesIPadGridLayout: usesIPadDoubleColumnLayout,
                     isSelected: isItemSelected,
                     isSelecting: MobileFeatureVisibility.bulkActions && isSelecting,
                     onTap: {
@@ -608,6 +636,7 @@ struct HomeView: View {
             EncryptedCardView(
                 info: info,
                 isKeyLoaded: false,
+                usesIPadGridLayout: usesIPadDoubleColumnLayout,
                 isSelected: isItemSelected,
                 isSelecting: false,
                 onOpen: {
