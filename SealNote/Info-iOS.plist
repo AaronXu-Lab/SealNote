@@ -24,6 +24,8 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>用于解锁加密笔记。</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.com.xuweinan.sealnote</key>
@@ -36,13 +38,13 @@
 			<string>Any</string>
 		</dict>
 	</dict>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
 	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 	<key>UIDesignRequiresCompatibility</key>
 	<false/>
 	<key>UILaunchScreen</key>
@@ -61,7 +63,5 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
-	<key>NSFaceIDUsageDescription</key>
-	<string>用于解锁加密笔记。</string>
 </dict>
 </plist>

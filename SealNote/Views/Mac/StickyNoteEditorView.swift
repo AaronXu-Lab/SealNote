@@ -1980,6 +1980,7 @@ extension MacTextView {
         var isAutoFocusEnabled = true
         var isUpdating = false
         var didInitialFocus = false
+        var pasteboardProvider: () -> NSPasteboard = { .general }
         weak var coordinator: MacTextView.Coordinator?
 
         let placeholderLabel = PlaceholderLabel()
@@ -2010,19 +2011,10 @@ extension MacTextView {
 
     override func paste(_ sender: Any?) {
         guard isEditable else { return }
-        let pasteboard = NSPasteboard.general
-        if let string = pasteboard.string(forType: .string), !string.isEmpty {
-            super.paste(sender)
-            return
-        }
-
-        if let urls = imageURLs(from: pasteboard), !urls.isEmpty {
+        let pasteboard = pasteboardProvider()
+        let urls = MacImagePasteboardReader.imageURLs(from: pasteboard)
+        if !urls.isEmpty {
             coordinator?.parent.onImportImages(urls)
-            return
-        }
-
-        if let temporaryURL = clipboardImageURL(from: pasteboard) {
-            coordinator?.parent.onImportImages([temporaryURL])
             return
         }
 
@@ -2031,8 +2023,7 @@ extension MacTextView {
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
         guard isEditable,
-              let urls = imageURLs(from: sender.draggingPasteboard),
-              !urls.isEmpty else {
+              MacImagePasteboardReader.containsImages(in: sender.draggingPasteboard) else {
             return []
         }
         return .copy
@@ -2044,47 +2035,12 @@ extension MacTextView {
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         guard isEditable else { return false }
-        let pasteboard = sender.draggingPasteboard
-        if let urls = imageURLs(from: pasteboard), !urls.isEmpty {
+        let urls = MacImagePasteboardReader.imageURLs(from: sender.draggingPasteboard)
+        if !urls.isEmpty {
             coordinator?.parent.onImportImages(urls)
             return true
         }
-        if let temporaryURL = clipboardImageURL(from: pasteboard) {
-            coordinator?.parent.onImportImages([temporaryURL])
-            return true
-        }
         return false
-    }
-
-    private func imageURLs(from pasteboard: NSPasteboard) -> [URL]? {
-        guard let objects = pasteboard.readObjects(
-            forClasses: [NSURL.self],
-            options: [.urlReadingFileURLsOnly: true]
-        ) as? [NSURL] else {
-            return nil
-        }
-        let urls = objects.compactMap(\.filePathURL).filter { url in
-            guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
-            return type.conforms(to: .image)
-        }
-        return urls
-    }
-
-    private func clipboardImageURL(from pasteboard: NSPasteboard) -> URL? {
-        let imageData = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff)
-        guard let imageData,
-              let bitmap = NSBitmapImageRep(data: imageData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            return nil
-        }
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("SealNote-Clipboard-\(UUID().uuidString).png")
-        do {
-            try pngData.write(to: url, options: .atomic)
-            return url
-        } catch {
-            return nil
-        }
     }
 
         override func becomeFirstResponder() -> Bool {
@@ -2338,6 +2294,10 @@ extension MacTextView {
             return false
         }
         if let action = item.action {
+            if action == #selector(NSText.paste(_:)),
+               MacImagePasteboardReader.containsImages(in: pasteboardProvider()) {
+                return true
+            }
             let markdownActions: [Selector] = [
                 #selector(markdownBold(_:)),
                 #selector(markdownItalic(_:)),
@@ -2357,6 +2317,120 @@ extension MacTextView {
             }
         }
         return super.validateUserInterfaceItem(item)
+    }
+}
+
+enum MacImagePasteboardReader {
+    static func containsImages(in pasteboard: NSPasteboard) -> Bool {
+        if !imageFileURLs(from: pasteboard).isEmpty {
+            return true
+        }
+        for item in pasteboard.pasteboardItems ?? [] {
+            if item.types.contains(.fileURL) {
+                continue
+            }
+            if item.types.contains(where: isImagePasteboardType) {
+                return true
+            }
+        }
+
+        if pasteboard.availableType(from: [.png, .tiff]) != nil {
+            return true
+        }
+        return false
+    }
+
+    static func imageURLs(from pasteboard: NSPasteboard) -> [URL] {
+        let items = pasteboard.pasteboardItems ?? []
+        let readableFileURLs = imageFileURLs(from: pasteboard)
+        var urls: [URL] = []
+
+        for (index, item) in items.enumerated() {
+            if item.types.contains(.fileURL) {
+                if let itemURL = fileURL(from: item),
+                   let fileURL = readableFileURLs.first(where: { $0.standardizedFileURL == itemURL.standardizedFileURL }) {
+                    urls.append(fileURL)
+                }
+                continue
+            }
+
+            guard let imageData = imageData(from: item),
+                  let temporaryURL = writeTemporaryPNG(from: imageData, index: index) else {
+                continue
+            }
+            urls.append(temporaryURL)
+        }
+
+        if !urls.isEmpty {
+            return urls
+        }
+
+        // Some pasteboard owners only expose lazy aggregate data instead of items.
+        if let imageData = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff),
+           let temporaryURL = writeTemporaryPNG(from: imageData, index: 0) {
+            return [temporaryURL]
+        }
+
+        return readableFileURLs
+    }
+
+    private static func fileURL(from item: NSPasteboardItem) -> URL? {
+        guard let value = item.string(forType: .fileURL),
+              let url = URL(string: value),
+              url.isFileURL else {
+            return nil
+        }
+        return url
+    }
+
+    private static func imageFileURLs(from pasteboard: NSPasteboard) -> [URL] {
+        let objects = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [NSURL] ?? []
+        return objects.compactMap(\.filePathURL).filter(isImageFile)
+    }
+
+    private static func isImageFile(_ url: URL) -> Bool {
+        let type = (try? url.resourceValues(forKeys: [.contentTypeKey]).contentType)
+            ?? UTType(filenameExtension: url.pathExtension)
+        return type?.conforms(to: .image) == true
+    }
+
+    private static func imageData(from item: NSPasteboardItem) -> Data? {
+        let preferredTypes: [NSPasteboard.PasteboardType] = [.png, .tiff]
+        for type in preferredTypes where item.types.contains(type) {
+            if let data = item.data(forType: type) {
+                return data
+            }
+        }
+
+        for type in item.types {
+            guard isImagePasteboardType(type) else { continue }
+            if let data = item.data(forType: type) {
+                return data
+            }
+        }
+        return nil
+    }
+
+    private static func isImagePasteboardType(_ type: NSPasteboard.PasteboardType) -> Bool {
+        UTType(type.rawValue)?.conforms(to: .image) == true
+    }
+
+    private static func writeTemporaryPNG(from imageData: Data, index: Int) -> URL? {
+        guard let bitmap = NSBitmapImageRep(data: imageData),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+            return nil
+        }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SealNote-Clipboard-\(UUID().uuidString)-\(index + 1).png")
+        do {
+            try pngData.write(to: url, options: .atomic)
+            return url
+        } catch {
+            return nil
+        }
     }
 }
 
