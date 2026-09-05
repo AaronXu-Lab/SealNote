@@ -52,7 +52,8 @@ fi
 APP="$WORK/export/Seal Note.app"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")" == "$VERSION" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Contents/Info.plist")" == "$BUILD" ]]
-lipo "$APP/Contents/MacOS/Seal Note" -verify_arch arm64 x86_64
+ARCHITECTURES="$(xcrun lipo -archs "$APP/Contents/MacOS/Seal Note")"
+[[ " $ARCHITECTURES " == *' arm64 '* && " $ARCHITECTURES " == *' x86_64 '* ]]
 if [[ "$UNSIGNED" == false ]]; then
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -dv "$APP" 2>&1 | grep -q 'Authority=Developer ID Application:'
