@@ -127,3 +127,7 @@ SealNote/
 - 笔记文件始终由用户自己的设备与 iCloud Drive 管理
 
 如需报告安全问题或缺陷，请通过 [GitHub Issues](https://github.com/AaronXu-Lab/SealNote/issues) 联系，并避免在公开 Issue 中附上笔记正文或密钥。
+
+## 发布版本
+
+配置签名和公证凭据后，执行 `python3 script/release.py minor`，即可自动递增版本和 build、推送 GitHub、构建并公证 macOS DMG、发布 Release。无需 AI。预览和中断恢复见 [发布说明](docs/releasing.md)。
