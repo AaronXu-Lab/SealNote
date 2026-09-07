@@ -64,12 +64,42 @@ final class VaultStore: ObservableObject {
     static let shared = VaultStore()
 
     @Published private(set) var state: VaultState = .loading
-    @Published private(set) var decryptedNotes: [Note] = []
-    @Published private(set) var plainNotes: [Note] = []
-    @Published private(set) var lockedEncryptedNotes: [EncryptedNoteInfo] = []
+    @Published private(set) var decryptedNotes: [Note] = [] {
+        didSet {
+            #if os(iOS)
+            invalidateMobileListSnapshot()
+            #endif
+        }
+    }
+    @Published private(set) var plainNotes: [Note] = [] {
+        didSet {
+            #if os(iOS)
+            invalidateMobileListSnapshot()
+            #endif
+        }
+    }
+    @Published private(set) var lockedEncryptedNotes: [EncryptedNoteInfo] = [] {
+        didSet {
+            #if os(iOS)
+            invalidateMobileListSnapshot()
+            #endif
+        }
+    }
     @Published private(set) var trashNotes: [TrashNote] = []
-    @Published var selectedTag: String?
-    @Published var searchText: String = ""
+    @Published var selectedTag: String? {
+        didSet {
+            #if os(iOS)
+            mobileFilteredSnapshot = nil
+            #endif
+        }
+    }
+    @Published var searchText: String = "" {
+        didSet {
+            #if os(iOS)
+            mobileFilteredSnapshot = nil
+            #endif
+        }
+    }
     @Published var lastError: String?
     @Published var needsKeyExport: Bool = false {
         didSet { settings.needsKeyExportPending = needsKeyExport }
@@ -100,7 +130,13 @@ final class VaultStore: ObservableObject {
 
     private var vaultId: String?
     private var currentKey: CryptoKit.SymmetricKey?
-    private var noteIndex: NoteIndex = NoteIndex()
+    private var noteIndex: NoteIndex = NoteIndex() {
+        didSet {
+            #if os(iOS)
+            invalidateMobileListSnapshot()
+            #endif
+        }
+    }
     private var pendingDownloadRetryTask: Task<Void, Never>?
     private var pendingDownloadCount = 0
     #if os(iOS)
@@ -273,13 +309,60 @@ final class VaultStore: ObservableObject {
 
     var isUsingICloudStorage: Bool { storage is ICloudVaultStorage }
 
+    #if os(iOS)
+    // Derived data only: VaultStore remains the owner of all note mutations.
+    private var mobileReadableSnapshot: [Note]?
+    private var mobileFilteredSnapshot: [NoteListItem]?
+    private var mobileTagSnapshot: [TagCount]?
+    private var mobileTagSetting: Bool?
+    private struct MobileTagEntry {
+        let body: String
+        let tags: [String]
+    }
+    private var mobileTags: [String: MobileTagEntry] = [:]
+
+    private func invalidateMobileListSnapshot() {
+        mobileReadableSnapshot = nil
+        mobileFilteredSnapshot = nil
+        mobileTagSnapshot = nil
+    }
+
+    private func prepareMobileTagSetting() {
+        let value = settings.excludeHexColorsFromTags
+        if mobileTagSetting != value {
+            mobileTagSetting = value
+            mobileTags.removeAll()
+            mobileFilteredSnapshot = nil
+            mobileTagSnapshot = nil
+        }
+    }
+
+    private func mobileTags(for note: Note) -> [String] {
+        guard !note.isEncrypted else { return [] }
+        prepareMobileTagSetting()
+        if let cached = mobileTags[note.id], cached.body == note.body { return cached.tags }
+        let tags = Array(TagParser.tags(in: note.body, excludingHexColors: settings.excludeHexColorsFromTags))
+        mobileTags[note.id] = MobileTagEntry(body: note.body, tags: tags)
+        return tags
+    }
+    #endif
+
     var readableNotes: [Note] {
-        (plainNotes + decryptedNotes).sorted {
+        #if os(iOS)
+        if let mobileReadableSnapshot { return mobileReadableSnapshot }
+        #endif
+        let result = (plainNotes + decryptedNotes).sorted {
             if $0.createdAt != $1.createdAt {
                 return $0.createdAt > $1.createdAt
             }
             return $0.id < $1.id
         }
+        #if os(iOS)
+        mobileReadableSnapshot = result
+        let plainIDs = Set(plainNotes.map(\.id))
+        mobileTags = mobileTags.filter { plainIDs.contains($0.key) }
+        #endif
+        return result
     }
 
     func displayTitle(for note: Note, emptyTitle: String = NoteTitleFormatter.emptyTitle) -> String {
@@ -317,16 +400,24 @@ final class VaultStore: ObservableObject {
     }
 
     var filteredNotes: [NoteListItem] {
+        #if os(iOS)
+        prepareMobileTagSetting()
+        if let mobileFilteredSnapshot { return mobileFilteredSnapshot }
+        #endif
         var readable = readableNotes
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let tag = selectedTag {
             readable = readable.filter { note in
-                !note.isEncrypted
+                #if os(iOS)
+                return !note.isEncrypted && mobileTags(for: note).contains(tag)
+                #else
+                return !note.isEncrypted
                     && TagParser.tags(
                         in: note.body,
                         excludingHexColors: settings.excludeHexColorsFromTags
                     ).contains(tag)
+                #endif
             }
         }
 
@@ -343,24 +434,41 @@ final class VaultStore: ObservableObject {
             items.append(contentsOf: locked.map { .locked($0) })
         }
 
-        return items.sorted(by: NoteListOrdering.newestCreatedFirst)
+        let result = items.sorted(by: NoteListOrdering.newestCreatedFirst)
+        #if os(iOS)
+        mobileFilteredSnapshot = result
+        #endif
+        return result
     }
 
     var allTags: [TagCount] {
+        #if os(iOS)
+        prepareMobileTagSetting()
+        if let mobileTagSnapshot { return mobileTagSnapshot }
+        #endif
         var counts: [String: Int] = [:]
         // Encrypted-note tags remain private even while the note is open and
         // decrypted in this process. They must not leak into global filters.
         for note in readableNotes where !note.isEncrypted {
-            for tag in TagParser.tags(in: note.body, excludingHexColors: settings.excludeHexColorsFromTags) {
+            #if os(iOS)
+            let tags = mobileTags(for: note)
+            #else
+            let tags = TagParser.tags(in: note.body, excludingHexColors: settings.excludeHexColorsFromTags)
+            #endif
+            for tag in tags {
                 counts[tag, default: 0] += 1
             }
         }
-        return counts
+        let result = counts
             .map { TagCount(tag: $0.key, count: $0.value) }
             .sorted { lhs, rhs in
                 if lhs.count != rhs.count { return lhs.count > rhs.count }
                 return lhs.tag < rhs.tag
             }
+        #if os(iOS)
+        mobileTagSnapshot = result
+        #endif
+        return result
     }
 
     var trashCount: Int { trashNotes.count }
@@ -998,7 +1106,7 @@ final class VaultStore: ObservableObject {
             #if os(iOS)
             if let iCloudStorage = storage as? ICloudVaultStorage,
                (!FileManager.default.fileExists(atPath: url.path) || !iCloudStorage.isItemDownloaded(at: url)) {
-                let dates = cloudPlaceholderDates(for: url)
+                guard let dates = cloudPlaceholderDates(for: url) else { continue }
                 if entry.location == .notes, entry.mode == .plain {
                     plainNotes.append(Note(
                         id: entry.noteId,
@@ -1119,11 +1227,19 @@ final class VaultStore: ObservableObject {
     }
 
     #if os(iOS)
-    nonisolated private static func cloudPlaceholderDates(for url: URL) -> (createdAt: Date, updatedAt: Date) {
+    // Missing index targets may be stale after a rename or deletion on another
+    // device. Retain the index for synchronization, but only render a card when
+    // the file or its on-disk iCloud placeholder provides actual metadata.
+    nonisolated static func cloudPlaceholderDates(for url: URL) -> (createdAt: Date, updatedAt: Date)? {
         let keys: Set<URLResourceKey> = [.creationDateKey, .contentModificationDateKey]
-        let values = try? url.resourceValues(forKeys: keys)
-        let updatedAt = values?.contentModificationDate ?? values?.creationDate ?? .distantPast
-        return (values?.creationDate ?? updatedAt, updatedAt)
+        let placeholderURL = url.deletingLastPathComponent()
+            .appendingPathComponent(".\(url.lastPathComponent).icloud")
+        for candidate in [url, placeholderURL] {
+            guard let values = try? candidate.resourceValues(forKeys: keys),
+                  let updatedAt = values.contentModificationDate ?? values.creationDate else { continue }
+            return (values.creationDate ?? updatedAt, updatedAt)
+        }
+        return nil
     }
     #endif
 
@@ -2308,7 +2424,7 @@ final class VaultStore: ObservableObject {
     }
 
     @discardableResult
-    func createNote(body: String, isEncrypted: Bool) async throws -> Note {
+    func createNote(body: String, isEncrypted: Bool, generatesTitle: Bool = true) async throws -> Note {
         guard let vId = vaultId else { throw VaultError.notReady }
         vaultId = vId
 
@@ -2327,11 +2443,11 @@ final class VaultStore: ObservableObject {
             noteId: noteId,
             createdAt: now,
             updatedAt: now,
-            title: Self.title(for: body),
+            title: generatesTitle ? Self.title(for: body) : nil,
             body: finalBody
         )
 
-        let fileName = Self.uniqueFileName(for: body, storage: storage)
+        let fileName = Self.uniqueFileName(for: generatesTitle ? body : "", storage: storage)
         guard let url = Self.urlForFileName(fileName, storage: storage) else {
             throw StorageError.iCloudUnavailable
         }

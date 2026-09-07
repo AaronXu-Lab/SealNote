@@ -32,6 +32,34 @@ nonisolated enum NoteListOrdering {
 }
 
 nonisolated enum NoteTitleFormatter {
+    static func localTitleCandidate(
+        in body: String,
+        requiresCompletedFirstLine: Bool
+    ) -> (title: String, limitsLength: Bool)? {
+        let normalized = body
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        let lines = normalized.components(separatedBy: "\n")
+
+        for (index, line) in lines.enumerated() {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            guard !requiresCompletedFirstLine || index < lines.count - 1 else { return nil }
+            guard NoteTitleFormatter.sanitizedGeneratedTitle(
+                trimmed,
+                limitsLength: !NoteTitleFormatter.firstNonEmptyLineIsMarkdownHeading(in: trimmed)
+            ) != nil else {
+                return nil
+            }
+            return (
+                title: trimmed,
+                limitsLength: !NoteTitleFormatter.firstNonEmptyLineIsMarkdownHeading(in: trimmed)
+            )
+        }
+
+        return nil
+    }
+
     static let emptyTitle = "临时笔记"
     static let generatedTitleMaxLength = 20
 

@@ -14,15 +14,12 @@ struct NoteEditorContentView: View {
     let fontSize: CGFloat
     let lineHeightMultiple: CGFloat
     let autofocus: Bool
+    var noteID: String? = nil
+    @State private var didShowPreview = false
+    @State private var previewText = ""
 
     var body: some View {
-        if isPreviewing {
-            NoteMarkdownPreview(
-                text: text,
-                fontSize: fontSize,
-                lineHeightMultiple: lineHeightMultiple
-            )
-        } else {
+        ZStack {
             GeometryReader { geometry in
                 NoteTextView(
                     text: $text,
@@ -31,16 +28,29 @@ struct NoteEditorContentView: View {
                     placeholder: "写下想法，支持 Markdown",
                     fontSize: fontSize,
                     lineHeightMultiple: lineHeightMultiple,
-                    autofocus: autofocus
+                    autofocus: autofocus,
+                    isPreviewing: isPreviewing,
+                    noteID: noteID
                 )
-                .frame(
-                    width: min(geometry.size.width, DS.contentMax),
-                    height: geometry.size.height
-                )
+                .frame(width: min(geometry.size.width, DS.contentMax), height: geometry.size.height)
                 .frame(maxWidth: .infinity, alignment: .top)
                 .noteEditorScrollEdgeEffect()
             }
-            .layoutPriority(1)
+            .opacity(isPreviewing ? 0 : 1)
+            .allowsHitTesting(!isPreviewing)
+            .accessibilityHidden(isPreviewing)
+
+            if isPreviewing || didShowPreview {
+                NoteMarkdownPreview(text: isPreviewing ? text : previewText, fontSize: fontSize, lineHeightMultiple: lineHeightMultiple)
+                    .opacity(isPreviewing ? 1 : 0)
+                    .allowsHitTesting(isPreviewing)
+                    .accessibilityHidden(!isPreviewing)
+            }
+        }
+        .layoutPriority(1)
+        .onChange(of: isPreviewing) { _, value in
+            if value { didShowPreview = true }
+            previewText = text
         }
     }
 }
@@ -104,13 +114,33 @@ private extension View {
 
 private final class PlaceholderTextView: UITextView {
     var placeholder: String = "" {
-        didSet { placeholderLabel.text = placeholder }
+        didSet { if placeholder != oldValue { updatePlaceholderStyle() } }
     }
 
-    private let placeholderLabel = UILabel()
+    private let placeholderLabel = UITextView()
     private(set) var editorFontSize: CGFloat = 15
     private(set) var editorLineHeightMultiple: CGFloat = 1.3
     private var isCorrectingContentSize = false
+    private var placeholderWidth: CGFloat = -1
+    private var measuredWidth: CGFloat = 0
+    private var needsContentMeasurement = true
+    private var requiresGlobalHighlighting = false
+    private var needsGlobalAttributeRefresh = false
+
+    func prepareHighlightingEdit(in range: NSRange, replacement: String) {
+        let current = text as NSString
+        let paragraph = current.substring(with: current.paragraphRange(for: range))
+        if MarkdownHighlighter.requiresGlobalIOSHighlighting(paragraph)
+            || MarkdownHighlighter.requiresGlobalIOSHighlighting(replacement)
+            || (requiresGlobalHighlighting && (replacement.contains("\n") || current.substring(with: range).contains("\n"))) {
+            needsGlobalAttributeRefresh = true
+        }
+    }
+
+    func invalidateTextLayout() {
+        needsContentMeasurement = true
+        setNeedsLayout()
+    }
 
     override init(frame: CGRect, textContainer: NSTextContainer?) {
         super.init(frame: frame, textContainer: textContainer)
@@ -124,13 +154,50 @@ private final class PlaceholderTextView: UITextView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        if !placeholderLabel.isHidden && placeholderWidth != bounds.width {
+            placeholderWidth = bounds.width
+            placeholderLabel.frame = CGRect(
+                origin: .zero,
+                size: CGSize(width: bounds.width, height: placeholderLabel.sizeThatFits(
+                    CGSize(width: bounds.width, height: .greatestFiniteMagnitude)
+                ).height)
+            )
+        }
         correctHighlightedContentSizeIfNeeded()
+    }
+
+    override func caretRect(for position: UITextPosition) -> CGRect {
+        var rect = super.caretRect(for: position)
+        guard !rect.isNull, rect.height > 0 else { return rect }
+        let characterIndex = offset(from: beginningOfDocument, to: position)
+        let caretFont: UIFont
+        let baseline: CGFloat
+        if textStorage.length > 0,
+           !(characterIndex == textStorage.length && text.hasSuffix("\n")) {
+            let index = min(max(0, characterIndex), textStorage.length - 1)
+            let glyph = layoutManager.glyphIndexForCharacter(at: index)
+            let line = layoutManager.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+            baseline = line.minY + layoutManager.location(forGlyphAt: glyph).y
+            caretFont = textStorage.attribute(.font, at: index, effectiveRange: nil) as? UIFont
+                ?? UIFont.systemFont(ofSize: editorFontSize)
+        } else {
+            // Empty paragraphs use the same baseline as the placeholder's first line.
+            placeholderLabel.layoutManager.ensureLayout(for: placeholderLabel.textContainer)
+            guard placeholderLabel.layoutManager.numberOfGlyphs > 0 else { return rect }
+            baseline = layoutManager.extraLineFragmentRect.minY
+                + placeholderLabel.layoutManager.location(forGlyphAt: 0).y
+            caretFont = UIFont.systemFont(ofSize: editorFontSize)
+        }
+        rect.origin.y = textContainerInset.top + baseline - caretFont.ascender
+        rect.size.height = caretFont.ascender - caretFont.descender
+        return rect
     }
 
     private func setup() {
         isEditable = true
         isSelectable = true
         backgroundColor = .clear
+        tintColor = UIColor(DS.primary)
         isScrollEnabled = true
         showsVerticalScrollIndicator = true
         showsHorizontalScrollIndicator = false
@@ -167,21 +234,19 @@ private final class PlaceholderTextView: UITextView {
             right: DS.cardPadding
         )
 
-        placeholderLabel.textColor = UIColor(DS.textSubtle)
-        placeholderLabel.font = font
-        placeholderLabel.numberOfLines = 0
-        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        // Use the same TextKit layout, paragraph style and insets as the body.
+        placeholderLabel.isEditable = false
+        placeholderLabel.isSelectable = false
+        placeholderLabel.isUserInteractionEnabled = false
+        placeholderLabel.isAccessibilityElement = false
+        placeholderLabel.accessibilityElementsHidden = true
+        placeholderLabel.contentInsetAdjustmentBehavior = .never
+        placeholderLabel.isScrollEnabled = false
+        placeholderLabel.backgroundColor = .clear
+        placeholderLabel.textContainer.lineFragmentPadding = textContainer.lineFragmentPadding
+        placeholderLabel.textContainerInset = textContainerInset
         addSubview(placeholderLabel)
-
-        NSLayoutConstraint.activate([
-            placeholderLabel.topAnchor.constraint(equalTo: topAnchor, constant: DS.cardPadding),
-            placeholderLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: DS.cardPadding),
-            placeholderLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -DS.cardPadding)
-        ])
-
-        layer.cornerRadius = DS.rMd
-        layer.borderWidth = 0.5
-        layer.borderColor = UIColor(DS.line).cgColor
+        updatePlaceholderStyle()
         updatePlaceholderVisibility()
     }
 
@@ -193,8 +258,11 @@ private final class PlaceholderTextView: UITextView {
     ) {
         editorFontSize = fontSize
         editorLineHeightMultiple = lineHeightMultiple
-        placeholderLabel.font = UIFont.systemFont(ofSize: fontSize)
+        updatePlaceholderStyle()
 
+        requiresGlobalHighlighting = MarkdownHighlighter.requiresGlobalIOSHighlighting(newText)
+        needsGlobalAttributeRefresh = false
+        invalidateTextLayout()
         let attributed = MarkdownHighlighter.makeIOSHighlightedAttributedString(
             text: newText,
             fontSize: fontSize,
@@ -237,17 +305,35 @@ private final class PlaceholderTextView: UITextView {
         let dirtyRange = nsText.paragraphRange(
             for: safeChangedRange ?? NSRange(location: caret, length: 0)
         )
+        let paragraph = nsText.substring(with: dirtyRange)
+        let hasBlockMarkers = MarkdownHighlighter.requiresGlobalIOSHighlighting(paragraph)
+        if hasBlockMarkers && !requiresGlobalHighlighting { needsGlobalAttributeRefresh = true }
+        requiresGlobalHighlighting = requiresGlobalHighlighting || hasBlockMarkers
         MarkdownHighlighter.applyIOSHighlighting(
             to: textStorage,
             text: text,
-            dirtyRange: dirtyRange,
+            dirtyRange: needsGlobalAttributeRefresh ? NSRange(location: 0, length: nsText.length) : dirtyRange,
+            localParagraphOnly: !requiresGlobalHighlighting,
             fontSize: editorFontSize,
             lineHeightMultiple: editorLineHeightMultiple
         )
+        needsGlobalAttributeRefresh = false
+        invalidateTextLayout()
     }
 
     func usesStyle(fontSize: CGFloat, lineHeightMultiple: CGFloat) -> Bool {
         editorFontSize == fontSize && editorLineHeightMultiple == lineHeightMultiple
+    }
+
+    private func updatePlaceholderStyle() {
+        placeholderWidth = -1
+        var attributes = MarkdownHighlighter.iosTypingAttributes(
+            fontSize: editorFontSize,
+            lineHeightMultiple: editorLineHeightMultiple
+        )
+        attributes[.foregroundColor] = UIColor(DS.textSubtle)
+        placeholderLabel.attributedText = NSAttributedString(string: placeholder, attributes: attributes)
+        setNeedsLayout()
     }
 
     func updatePlaceholderVisibility() {
@@ -255,7 +341,10 @@ private final class PlaceholderTextView: UITextView {
     }
 
     private func correctHighlightedContentSizeIfNeeded() {
-        guard !isCorrectingContentSize, bounds.width > 0 else { return }
+        guard !isCorrectingContentSize, bounds.width > 0,
+              needsContentMeasurement || measuredWidth != bounds.width else { return }
+        needsContentMeasurement = false
+        measuredWidth = bounds.width
 
         layoutManager.ensureLayout(for: textContainer)
         let usedRect = layoutManager.usedRect(for: textContainer)
@@ -286,6 +375,19 @@ private final class PlaceholderTextView: UITextView {
     }
 }
 
+@MainActor
+private enum EditorPositionCache {
+    struct Position { let selection: NSRange; let offset: CGPoint }
+    static var positions: [String: Position] = [:]
+    static var order: [String] = []
+    static func save(_ id: String, selection: NSRange, offset: CGPoint) {
+        positions[id] = Position(selection: selection, offset: offset)
+        order.removeAll { $0 == id }
+        order.append(id)
+        if order.count > 64 { positions.removeValue(forKey: order.removeFirst()) }
+    }
+}
+
 private struct NoteTextView: UIViewRepresentable {
     @Binding var text: String
     @Binding var selectedRange: NSRange
@@ -295,6 +397,8 @@ private struct NoteTextView: UIViewRepresentable {
     let fontSize: CGFloat
     let lineHeightMultiple: CGFloat
     let autofocus: Bool
+    let isPreviewing: Bool
+    let noteID: String?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text, selectedRange: $selectedRange, isEditing: $isEditing)
@@ -311,24 +415,45 @@ private struct NoteTextView: UIViewRepresentable {
             fontSize: fontSize,
             lineHeightMultiple: lineHeightMultiple
         )
-        textView.selectedRange = selectedRange
+        if let noteID, let position = EditorPositionCache.positions[noteID] {
+            let length = (text as NSString).length
+            let location = min(position.selection.location, length)
+            textView.selectedRange = NSRange(location: location, length: min(position.selection.length, length - location))
+            context.coordinator.restoredOffset = position.offset
+        } else {
+            textView.selectedRange = selectedRange
+        }
+        context.coordinator.noteID = noteID
         context.coordinator.isUpdating = false
+        if let offset = context.coordinator.restoredOffset {
+            DispatchQueue.main.async { [weak textView, weak coordinator = context.coordinator] in
+                guard let textView, let coordinator else { return }
+                textView.layoutIfNeeded()
+                textView.setContentOffset(offset, animated: false)
+                coordinator.selectedRange.wrappedValue = textView.selectedRange
+                coordinator.restoredOffset = nil
+            }
+        }
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
         textView.backgroundColor = .clear
-        if autofocus {
+        if autofocus && !isPreviewing {
             context.coordinator.requestFocusIfNeeded(for: textView)
         }
         return textView
     }
 
     func updateUIView(_ uiView: PlaceholderTextView, context: Context) {
+        context.coordinator.noteID = noteID
+        context.coordinator.setPreviewing(isPreviewing, in: uiView)
+        uiView.tintColor = UIColor(DS.primary)
         uiView.placeholder = placeholder
         let styleChanged = !uiView.usesStyle(
             fontSize: fontSize,
             lineHeightMultiple: lineHeightMultiple
         )
-        if (uiView.text != text || styleChanged) && !context.coordinator.isUpdating {
+        if (uiView.text != text || styleChanged) && !context.coordinator.isUpdating && uiView.markedTextRange == nil {
+            context.coordinator.cancelHighlighting()
             context.coordinator.isUpdating = true
             uiView.applyMarkdownHighlighting(
                 text: text,
@@ -339,15 +464,21 @@ private struct NoteTextView: UIViewRepresentable {
             context.coordinator.isUpdating = false
         }
 
-        if uiView.isFirstResponder, uiView.selectedRange != selectedRange {
+        if context.coordinator.restoredOffset == nil, uiView.isFirstResponder, uiView.selectedRange != selectedRange {
             context.coordinator.isUpdating = true
             uiView.selectedRange = selectedRange
             context.coordinator.isUpdating = false
         }
         uiView.updatePlaceholderVisibility()
-        if autofocus {
+        if autofocus && !isPreviewing {
             context.coordinator.requestFocusIfNeeded(for: uiView)
         }
+    }
+
+    static func dismantleUIView(_ uiView: PlaceholderTextView, coordinator: Coordinator) {
+        coordinator.savePosition(uiView)
+        coordinator.cancelHighlighting()
+        uiView.delegate = nil
     }
 
     func sizeThatFits(
@@ -371,7 +502,46 @@ private struct NoteTextView: UIViewRepresentable {
         weak var textView: PlaceholderTextView?
         var isUpdating = false
 
+        var noteID: String?
+        var restoredOffset: CGPoint?
+        private var resumeFocus = false
+        private var previewing = false
+
+        func setPreviewing(_ value: Bool, in view: UITextView) {
+            guard previewing != value else { return }
+            previewing = value
+            // Delegate focus callbacks publish bindings; defer until SwiftUI's
+            // representable update has finished, and ignore superseded toggles.
+            DispatchQueue.main.async { [weak self, weak view] in
+                guard let self, let view, self.previewing == value else { return }
+                if value {
+                    self.resumeFocus = view.isFirstResponder
+                    view.resignFirstResponder()
+                } else if self.resumeFocus {
+                    self.resumeFocus = false
+                    view.becomeFirstResponder()
+                }
+            }
+        }
+        private var pendingEditRange: NSRange?
+        private var pendingDirtyRange: NSRange?
         private var didRequestFocus = false
+
+        func cancelHighlighting() {
+            highlightWorkItem?.cancel()
+            highlightWorkItem = nil
+            pendingDirtyRange = nil
+            pendingEditRange = nil
+        }
+
+        func savePosition(_ view: UITextView) {
+            guard let noteID, restoredOffset == nil else { return }
+            EditorPositionCache.save(noteID, selection: view.selectedRange, offset: view.contentOffset)
+        }
+
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            if let view = scrollView as? UITextView { savePosition(view) }
+        }
         private var highlightWorkItem: DispatchWorkItem?
         private static let largeDocumentThreshold = 30_000
 
@@ -395,7 +565,17 @@ private struct NoteTextView: UIViewRepresentable {
 
             let oldText = text.wrappedValue
             let newText = textView.text ?? ""
-            let changedRange = MarkdownHighlighter.changedRange(from: oldText, to: newText)
+            let changedRange = pendingEditRange ?? MarkdownHighlighter.changedRange(from: oldText, to: newText)
+            pendingEditRange = nil
+            // Expand from the earliest dirty location to the end. This remains valid
+            // when subsequent edits shift earlier pending ranges, including IME edits.
+            if let pending = pendingDirtyRange {
+                let start = min(pending.location, changedRange.location)
+                pendingDirtyRange = NSRange(location: start, length: max(0, (newText as NSString).length - start))
+            } else {
+                pendingDirtyRange = changedRange
+            }
+            (textView as? PlaceholderTextView)?.invalidateTextLayout()
             text.wrappedValue = newText
             selectedRange.wrappedValue = textView.selectedRange
             if textView.markedTextRange != nil {
@@ -415,6 +595,8 @@ private struct NoteTextView: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText replacement: String
         ) -> Bool {
+            (textView as? PlaceholderTextView)?.prepareHighlightingEdit(in: range, replacement: replacement)
+            pendingEditRange = NSRange(location: range.location, length: (replacement as NSString).length)
             guard replacement == "\n",
                   range.length == 0,
                   textView.markedTextRange == nil,
@@ -446,6 +628,9 @@ private struct NoteTextView: UIViewRepresentable {
             }
 
             guard let result else { return true }
+            pendingEditRange = nil
+            pendingDirtyRange = nil
+            cancelHighlighting()
             isUpdating = true
             text.wrappedValue = result.text
             selectedRange.wrappedValue = result.selection
@@ -462,6 +647,7 @@ private struct NoteTextView: UIViewRepresentable {
         func textViewDidChangeSelection(_ textView: UITextView) {
             guard !isUpdating, textView.isFirstResponder else { return }
             selectedRange.wrappedValue = textView.selectedRange
+            savePosition(textView)
         }
 
         func requestFocusIfNeeded(for textView: UITextView) {
@@ -473,12 +659,17 @@ private struct NoteTextView: UIViewRepresentable {
         }
 
         private func scheduleIncrementalHighlight(for textView: PlaceholderTextView, changedRange: NSRange) {
+            let wasPending = highlightWorkItem != nil
             highlightWorkItem?.cancel()
-            if (textView.text as NSString).length <= Self.largeDocumentThreshold {
-                textView.applyIncrementalHighlighting(changedRange: changedRange)
+            if (textView.text as NSString).length <= Self.largeDocumentThreshold && !wasPending {
+                textView.applyIncrementalHighlighting(changedRange: pendingDirtyRange ?? changedRange)
+                pendingDirtyRange = nil
             } else {
-                let work = DispatchWorkItem { [weak textView] in
-                    textView?.applyIncrementalHighlighting(changedRange: changedRange)
+                let work = DispatchWorkItem { [weak self, weak textView] in
+                    guard let self, let textView, textView.markedTextRange == nil else { return }
+                    textView.applyIncrementalHighlighting(changedRange: self.pendingDirtyRange)
+                    self.pendingDirtyRange = nil
+                    self.highlightWorkItem = nil
                 }
                 highlightWorkItem = work
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)

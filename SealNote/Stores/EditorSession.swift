@@ -25,6 +25,8 @@ final class EditorSession: ObservableObject {
     private let convert: (Note, String, NoteMode) async throws -> Note
     private let discardEmpty: (Note, String) async throws -> Void
 
+    private let generateTitle: (Note, String, Bool) async -> Void
+
     private var currentBody: String
     private var currentEncrypted: Bool
     private var revision = 0
@@ -42,7 +44,8 @@ final class EditorSession: ObservableObject {
         create: @escaping (String, Bool) async throws -> Note?,
         update: @escaping (Note, String) async throws -> Note,
         convert: @escaping (Note, String, NoteMode) async throws -> Note,
-        discardEmpty: @escaping (Note, String) async throws -> Void
+        discardEmpty: @escaping (Note, String) async throws -> Void,
+        generateTitle: @escaping (Note, String, Bool) async -> Void = { _, _, _ in }
     ) {
         self.persistedNote = initialNote
         self.currentBody = initialBody
@@ -53,6 +56,7 @@ final class EditorSession: ObservableObject {
         self.update = update
         self.convert = convert
         self.discardEmpty = discardEmpty
+        self.generateTitle = generateTitle
     }
 
     var hasUnsavedChanges: Bool {
@@ -96,6 +100,14 @@ final class EditorSession: ObservableObject {
         closeRequested = true
         debounceTask?.cancel()
         await flush(reason: .close)
+        guard lastSaveError == nil else {
+            closeRequested = false
+            return
+        }
+
+        if let note = persistedNote {
+            await generateTitle(note, currentBody, false)
+        }
 
         if autoDiscardEmpty(),
            let note = persistedNote,
@@ -154,6 +166,9 @@ final class EditorSession: ObservableObject {
                 } else if !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     persistedNote = try await create(body, encrypted)
                     createdNoteID = persistedNote?.id
+                }
+                if let note = persistedNote {
+                    await generateTitle(note, body, true)
                 }
                 savedRevision = max(savedRevision, targetRevision)
                 lastSaveError = nil

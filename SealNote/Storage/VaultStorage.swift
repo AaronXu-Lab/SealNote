@@ -138,13 +138,7 @@ extension VaultStorage {
             try fm.createDirectory(at: directory, withIntermediateDirectories: true)
         }
         let data = try JSONEncoder.default.encode(manifest.pruningTombstones())
-        let tempURL = url.appendingPathExtension("tmp")
-        try data.write(to: tempURL, options: .atomic)
-        if fm.fileExists(atPath: url.path) {
-            _ = try fm.replaceItemAt(url, withItemAt: tempURL)
-        } else {
-            try fm.moveItem(at: tempURL, to: url)
-        }
+        try coordinatedVaultWrite(data: data, to: url)
         postVaultStorageMutation(at: url)
     }
 

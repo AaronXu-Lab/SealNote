@@ -43,6 +43,7 @@ struct NoteEditorView: View {
     @State private var shouldSkipDisappearPersistence = false
     @State private var isMarkdownPreviewing = false
     @State private var isTextEditing = false
+    @State private var isFullScreen = false
     @State private var showDeleteConfirmation = false
 
     @State private var showFirstKeyPrompt = false
@@ -114,7 +115,7 @@ struct NoteEditorView: View {
             autoDiscardEmpty: { shouldDiscardAsNewFlow },
             create: onSave,
             update: { note, body in
-                try await VaultStore.shared.updateNote(note, body: body)
+                try await VaultStore.shared.updateNote(note, body: body, renameIfUntitled: false)
                 return VaultStore.shared.readableNotes.first(where: { $0.id == note.id }) ?? note
             },
             convert: { note, body, mode in
@@ -122,11 +123,72 @@ struct NoteEditorView: View {
             },
             discardEmpty: { note, body in
                 try await VaultStore.shared.discardEmptyNote(note, body: body)
+            },
+            generateTitle: { note, body, requiresCompletedFirstLine in
+                let store = VaultStore.shared
+                guard !store.hasStableTitle(for: note),
+                      let candidate = NoteTitleFormatter.localTitleCandidate(
+                        in: body,
+                        requiresCompletedFirstLine: requiresCompletedFirstLine
+                      ) else { return }
+                try? await store.renameNote(note, title: candidate.title, limitsLength: candidate.limitsLength)
             }
         ))
     }
 
     var body: some View {
+        editorPresentation
+            .onAppear { configureInitialState() }
+            .onChange(of: noteBody) { _, _ in
+                guard didConfigureInitialState else { return }
+                session.noteDidChange(body: noteBody, isEncrypted: isEncrypted)
+            }
+            .onChange(of: isEncrypted) { _, _ in
+                guard didConfigureInitialState else { return }
+                session.noteDidChange(body: noteBody, isEncrypted: isEncrypted)
+            }
+            .onChange(of: session.isSaving) { _, saving in isSaving = saving }
+            .onChange(of: session.persistedNote) { _, note in persistedNote = note }
+            .onChange(of: session.lastSaveError) { _, err in
+                if let err { errorMessage = err; showError = true }
+            }
+            .onDisappear {
+                persistBeforeViewDisappears()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase != .active && !shouldSkipDisappearPersistence {
+                    flushInBackground()
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var editorPresentation: some View {
+        #if os(iOS)
+        if presentation == .sheet && isPad {
+            GeometryReader { geometry in
+                ZStack {
+                    Color.black.opacity(isFullScreen ? 0 : 0.28).ignoresSafeArea()
+                    editorNavigation
+                        .frame(
+                            width: isFullScreen ? geometry.size.width : min(620, geometry.size.width - 32),
+                            height: isFullScreen ? geometry.size.height : max(0, geometry.size.height - 48)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: isFullScreen ? 0 : 28))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .background((isFullScreen ? DS.surfaceRaised : Color.clear).ignoresSafeArea())
+            }
+            .presentationBackground(.clear)
+        } else {
+            editorNavigation
+        }
+        #else
+        editorNavigation
+        #endif
+    }
+
+    private var editorNavigation: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 editorBody
@@ -152,6 +214,21 @@ struct NoteEditorView: View {
                 }
 
                 #if os(iOS)
+                if presentation == .sheet && isPad {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
+                                isFullScreen.toggle()
+                            }
+                        } label: {
+                            Image(systemName: isFullScreen
+                                  ? "arrow.down.right.and.arrow.up.left"
+                                  : "arrow.up.left.and.arrow.down.right")
+                        }
+                        .accessibilityLabel(isFullScreen ? "退出全屏" : "全屏编辑")
+                        .disabled(isSaving)
+                    }
+                }
                 if presentation == .sheet && isPad && supportsMultipleWindows {
                     ToolbarItem(placement: .confirmationAction) {
                         Button {
@@ -228,28 +305,6 @@ struct NoteEditorView: View {
                     }
                 }
             }
-            .onAppear { configureInitialState() }
-            .onChange(of: noteBody) { _, _ in
-                guard didConfigureInitialState else { return }
-                session.noteDidChange(body: noteBody, isEncrypted: isEncrypted)
-            }
-            .onChange(of: isEncrypted) { _, _ in
-                guard didConfigureInitialState else { return }
-                session.noteDidChange(body: noteBody, isEncrypted: isEncrypted)
-            }
-            .onChange(of: session.isSaving) { _, saving in isSaving = saving }
-            .onChange(of: session.persistedNote) { _, note in persistedNote = note }
-            .onChange(of: session.lastSaveError) { _, err in
-                if let err { errorMessage = err; showError = true }
-            }
-            .onDisappear {
-                persistBeforeViewDisappears()
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase != .active && !shouldSkipDisappearPersistence {
-                    flushInBackground()
-                }
-            }
             .alert("保存失败", isPresented: $showError) {
                 Button("确定") {}
             } message: {
@@ -272,7 +327,7 @@ struct NoteEditorView: View {
             } message: {
                 Text(keyPromptMessage)
             }
-            .fullScreenCover(isPresented: $showKeySettings) {
+            .iPadSettingsSheet(isPresented: $showKeySettings) {
                 SettingsView(
                     isPresented: $showKeySettings,
                     showTrash: $showTrashFromKeySettings,
@@ -304,7 +359,8 @@ struct NoteEditorView: View {
             isPreviewing: MobileFeatureVisibility.markdownPreview && isMarkdownPreviewing,
             fontSize: CGFloat(settings.editorFontSize),
             lineHeightMultiple: CGFloat(settings.editorLineHeightMultiple),
-            autofocus: isNewFlow
+            autofocus: isNewFlow || isTextEditing,
+            noteID: currentPersistedNote?.id
         )
         #else
         ScrollView {
@@ -418,7 +474,6 @@ struct NoteEditorView: View {
             }
             return
         }
-        guard hasUnsavedChanges || shouldCreateInitialNote || shouldDiscardEmptyExistingNote else { return }
         persistCurrentSnapshot(discardEmptyIfNeeded: true)
     }
 
@@ -448,6 +503,11 @@ struct NoteEditorView: View {
             await session.close()   // flush pending edits + apply the auto-discard-empty rule
         } else {
             await session.flush(reason: .background)
+        }
+        if let error = session.lastSaveError {
+            errorMessage = error
+            showError = true
+            return
         }
         persistedNote = session.persistedNote
         #if os(iOS)

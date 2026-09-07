@@ -26,6 +26,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openWindow) private var openWindow
 
+    @State private var searchQuery = VaultStore.shared.searchText
     @State private var showSettings = false
     @State private var showTrash = false
     @State private var editorSheet: MobileEditorSheet?
@@ -84,6 +85,18 @@ struct HomeView: View {
                     .transition(.opacity)
             }
         }
+        .task(id: searchQuery) {
+            guard searchQuery != vaultStore.searchText else { return }
+            if !searchQuery.isEmpty && vaultStore.totalNoteCount > 200 {
+                do { try await Task.sleep(for: .milliseconds(150)) }
+                catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            vaultStore.searchText = searchQuery
+        }
+        .onChange(of: vaultStore.searchText) { _, value in
+            if value != searchQuery { searchQuery = value }
+        }
         .onChange(of: scenePhase) { _, newPhase in
             appLockStore.handleScenePhaseChange(newPhase)
             refreshNotesWhenAppBecomesActive(newPhase)
@@ -96,10 +109,21 @@ struct HomeView: View {
                 requestStorageRefresh()
             }
         }
-        .sheet(item: $editorSheet) { destination in
+        .sheet(item: Binding(
+            get: { UIDevice.current.userInterfaceIdiom == .pad ? nil : editorSheet },
+            set: { editorSheet = $0 }
+        )) { destination in
             quickEditor(for: destination)
         }
-        .fullScreenCover(isPresented: $showSettings, onDismiss: {
+        // One presentation owns the iPad editor for both compact and expanded sizes.
+        .fullScreenCover(item: Binding(
+            get: { UIDevice.current.userInterfaceIdiom == .pad ? editorSheet : nil },
+            set: { editorSheet = $0 }
+        )) { destination in
+            quickEditor(for: destination)
+                .presentationBackground(.clear)
+        }
+        .iPadSettingsSheet(isPresented: $showSettings, onDismiss: {
             settingsInitialRoute = nil
         }) {
             SettingsView(isPresented: $showSettings, showTrash: $showTrash, initialRoute: settingsInitialRoute)
@@ -236,7 +260,7 @@ struct HomeView: View {
             switch destination {
             case .create:
                 NoteEditorView(mode: .create, presentation: .sheet) { body, _ in
-                    let note = try await vaultStore.createNote(body: body, isEncrypted: false)
+                    let note = try await vaultStore.createNote(body: body, isEncrypted: false, generatesTitle: false)
                     IPadTemporaryNoteRegistry.shared.register(note.id)
                     return note
                 }
@@ -279,7 +303,7 @@ struct HomeView: View {
                 .dsLiquidGlassToolbar()
                 .toolbar { homeToolbar }
                 .searchable(
-                    text: $vaultStore.searchText,
+                    text: $searchQuery,
                     placement: .toolbar,
                     prompt: "搜索"
                 )
@@ -615,7 +639,7 @@ struct HomeView: View {
                     onTap: {
                         openReadableNote(note)
                     },
-                    onRename: nil,
+                    onRename: { beginRenaming(note) },
                     onEdit: {
                         openReadableNote(note)
                     },

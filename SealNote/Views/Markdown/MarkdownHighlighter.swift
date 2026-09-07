@@ -967,14 +967,18 @@ extension MarkdownHighlighter {
         return mutable
     }
 
-    /// Re-highlight only `dirtyRange` in place. Spans are still computed over the FULL
-    /// text (so fenced code / tables stay globally correct), but attributes are written
-    /// only within the dirty range via `setAttributes`/`addAttributes` — no character
-    /// mutation and no `setAttributedString`, so typing stays cheap. (P1-1)
+    /// Documents containing block markers need full parsing to retain fence/table context.
+    static func requiresGlobalIOSHighlighting(_ text: String) -> Bool {
+        text.contains("```") || text.contains("~~~") || text.contains("|")
+    }
+
+    /// Ordinary paragraphs can be parsed locally. Block documents keep full parsing,
+    /// while callers expand attribute writes only when block structure changes.
     static func applyIOSHighlighting(
         to textStorage: NSTextStorage,
         text: String,
         dirtyRange: NSRange,
+        localParagraphOnly: Bool = false,
         fontSize: CGFloat,
         lineHeightMultiple: CGFloat = 1.3
     ) {
@@ -993,8 +997,11 @@ extension MarkdownHighlighter {
 
         textStorage.beginEditing()
         textStorage.setAttributes(baseAttributes, range: applyRange)
-        for span in highlight(text) {
-            let intersection = NSIntersectionRange(span.range, applyRange)
+        let source = localParagraphOnly ? (text as NSString).substring(with: applyRange) : text
+        let offset = localParagraphOnly ? applyRange.location : 0
+        for span in highlight(source) {
+            let shiftedRange = NSRange(location: span.range.location + offset, length: span.range.length)
+            let intersection = NSIntersectionRange(shiftedRange, applyRange)
             guard intersection.length > 0 else { continue }
             var attrs = iosAttributes(for: span.role, fontSize: fontSize)
             if attrs[.paragraphStyle] == nil {

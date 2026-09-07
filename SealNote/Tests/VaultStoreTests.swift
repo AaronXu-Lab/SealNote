@@ -3,6 +3,46 @@ import CryptoKit
 @testable import SealNote
 
 final class VaultStoreTests: XCTestCase {
+    func testLocalTitleWaitsForCompletedFirstNonEmptyLine() {
+        XCTAssertNil(NoteTitleFormatter.localTitleCandidate(in: "\n正在输入", requiresCompletedFirstLine: true))
+        XCTAssertEqual(NoteTitleFormatter.localTitleCandidate(in: "\r\n完整标题\r\n正文", requiresCompletedFirstLine: true)?.title, "完整标题")
+        XCTAssertEqual(NoteTitleFormatter.localTitleCandidate(in: "关闭时生成", requiresCompletedFirstLine: false)?.title, "关闭时生成")
+        XCTAssertNil(NoteTitleFormatter.localTitleCandidate(in: " \n ", requiresCompletedFirstLine: false))
+    }
+
+    func testLocalTitlePreservesHeadingLengthRule() {
+        XCTAssertEqual(NoteTitleFormatter.localTitleCandidate(in: "# 标题\n正文", requiresCompletedFirstLine: true)?.limitsLength, false)
+        XCTAssertEqual(NoteTitleFormatter.localTitleCandidate(in: "普通标题\n正文", requiresCompletedFirstLine: true)?.limitsLength, true)
+    }
+
+    #if os(iOS)
+    func testMissingCloudIndexTargetsDoNotProducePhantomCards() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        // Five real notes plus stale index paths from older filenames/deletions.
+        let urls = (0..<12).map { directory.appendingPathComponent("note-\($0).md") }
+        for url in urls.prefix(5) {
+            try Data("note".utf8).write(to: url)
+        }
+        XCTAssertEqual(urls.compactMap { VaultStore.cloudPlaceholderDates(for: $0) }.count, 5)
+        XCTAssertNil(VaultStore.cloudPlaceholderDates(for: urls[5]))
+    }
+
+    func testUndownloadedCloudPlaceholderStillProvidesCardDates() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("note.md")
+        try Data().write(to: directory.appendingPathComponent(".note.md.icloud"))
+
+        let dates = try XCTUnwrap(VaultStore.cloudPlaceholderDates(for: url))
+        XCTAssertGreaterThan(dates.updatedAt, Date.distantPast)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+    #endif
+
     private func savedNoteURL(in tmpDir: URL, noteId: String) throws -> URL {
         let indexURL = tmpDir.appendingPathComponent("notes.json")
         let data = try Data(contentsOf: indexURL)
@@ -1882,4 +1922,116 @@ final class InMemoryKeyStore: KeyStore {
 
     func hasKey(forVaultId vaultId: String) -> Bool { keys[vaultId] != nil }
     func allVaultIdCandidates() -> [String] { Array(keys.keys) }
+}
+
+final class CoordinatedVaultWriteTests: XCTestCase {
+    func testReplacementAndUnchangedWriteLeaveOnlyDocument() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("notes.json")
+        try coordinatedVaultWrite(data: Data("old".utf8), to: url)
+        let replacement = Data("new".utf8)
+        try coordinatedVaultWrite(data: replacement, to: url)
+        let date = Date(timeIntervalSince1970: 1_000_000)
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: url.path)
+        try coordinatedVaultWrite(data: replacement, to: url)
+        XCTAssertEqual(try Data(contentsOf: url), replacement)
+        XCTAssertEqual(try url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate, date)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: directory.path), ["notes.json"])
+    }
+
+    func testFailedWriteDoesNotCreateTemporaryDocument() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let url = directory.appendingPathComponent("missing/notes.json")
+        XCTAssertThrowsError(try coordinatedVaultWrite(data: Data("new".utf8), to: url))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.appendingPathExtension("tmp").path))
+    }
+}
+
+extension VaultStoreTests {
+    @MainActor
+    func testEditorSessionFailedCloseKeepsDraftAndCanRetry() async {
+        let note = Note(id: "retry", body: "original")
+        var shouldFail = true
+        var discarded = false
+        var savedBody = ""
+        let session = EditorSession(
+            initialNote: note, initialBody: note.body, debounceInterval: 10,
+            autoDiscardEmpty: { true }, create: { _, _ in nil },
+            update: { note, body in
+                if shouldFail { throw CocoaError(.fileWriteUnknown) }
+                savedBody = body
+                var saved = note
+                saved.body = body
+                return saved
+            },
+            convert: { note, _, _ in note },
+            discardEmpty: { _, _ in discarded = true }
+        )
+        session.noteDidChange(body: "", isEncrypted: false)
+        await session.close()
+        XCTAssertNotNil(session.lastSaveError)
+        XCTAssertTrue(session.hasUnsavedChanges)
+        XCTAssertFalse(discarded)
+        XCTAssertEqual(session.persistedNote?.id, note.id)
+        shouldFail = false
+        session.noteDidChange(body: "recovered draft", isEncrypted: false)
+        await session.close()
+        XCTAssertNil(session.lastSaveError)
+        XCTAssertFalse(session.hasUnsavedChanges)
+        XCTAssertEqual(savedBody, "recovered draft")
+        XCTAssertFalse(discarded)
+    }
+
+    @MainActor
+    func testMobileListSnapshotTracksEditsFiltersRenameAndDeletion() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = VaultStore(storage: try TemporaryStorage(baseURL: directory))
+        store.configureForTesting(vaultId: UUID().uuidString)
+        let note = try await store.createNote(body: "First\n#alpha", isEncrypted: false)
+        XCTAssertEqual(store.filteredNotes.count, 1)
+        XCTAssertEqual(store.allTags.map(\.tag), ["#alpha"])
+        store.searchText = "absent"
+        XCTAssertTrue(store.filteredNotes.isEmpty)
+        store.searchText = ""
+        store.selectedTag = "#alpha"
+        XCTAssertEqual(store.filteredNotes.count, 1)
+        try await store.updateNote(note, body: "First\n#beta")
+        XCTAssertTrue(store.filteredNotes.isEmpty)
+        XCTAssertEqual(store.allTags.map(\.tag), ["#beta"])
+        store.selectedTag = nil
+        let updated = try XCTUnwrap(store.readableNotes.first)
+        try await store.renameNote(updated, title: "Renamed")
+        store.searchText = "Renamed"
+        XCTAssertEqual(store.filteredNotes.count, 1)
+        try await store.deleteNote(try XCTUnwrap(store.readableNotes.first))
+        XCTAssertTrue(store.filteredNotes.isEmpty)
+        XCTAssertTrue(store.readableNotes.isEmpty)
+        XCTAssertTrue(store.allTags.isEmpty)
+    }
+
+    @MainActor
+    func testMobileTagCacheRespectsSettingsAndEncryption() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+            defaults.removePersistentDomain(forName: suite)
+        }
+        let settings = SettingsStore(defaults: defaults)
+        settings.excludeHexColorsFromTags = false
+        let store = VaultStore(storage: try TemporaryStorage(baseURL: directory), settings: settings)
+        store.configureForTesting(vaultId: suite,
+            decryptedNotes: [Note(body: "secret #private", isEncrypted: true)],
+            plainNotes: [Note(body: "color #abcdef")])
+        XCTAssertEqual(store.allTags.map(\.tag), ["#abcdef"])
+        store.selectedTag = "#abcdef"
+        XCTAssertEqual(store.filteredNotes.count, 1)
+        settings.excludeHexColorsFromTags = true
+        XCTAssertTrue(store.filteredNotes.isEmpty)
+        XCTAssertTrue(store.allTags.isEmpty)
+    }
 }

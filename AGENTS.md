@@ -52,4 +52,12 @@ SealNote（“Seal Note”）是一款基于 SwiftUI 的、采用端到端加密
 
 ## 发布
 
-用户要求 minor 发布时，优先运行固定脚本 `python3 script/release.py minor`（版本 minor 加 1、patch 归零、build 加 1，含签名公证 DMG 和 GitHub Release）。先阅读 `docs/releasing.md`；用 `--dry-run` 预览。发布提交后失败使用 `resume`，不要再次递增版本。无需 AI 生成发布说明。
+用户说“发布 minor update”“发一个 minor 版本”或“版本号加 0.1、build 加 1 并发布”时，视为授权执行版本递增、Git 提交、推送 GitHub、打标签、构建 DMG 和发布 GitHub Release。AI 只负责触发固定脚本、处理实际错误和汇报结果，不重新手工实现流程，也不使用 AI 生成发布说明。
+
+- 先阅读 `docs/releasing.md`，检查 `git status`，用 `python3 script/release.py minor --unsigned --dry-run` 预览版本。
+- 当前默认是无证书的非正式发布：运行 `python3 script/release.py minor --unsigned`。版本从 `X.Y.Z` 升到 `X.(Y+1).0`，build 加 1；同步 SealNote / SealNoteMac 的 Debug、Release 配置，CLI 和测试 Target 的独立版本不变。
+- 脚本构建 Intel / Apple Silicon 通用 DMG，上传安装包和 SHA-256 校验文件，并创建 GitHub prerelease。该安装包未签名、未公证，发布说明保留 Gatekeeper 提示。
+- 只有用户明确要求正式签名、公证版本时，才运行 `python3 script/release.py minor`，并检查 Developer ID Application 证书、私钥和 `NOTARY_PROFILE`。不要每次非正式发布都询问证书。
+- 脚本要求 `main` 分支且工作区干净。未提交改动应先检查；仅提交本次发布明确包含的改动，不要自动打包所有无关修改，也不要丢弃用户改动。
+- 发布提交生成后失败，使用 `python3 script/release.py resume --unsigned` 恢复；正式签名版本省略 `--unsigned`。不要再次运行 minor 导致版本重复递增，也不要强制移动已有远程 tag。
+- 完成后确认远程版本、Release 发布状态及附件，汇报版本 / build、Release 链接和是否签名。发布说明由脚本从 Git 提交记录生成。

@@ -81,7 +81,7 @@ struct NoteCardView: View {
                             }
                         }
                     } else {
-                        MarkdownCardBody(source: note.body)
+                        MarkdownCardBody(source: note.body, theme: SettingsStore.shared.appTheme).equatable()
                     }
                     #else
                     tagAwareText(note.body)
@@ -164,8 +164,7 @@ struct NoteCardView: View {
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        guard lines.count > 1 else { return "" }
-        return lines.dropFirst().joined(separator: "\n")
+        return lines.joined(separator: "\n")
     }
 
     private func tagAwareText(_ source: String) -> Text {
@@ -211,41 +210,44 @@ struct NoteCardView: View {
 }
 
 #if os(iOS)
-private struct MarkdownCardBody: View {
+private struct MarkdownCardBody: View, Equatable {
     private static let collapsedLineLimit = 5
 
     let source: String
-    private let highlightedText: NSAttributedString
+    let theme: AppTheme
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.source == rhs.source && lhs.theme == rhs.theme
+    }
+
+    private var highlightedText: NSAttributedString {
+        MarkdownHighlighter.makeIOSHighlightedAttributedString(text: source, fontSize: 15, lineHeightMultiple: 1.3)
+    }
 
     @State private var isExpanded = false
     @State private var renderedLineCount = 0
-
-    init(source: String) {
-        self.source = source
-        highlightedText = MarkdownHighlighter.makeIOSHighlightedAttributedString(
-            text: source,
-            fontSize: 15,
-            lineHeightMultiple: 1.3
-        )
-    }
 
     private var remainingLineCount: Int {
         max(0, renderedLineCount - Self.collapsedLineLimit)
     }
 
     var body: some View {
+        let rendered = highlightedText
         VStack(alignment: .leading, spacing: DS.s2) {
-            Text(AttributedString(highlightedText))
+            Text(AttributedString(rendered))
                 .lineLimit(isExpanded ? nil : Self.collapsedLineLimit)
                 .fixedSize(horizontal: false, vertical: true)
                 .background {
                     GeometryReader { proxy in
                         Color.clear
                             .onAppear {
-                                updateRenderedLineCount(for: proxy.size.width)
+                                updateRenderedLineCount(for: proxy.size.width, text: rendered)
+                            }
+                            .onChange(of: source) { _, _ in
+                                updateRenderedLineCount(for: proxy.size.width, text: rendered)
                             }
                             .onChange(of: proxy.size.width) { _, width in
-                                updateRenderedLineCount(for: width)
+                                updateRenderedLineCount(for: width, text: rendered)
                             }
                     }
                 }
@@ -264,14 +266,13 @@ private struct MarkdownCardBody: View {
         }
         .onChange(of: source) { _, _ in
             isExpanded = false
-            renderedLineCount = 0
         }
     }
 
-    private func updateRenderedLineCount(for width: CGFloat) {
+    private func updateRenderedLineCount(for width: CGFloat, text: NSAttributedString) {
         guard width > 0 else { return }
 
-        let textStorage = NSTextStorage(attributedString: highlightedText)
+        let textStorage = NSTextStorage(attributedString: text)
         let layoutManager = NSLayoutManager()
         let textContainer = NSTextContainer(
             size: CGSize(width: width, height: .greatestFiniteMagnitude)
