@@ -49,3 +49,7 @@ SealNote（“Seal Note”）是一款基于 SwiftUI 的、采用端到端加密
 当前阶段默认进行 iOS/iPadOS 版本开发：除非用户明确指定 macOS、共享跨平台逻辑，或点名 `SealNoteMac` Scheme，新需求、缺陷修复、构建验证和 UI 调整默认针对 `SealNote` Scheme 及 iPad 体验。涉及 macOS 时只修改 macOS 相关代码；不要因为共享代码存在就改变 macOS 专属 UI 行为。
 
 现在 mac 端笔记的容器样式已经很完美了，比如工具栏的透明，按钮的系统默认 glass button 效果，在接下来的需求中如果没有必要不要调整它
+
+## 发布
+
+用户要求 minor 发布时，优先运行固定脚本 `python3 script/release.py minor`（版本 minor 加 1、patch 归零、build 加 1，含签名公证 DMG 和 GitHub Release）。先阅读 `docs/releasing.md`；用 `--dry-run` 预览。发布提交后失败使用 `resume`，不要再次递增版本。无需 AI 生成发布说明。
