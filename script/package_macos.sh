@@ -63,11 +63,13 @@ xcrun stapler staple "$APP"
 xcrun stapler validate "$APP"
 spctl --assess --type execute --verbose=2 "$APP"
 fi
-mkdir "$WORK/staging"
-ditto "$APP" "$WORK/staging/Seal Note.app"
-ln -s /Applications "$WORK/staging/Applications"
 DMG="$OUT/Seal-Note-$VERSION.dmg"
-hdiutil create -volname 'Seal Note' -srcfolder "$WORK/staging" -ov -format UDZO "$DMG"
+if [[ "$UNSIGNED" == true ]]; then
+  VERIFY_APP_SIGNATURE=NO APP_PATH="$APP" VERSION="$VERSION" OUTPUT_DMG="$DMG" \
+    bash script/package_dmg.sh
+else
+  APP_PATH="$APP" VERSION="$VERSION" OUTPUT_DMG="$DMG" bash script/package_dmg.sh
+fi
 if [[ "$UNSIGNED" == false ]]; then
 SIGN_ID=$(printf '%s\n' "$IDENTITIES" | sed -n '/Developer ID Application:/s/.*"\(.*\)"/\1/p' | head -1)
 codesign --sign "$SIGN_ID" --timestamp "$DMG"

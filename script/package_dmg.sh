@@ -36,10 +36,15 @@ fi
 OUTPUT_DMG="${OUTPUT_DMG:-$ROOT_DIR/dist/Seal-Note-$VERSION.dmg}"
 
 # Validate before copying so a signed/notarized export is never silently modified.
-codesign --verify --deep --strict --verbose=2 "$SOURCE_APP"
+# The release script opts out only for its explicitly unsigned prerelease mode.
+if [[ "${VERIFY_APP_SIGNATURE:-YES}" == "YES" ]]; then
+  codesign --verify --deep --strict --verbose=2 "$SOURCE_APP"
+fi
 rm -rf "$STAGED_APP"
 ditto "$SOURCE_APP" "$STAGED_APP"
-codesign --verify --deep --strict --verbose=2 "$STAGED_APP"
+if [[ "${VERIFY_APP_SIGNATURE:-YES}" == "YES" ]]; then
+  codesign --verify --deep --strict --verbose=2 "$STAGED_APP"
+fi
 
 if [[ ! -f "$BUILD_ROOT/dmg-tools/dmgbuild/__init__.py" ]]; then
   python3 -m pip install --target "$BUILD_ROOT/dmg-tools" dmgbuild numpy Pillow \

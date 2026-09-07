@@ -20,7 +20,7 @@ context.cgContext.setAllowsAntialiasing(true)
 context.cgContext.scaleBy(x: 2, y: 2)
 source.draw(in: NSRect(x: 0, y: 0, width: 1600, height: 880))
 
-let arrowColors: [(CGFloat, CGFloat, CGFloat)] = [(196, 207, 219), (107, 119, 138), (16, 21, 31)]
+let arrowColors: [(CGFloat, CGFloat, CGFloat)] = [(235, 184, 202), (169, 94, 122), (67, 30, 44)]
 for (index, color) in arrowColors.enumerated() {
     NSColor(
         srgbRed: color.0 / 255, green: color.1 / 255,
