@@ -138,7 +138,7 @@ final class VaultStore: ObservableObject {
         }
     }
     private var pendingDownloadRetryTask: Task<Void, Never>?
-    private var pendingDownloadCount = 0
+    @Published private(set) var pendingDownloadCount = 0
     #if os(iOS)
     private var cloudOnlyPlainNoteIDs = Set<String>()
     private var cloudDownloadQueue: [String] = []
@@ -2352,6 +2352,20 @@ final class VaultStore: ObservableObject {
             pendingDownloadCount = 0
         }
     }
+
+    #if os(macOS)
+    func retryLoadingNotes() async {
+        guard case .error = state else { return }
+        pendingDownloadRetryTask?.cancel()
+        pendingDownloadRetryTask = nil
+        state = .loading
+        if vaultId == nil {
+            await initialize()
+        } else {
+            await refreshFromStorage()
+        }
+    }
+    #endif
 
     func refreshFromStorage() async {
         SyncStatusStore.shared.setSyncing()

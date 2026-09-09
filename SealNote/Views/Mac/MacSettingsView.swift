@@ -891,12 +891,12 @@ struct MacSettingsView: View {
             return
         }
 
-        if !NSWorkspace.shared.open(containerURL) {
-            let alert = NSAlert()
-            alert.messageText = "无法打开文件夹"
-            alert.informativeText = "Finder 未能打开：\(containerURL.path)"
-            alert.addButton(withTitle: "确定")
-            alert.runModal()
+        let configuration = NSWorkspace.OpenConfiguration()
+        NSWorkspace.shared.open(containerURL, configuration: configuration) { _, error in
+            guard let error else { return }
+            Task { @MainActor in
+                settingsErrorMessage = "Finder 无法打开文件夹：\(error.localizedDescription)"
+            }
         }
     }
 

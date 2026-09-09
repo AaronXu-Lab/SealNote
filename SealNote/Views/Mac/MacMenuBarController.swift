@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftUI
 import AppKit
@@ -15,6 +16,8 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
     private let windowStore = MacNoteWindowStore.shared
     private let shortcutStore = ShortcutStore.shared
     private let settings = SettingsStore.shared
+
+    private var vaultObservation: AnyCancellable?
 
     private var allNotesWindow: NSWindow?
     private var trashWindow: NSWindow?
@@ -51,6 +54,12 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
         statusItem?.menu = menu
 
         buildMenu(menu)
+        vaultObservation = vaultStore.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, let menu = self.statusItem?.menu else { return }
+                self.buildMenu(menu)
+            }
 
         NotificationCenter.default.addObserver(
             self,
@@ -115,26 +124,33 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
-        if case .loading = vaultStore.state {
-            let loadingItem = NSMenuItem(title: "正在加载笔记…", action: nil, keyEquivalent: "")
-            loadingItem.isEnabled = false
-            menu.addItem(loadingItem)
-        } else {
+        switch vaultStore.state {
+        case .loading:
+            addStatusItem(vaultStore.isUsingICloudStorage ? "正在等待 iCloud 加载…" : "正在加载笔记…", to: menu)
+        case .error(let message):
+            let failureItem = NSMenuItem(title: "笔记加载失败", action: nil, keyEquivalent: "")
+            failureItem.toolTip = message
+            menu.addItem(failureItem)
+            let retryItem = NSMenuItem(title: "重试", action: #selector(retryLoadingNotes), keyEquivalent: "")
+            retryItem.target = self
+            menu.addItem(retryItem)
+        case .ready:
             let recentItems = recentMenuNotes()
-
-            for (index, recentItem) in recentItems.enumerated() {
-                let item = menuItem(for: recentItem, index: index)
-                menu.addItem(item)
+            let waitingForCloud = vaultStore.pendingDownloadCount > 0
+            if recentItems.isEmpty && waitingForCloud {
+                addStatusItem("正在等待 iCloud 加载…", to: menu)
             }
-
-            if recentItems.isEmpty {
-                let emptyItem = NSMenuItem(title: "暂无笔记", action: nil, keyEquivalent: "")
-                emptyItem.isEnabled = false
-                menu.addItem(emptyItem)
+            for (index, recentItem) in recentItems.enumerated() {
+                menu.addItem(menuItem(for: recentItem, index: index))
+            }
+            if recentItems.isEmpty && !waitingForCloud {
+                addStatusItem("暂无笔记", to: menu)
             }
         }
 
-        let allNotesItem = NSMenuItem(title: "全部笔记(\(vaultStore.totalNoteCount))...", action: #selector(showAllNotes), keyEquivalent: "")
+        let showsCount = vaultStore.state == .ready && vaultStore.pendingDownloadCount == 0
+        let allNotesTitle = showsCount ? "全部笔记(\(vaultStore.totalNoteCount))..." : "全部笔记…"
+        let allNotesItem = NSMenuItem(title: allNotesTitle, action: #selector(showAllNotes), keyEquivalent: "")
         allNotesItem.target = self
         menu.addItem(allNotesItem)
 
@@ -170,6 +186,22 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
         let quitItem = NSMenuItem(title: "退出", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
+    }
+
+    private func addStatusItem(_ title: String, to menu: NSMenu) {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        menu.addItem(item)
+    }
+
+    @objc private func retryLoadingNotes() {
+        Task {
+            await vaultStore.retryLoadingNotes()
+            if case .ready = vaultStore.state {
+                CLIServiceCoordinator.shared.vaultDidBecomeReady()
+                VaultExternalChangeMonitor.shared.start()
+            }
+        }
     }
 
     @objc private func handleNewNote() {
