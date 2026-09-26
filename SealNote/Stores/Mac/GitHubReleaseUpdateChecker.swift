@@ -52,7 +52,7 @@ final class GitHubReleaseUpdateChecker {
             let latestVersion = Self.normalizedVersion(release.tagName)
             let skippedVersion = UserDefaults.standard.string(forKey: skippedReleaseVersionKey)
             if Self.isVersion(latestVersion, newerThan: currentVersion),
-               skippedVersion != latestVersion {
+               alwaysShowResult || skippedVersion != latestVersion {
                 presentUpdateAlert(
                     release: release,
                     currentVersion: currentVersion,

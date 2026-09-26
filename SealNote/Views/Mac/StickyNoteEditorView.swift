@@ -1985,6 +1985,43 @@ extension MacTextView {
 
         let placeholderLabel = PlaceholderLabel()
 
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: trailingWhitespaceMouseEvent(event))
+    }
+
+    // A click below/right of the final line should establish the same native
+    // selection anchor as a click directly at the document's insertion point.
+    // Leave Shift clicks and AppKit's subsequent drag tracking untouched.
+    private func trailingWhitespaceMouseEvent(_ event: NSEvent) -> NSEvent {
+        guard isSelectable, !hasMarkedText(), event.clickCount == 1,
+              event.modifierFlags.intersection([.shift, .control, .option, .command]).isEmpty,
+              let window, !string.isEmpty else { return event }
+
+        let point = convert(event.locationInWindow, from: nil)
+        let end = (string as NSString).length
+        guard characterIndexForInsertion(at: point) == end else { return event }
+
+        let screenRect = firstRect(forCharacterRange: NSRange(location: end, length: 0), actualRange: nil)
+        let caret = convert(window.convertFromScreen(screenRect), from: nil)
+        guard caret.height > 0,
+              point.y > caret.maxY || (point.y >= caret.minY && point.x > caret.maxX) else {
+            return event
+        }
+
+        let location = convert(NSPoint(x: caret.maxX, y: caret.midY), to: nil)
+        return NSEvent.mouseEvent(
+            with: event.type,
+            location: location,
+            modifierFlags: event.modifierFlags,
+            timestamp: event.timestamp,
+            windowNumber: event.windowNumber,
+            context: nil,
+            eventNumber: event.eventNumber,
+            clickCount: event.clickCount,
+            pressure: event.pressure
+        ) ?? event
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window != nil, isAutoFocusEnabled, !didInitialFocus {

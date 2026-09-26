@@ -1,7 +1,17 @@
 import SwiftUI
 
+#if os(iOS)
+import AppIntents
+#endif
+
 @main
 struct SealNoteApp: App {
+    init() {
+        #if os(iOS)
+        SealNoteShortcuts.updateAppShortcutParameters()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

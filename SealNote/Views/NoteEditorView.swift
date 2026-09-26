@@ -222,10 +222,6 @@ struct NoteEditorView: View {
                         }
                         .disabled(isSaving)
                     }
-
-                    if isSaving {
-                        ProgressView()
-                    }
                 }
             }
             .onAppear { configureInitialState() }

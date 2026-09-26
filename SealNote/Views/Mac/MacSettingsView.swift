@@ -18,6 +18,7 @@ struct MacSettingsView: View {
     @State private var selectedTab: Tab
     @State private var recordingAction: MacShortcutRecordingAction?
     @State private var settingsErrorMessage: String?
+    @State private var isCheckingForUpdates = false
     @State private var isShowingCLIEnableConfirmation = false
     // Temporarily hidden for product-positioning reasons. Keep the state and
     // confirmation flow nearby so encrypted CLI access can be restored later.
@@ -270,6 +271,17 @@ struct MacSettingsView: View {
                     .padding(.horizontal, DS.s6)
                 }
                 .padding(.vertical, DS.s8)
+            }
+
+            macPanel("版本更新") {
+                SWSettingsRow("检查更新", subtitle: "从 GitHub Release 检查 Seal Note 的最新版本。", systemImage: "arrow.triangle.2.circlepath") {
+                    Button(isCheckingForUpdates ? "正在检查…" : "检查更新") {
+                        checkForUpdates()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                    .disabled(isCheckingForUpdates)
+                }
             }
 
             macPanel("组件") {
@@ -926,6 +938,15 @@ struct MacSettingsView: View {
             }
         } catch {
             settingsErrorMessage = "无法打开日志文件夹：\(error.localizedDescription)"
+        }
+    }
+
+    private func checkForUpdates() {
+        guard !isCheckingForUpdates else { return }
+        isCheckingForUpdates = true
+        Task {
+            defer { isCheckingForUpdates = false }
+            await GitHubReleaseUpdateChecker.shared.checkForUpdates(alwaysShowResult: true)
         }
     }
 
