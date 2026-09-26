@@ -1330,7 +1330,7 @@ final class StickyNoteEditorViewModel: ObservableObject {
             didGenerateLocalTitle = true
             return
         }
-        guard let candidate = Self.localTitleCandidate(
+        guard let candidate = NoteTitleFormatter.localTitleCandidate(
             in: body,
             requiresCompletedFirstLine: requiresCompletedFirstLine
         ) else {
@@ -1347,34 +1347,6 @@ final class StickyNoteEditorViewModel: ObservableObject {
         } catch {
             // Local title generation is opportunistic; saving remains the source of truth.
         }
-    }
-
-    private static func localTitleCandidate(
-        in body: String,
-        requiresCompletedFirstLine: Bool
-    ) -> (title: String, limitsLength: Bool)? {
-        let normalized = body
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-        let lines = normalized.components(separatedBy: "\n")
-
-        for (index, line) in lines.enumerated() {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            guard !requiresCompletedFirstLine || index < lines.count - 1 else { return nil }
-            guard NoteTitleFormatter.sanitizedGeneratedTitle(
-                trimmed,
-                limitsLength: !NoteTitleFormatter.firstNonEmptyLineIsMarkdownHeading(in: trimmed)
-            ) != nil else {
-                return nil
-            }
-            return (
-                title: trimmed,
-                limitsLength: !NoteTitleFormatter.firstNonEmptyLineIsMarkdownHeading(in: trimmed)
-            )
-        }
-
-        return nil
     }
 
     private func discardEmptyNoteAndClose(body: String) {

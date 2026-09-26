@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { randomUUID } from "node:crypto";
 
 const args = new Set(process.argv.slice(2));
 const apply = args.has("--apply");
@@ -18,7 +20,7 @@ const indexPath = path.join(container, "notes.json");
 const legacyNotesDir = path.join(container, "notes");
 const trashDir = path.join(container, "trash");
 const conflictsDir = path.join(container, "conflicts");
-const metaDir = path.join(container, ".meta");
+const backupRoot = path.join(os.homedir(), "Library", "Application Support", "SealNote", "MigrationBackups");
 
 function timestamp() {
   return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
@@ -255,7 +257,12 @@ if (!apply) {
   process.exit(parseFailures.length ? 2 : 0);
 }
 
-const runDir = path.join(metaDir, `filename-migration-${timestamp()}`);
+if (!changes.length && !conflictMoves.length && !missing.length) {
+  console.log("No changes needed.");
+  process.exit(0);
+}
+
+const runDir = path.join(backupRoot, `filename-migration-${timestamp()}-${randomUUID()}`);
 const backupDir = path.join(runDir, "backup");
 fs.mkdirSync(backupDir, { recursive: true });
 copyBackup(indexPath, backupDir);

@@ -460,3 +460,26 @@ final class MacMarkdownHighlighterTests: XCTestCase {
     }
     #endif
 }
+
+#if os(iOS)
+extension MacMarkdownHighlighterTests {
+    func testLocalParagraphHighlightingMatchesFullRenderAtUTF16Offset() {
+        let text = "Intro 😀\n## Heading **bold**\nLast line"
+        let range = (text as NSString).paragraphRange(for: (text as NSString).range(of: "Heading"))
+        let local = NSTextStorage(string: text)
+        local.addAttribute(.foregroundColor, value: UIColor.red, range: NSRange(location: 0, length: 5))
+        MarkdownHighlighter.applyIOSHighlighting(to: local, text: text, dirtyRange: range,
+            localParagraphOnly: true, fontSize: 16)
+        let full = NSTextStorage(string: text)
+        MarkdownHighlighter.applyIOSHighlighting(to: full, text: text,
+            dirtyRange: NSRange(location: 0, length: full.length), fontSize: 16)
+        for index in range.location..<NSMaxRange(range) {
+            XCTAssertEqual(local.attribute(.font, at: index, effectiveRange: nil) as? UIFont,
+                           full.attribute(.font, at: index, effectiveRange: nil) as? UIFont)
+            XCTAssertEqual(local.attribute(.foregroundColor, at: index, effectiveRange: nil) as? UIColor,
+                           full.attribute(.foregroundColor, at: index, effectiveRange: nil) as? UIColor)
+        }
+        XCTAssertEqual(local.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor, .red)
+    }
+}
+#endif

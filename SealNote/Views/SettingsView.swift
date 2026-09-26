@@ -1192,3 +1192,20 @@ private struct AboutView: View {
         URL(string: "https://github.com/AaronXu-Lab/SealNote/blob/main/PRIVACY.md")!
     }
 }
+
+#if os(iOS)
+extension View {
+    @ViewBuilder
+    func iPadSettingsSheet<Content: View>(
+        isPresented: Binding<Bool>,
+        onDismiss: (() -> Void)? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            sheet(isPresented: isPresented, onDismiss: onDismiss, content: content)
+        } else {
+            fullScreenCover(isPresented: isPresented, onDismiss: onDismiss, content: content)
+        }
+    }
+}
+#endif
