@@ -1,6 +1,7 @@
 import SwiftUI
 #if os(iOS)
 import UIKit
+import AaronUI
 #endif
 
 struct NoteCardView: View {
@@ -44,6 +45,10 @@ struct NoteCardView: View {
                                 .frame(width: 28, height: 28)
                                 .contentShape(Rectangle())
                         }
+                        #if os(iOS)
+                        .buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))
+                        .accessibilityLabel("笔记操作")
+                        #endif
                     }
                 }
 
@@ -151,12 +156,20 @@ struct NoteCardView: View {
     }
 
     private var selectionCircle: some View {
+        #if os(iOS)
+        Toggle("", isOn: Binding(get: { isSelected }, set: { _ in onToggleSelect?() }))
+            .toggleStyle(.auiCheckbox)
+            .accessibilityLabel("选择笔记")
+            .labelsHidden()
+            .accessibilityValue(isSelected ? "已选择" : "未选择")
+        #else
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
             .font(.system(size: 22, weight: .regular))
             .foregroundColor(isSelected ? DS.primary : DS.textSubtle.opacity(0.5))
             .frame(width: 28, height: 28)
             .contentShape(Rectangle())
             .onTapGesture { onToggleSelect?() }
+        #endif
     }
 
     private var summaryText: String {
@@ -253,7 +266,7 @@ private struct MarkdownCardBody: View, Equatable {
                 }
 
             if !isExpanded, remainingLineCount > 0 {
-                Button("展开剩余 \(remainingLineCount) 行") {
+                AUIButton("展开剩余 \(remainingLineCount) 行", variant: .ghost, size: .sm) {
                     withAnimation(.easeInOut(duration: 0.2)) {
                         isExpanded = true
                     }

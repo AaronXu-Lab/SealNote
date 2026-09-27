@@ -1,4 +1,5 @@
 import SwiftUI
+import AaronUI
 import UniformTypeIdentifiers
 
 #if os(iOS)
@@ -80,6 +81,8 @@ struct SettingsView: View {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .semibold))
                     }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
+                    .accessibilityLabel("关闭")
                 }
             }
         }
@@ -87,28 +90,11 @@ struct SettingsView: View {
 
     private var keyOverview: some View {
         NavigationLink(value: SettingsRoute.key) {
-            HStack(spacing: DS.s3) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(DS.pro)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("密钥未加载")
-                        .font(DS.body())
-                        .foregroundColor(DS.textEmphasize)
-                    Text("\(vaultStore.lockedNoteCount) 条加密笔记")
-                        .font(DS.caption())
-                        .foregroundColor(DS.textSecondary)
+            AUIItemSurface(size: .sm) {
+                AUIItem("密钥未加载", description: "\(vaultStore.lockedNoteCount) 条加密笔记", leading: .icon("lock.fill")) {
+                    Image(systemName: "chevron.right")
                 }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(DS.textSubtle)
             }
-            .padding(DS.s3)
-            .dsCardSurface(cornerRadius: DS.rMd, shadow: false)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("密钥未加载，\(vaultStore.lockedNoteCount) 条加密笔记")
@@ -153,7 +139,7 @@ private struct NotesSettingsView: View {
                         systemImage: "rectangle.grid.2x2",
                         trailingMinWidth: 52
                     ) {
-                        settingsToggle($settings.iPadDoubleColumnLayoutEnabled)
+                        settingsToggle("双列卡片", $settings.iPadDoubleColumnLayoutEnabled)
                     }
                 }
             }
@@ -168,7 +154,9 @@ private struct NotesSettingsView: View {
                         trailingMinWidth: 52
                     ) {
                         Toggle("", isOn: defaultEncryptedBinding)
+                            .accessibilityLabel("新建加密笔记")
                             .labelsHidden()
+                        .toggleStyle(.auiSwitch)
                             .tint(DS.primary)
                             .disabled(!vaultStore.isKeyLoaded)
                     }
@@ -176,7 +164,7 @@ private struct NotesSettingsView: View {
             }
 
             SWSectionPanel("编辑外观") {
-                SWSettingsRow("编辑字号", systemImage: "textformat.size") {
+                SWSettingsRow("编辑字号", systemImage: "textformat.size", tallControl: true) {
                     VStack(alignment: .trailing, spacing: DS.s1) {
                         Text(String(format: "%.0f", settings.editorFontSize))
                             .font(DS.caption())
@@ -194,7 +182,7 @@ private struct NotesSettingsView: View {
 
                 SWRowDivider()
 
-                SWSettingsRow("行高", systemImage: "line.3.horizontal.decrease") {
+                SWSettingsRow("行高", systemImage: "line.3.horizontal.decrease", tallControl: true) {
                     VStack(alignment: .trailing, spacing: DS.s1) {
                         Text(String(format: "%.2fx", settings.editorLineHeightMultiple))
                             .font(DS.caption())
@@ -218,7 +206,7 @@ private struct NotesSettingsView: View {
                     systemImage: "text.cursor",
                     trailingMinWidth: 52
                 ) {
-                    settingsToggle($settings.autoRenameNotesOnSave)
+                    settingsToggle("自动命名笔记", $settings.autoRenameNotesOnSave)
                 }
 
                 if MobileFeatureVisibility.tags {
@@ -230,7 +218,7 @@ private struct NotesSettingsView: View {
                         systemImage: "paintpalette",
                         trailingMinWidth: 52
                     ) {
-                        settingsToggle($settings.excludeHexColorsFromTags)
+                        settingsToggle("不将 Hex 色值识别为标签", $settings.excludeHexColorsFromTags)
                     }
                 }
             }
@@ -254,9 +242,11 @@ private struct NotesSettingsView: View {
         )
     }
 
-    private func settingsToggle(_ binding: Binding<Bool>) -> some View {
+    private func settingsToggle(_ title: String, _ binding: Binding<Bool>) -> some View {
         Toggle("", isOn: binding)
+            .accessibilityLabel(title)
             .labelsHidden()
+                        .toggleStyle(.auiSwitch)
             .tint(DS.primary)
     }
 }
@@ -324,9 +314,9 @@ private struct KeyManagementView: View {
                 ShareSheet(items: [url])
             }
         }
-        .alert("操作结果", isPresented: $showOperationResult) {
-            Button("确定") { operationMessage = nil }
-        } message: {
+        .snDialog("操作结果", isPresented: $showOperationResult,
+            primary: AUIDialogAction("确定", closes: true, handler: { operationMessage = nil })
+        ) {
             Text(operationMessage ?? "")
         }
         .alert(activeAlertTitle, isPresented: activeAlertBinding) {
@@ -498,19 +488,9 @@ private struct KeyManagementView: View {
         destructive: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-        if prominent {
-            Button(title, action: action)
-                .font(DS.caption())
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(destructive ? DS.destructive : DS.primary)
-        } else {
-            Button(title, action: action)
-                .font(DS.caption())
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(destructive ? DS.destructive : DS.primary)
-        }
+        AUIButton(title, variant: prominent || destructive ? .fill : .outline, size: .sm,
+                  fillColor: destructive ? .destructive : .primary,
+                  role: destructive ? .destructive : nil, action: action)
     }
 
     private func createKey() {
@@ -771,14 +751,18 @@ private struct PrivacySettingsView: View {
             SWSectionPanel("隐私保护", footer: privacyFooter) {
                 SWSettingsRow("进入后台时隐藏内容", subtitle: "切换到其他应用时遮住笔记内容", systemImage: "eye.slash") {
                     Toggle("", isOn: $settings.hideContentOnBackground)
+                        .accessibilityLabel("进入后台时隐藏内容")
                         .labelsHidden()
+                        .toggleStyle(.auiSwitch)
                         .tint(DS.primary)
                 }
                 if MobileFeatureVisibility.encryptionActions {
                     SWRowDivider()
                     SWSettingsRow("离开 App 后锁定加密笔记", subtitle: "回到 App 时需重新验证（Face ID / 密码）才能查看加密笔记", systemImage: "lock.rotation") {
                         Toggle("", isOn: $settings.lockSessionOnBackground)
+                        .accessibilityLabel("离开 App 后锁定加密笔记")
                             .labelsHidden()
+                        .toggleStyle(.auiSwitch)
                             .tint(DS.primary)
                     }
                 }
@@ -813,7 +797,7 @@ private struct DataSettingsView: View {
         SWPanelStack {
             SWSectionPanel("同步") {
                 SWSettingsRow(syncTitle, subtitle: syncSubtitle, systemImage: syncIcon, tint: syncTint) {
-                    Button("刷新") {
+                    AUIButton("刷新", variant: .light, size: .sm) {
                         Task { await vaultStore.refreshFromStorage() }
                     }
                     .font(DS.caption())
@@ -909,7 +893,9 @@ private struct DataSettingsView: View {
                 SWRowDivider()
                 SWSettingsRow("记录维护日志", subtitle: "不记录正文或密钥", systemImage: "doc.text.magnifyingglass") {
                     Toggle("", isOn: $settings.maintenanceLoggingEnabled)
+                        .accessibilityLabel("记录维护日志")
                         .labelsHidden()
+                        .toggleStyle(.auiSwitch)
                         .tint(DS.primary)
                 }
                 SWRowDivider()
@@ -930,28 +916,28 @@ private struct DataSettingsView: View {
                 ShareSheet(items: [url])
             }
         }
-        .alert("操作结果", isPresented: $showOperationResult) {
-            Button("确定") { operationMessage = nil }
-        } message: {
+        .snDialog("操作结果", isPresented: $showOperationResult,
+            primary: AUIDialogAction("确定", closes: true, handler: { operationMessage = nil })
+        ) {
             Text(operationMessage ?? "")
         }
-        .alert("清空回收站", isPresented: $showEmptyConfirmation) {
-            Button("取消", role: .cancel) {}
-            Button("清空", role: .destructive) {
+        .snDialog("清空回收站", isPresented: $showEmptyConfirmation,
+            primary: AUIDialogAction("清空", destructive: true, closes: true, handler: {
                 Task {
                     do { try await vaultStore.emptyTrash() }
                     catch { vaultStore.lastError = "清空失败：\(error.localizedDescription)" }
                 }
-            }
-        } message: {
+            }),
+            secondary: AUIDialogAction("取消", closes: true, handler: {})
+        ) {
             Text("将永久删除回收站中的所有笔记，无法恢复。")
         }
-        .alert("清理空白笔记", isPresented: $showClearEmptyConfirmation) {
-            Button("取消", role: .cancel) {}
-            Button("清理", role: .destructive) {
+        .snDialog("清理空白笔记", isPresented: $showClearEmptyConfirmation,
+            primary: AUIDialogAction("清理", destructive: true, closes: true, handler: {
                 Task { await clearEmptyNotes() }
-            }
-        } message: {
+            }),
+            secondary: AUIDialogAction("取消", closes: true, handler: {})
+        ) {
             Text("正文为空的可读笔记会移到回收站，可以恢复。")
         }
     }
@@ -1035,14 +1021,16 @@ private struct AppearanceSettingsView: View {
         SWPanelStack {
             SWSectionPanel("主题色") {
                 ForEach(Array(AppTheme.allCases.enumerated()), id: \.element.id) { index, theme in
-                    Button {
-                        settings.appTheme = theme
-                    } label: {
-                        SWSettingsRow(theme.title, subtitle: themeSubtitle(theme), systemImage: theme == settings.appTheme ? "checkmark.circle.fill" : "circle", tint: tint(for: theme)) {
-                            themeSwatch(theme)
+                    HStack {
+                        AUIRadio(theme.title, isSelected: theme == settings.appTheme) {
+                            settings.appTheme = theme
                         }
+                        Spacer()
+                        themeSwatch(theme)
                     }
-                    .buttonStyle(.plain)
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                    .onTapGesture { settings.appTheme = theme }
                     if index < AppTheme.allCases.count - 1 {
                         SWRowDivider()
                     }
@@ -1052,28 +1040,33 @@ private struct AppearanceSettingsView: View {
             #if os(iOS)
             SWSectionPanel("应用图标", footer: "更换图标时，iOS 会显示系统确认弹窗。主题色和图标可以独立选择。") {
                 ForEach(Array(IOSAppIconChoice.allCases.enumerated()), id: \.element.id) { index, choice in
-                    Button {
+                    HStack {
+                        AUIRadio(choice.title, isSelected: choice == currentIconChoice) {
+                            pendingIcon = choice
+                            showIconConfirmation = true
+                        }
+                        Spacer()
+                        iconSwatch(choice)
+                    }
+                    .frame(minHeight: 48)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
                         pendingIcon = choice
                         showIconConfirmation = true
-                    } label: {
-                        SWSettingsRow(choice.title, subtitle: iconSubtitle(choice), systemImage: choice == currentIconChoice ? "checkmark.circle.fill" : "app", tint: iconTint(choice)) {
-                            iconSwatch(choice)
-                        }
                     }
-                    .buttonStyle(.plain)
                     if index < IOSAppIconChoice.allCases.count - 1 {
                         SWRowDivider()
                     }
                 }
             }
-            .alert("更换应用图标？", isPresented: $showIconConfirmation) {
-                Button("取消", role: .cancel) { pendingIcon = nil }
-                Button("更换") {
+            .snDialog("更换应用图标？", isPresented: $showIconConfirmation,
+            primary: AUIDialogAction("更换", closes: true, handler: {
                     applyPendingIcon()
-                }
-            } message: {
-                Text("主屏幕上的 Seal Note 图标会改变。接下来 iOS 还会显示一次系统确认。")
-            }
+                }),
+            secondary: AUIDialogAction("取消", closes: true, handler: { pendingIcon = nil })
+        ) {
+            Text("主屏幕上的 Seal Note 图标会改变。接下来 iOS 还会显示一次系统确认。")
+        }
             #endif
         }
         .navigationTitle("外观")

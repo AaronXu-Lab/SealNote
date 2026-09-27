@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import AaronUI
+#endif
 #if canImport(UIKit)
 import UIKit
 #elseif canImport(AppKit)
@@ -174,6 +177,11 @@ enum DS {
 extension View {
     /// 索引卡片：12px 圆角、0.5px 细线；阴影仅用于需要抬升的表面。
     func dsCardSurface(cornerRadius: CGFloat = DS.rLg, shadow: Bool = true) -> some View {
+        #if os(iOS)
+        AUIItemSurface(size: .sm) {
+            self.padding(.horizontal, -AUISpacing.md)
+        }
+        #else
         background(DS.surfaceCard)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay(
@@ -184,6 +192,7 @@ extension View {
                     radius: shadow ? DS.cardShadow.radius : 0,
                     x: shadow ? DS.cardShadow.x : 0,
                     y: shadow ? DS.cardShadow.y : 0)
+        #endif
     }
 
     /// L1 输入表面：白色卡片背景与 0.5px 细线，保持捕捉区安静。

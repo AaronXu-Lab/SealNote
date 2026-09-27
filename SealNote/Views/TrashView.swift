@@ -1,4 +1,5 @@
 import SwiftUI
+import AaronUI
 
 struct TrashView: View {
     @Environment(\.dismiss) private var dismiss
@@ -24,29 +25,36 @@ struct TrashView: View {
             .navigationTitle("回收站")
             .navigationBarTitleDisplayMode(.inline)
             .dsLiquidGlassToolbar()
-            .searchable(text: $searchText, prompt: "搜索回收站")
+            .safeAreaInset(edge: .top, spacing: 0) {
+                SNSearchField("搜索回收站", text: $searchText)
+                    .padding(.horizontal, DS.s3)
+                    .padding(.vertical, DS.s2)
+                    .background(DS.bg)
+            }
             .autocorrectionDisabled()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
                     }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
+                    .accessibilityLabel("关闭")
                 }
                 if !vaultStore.trashNotes.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showEmptyConfirmation = true } label: {
                             Image(systemName: "trash")
                         }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                         .tint(DS.destructive)
                     }
                 }
             }
-            .alert("恢复笔记", isPresented: Binding(
+            .snDialog("恢复笔记", isPresented: Binding(
                 get: { noteToRestore != nil },
                 set: { if !$0 { noteToRestore = nil } }
-            )) {
-                Button("取消", role: .cancel) { noteToRestore = nil }
-                Button("恢复") {
+            ),
+            primary: AUIDialogAction("恢复", closes: true, handler: {
                     if let note = noteToRestore {
                         Task {
                             do {
@@ -57,16 +65,16 @@ struct TrashView: View {
                         }
                     }
                     noteToRestore = nil
-                }
-            } message: {
-                Text("恢复后笔记将回到主列表。")
-            }
-            .alert("永久删除", isPresented: Binding(
+                }),
+            secondary: AUIDialogAction("取消", closes: true, handler: { noteToRestore = nil })
+        ) {
+            Text("恢复后笔记将回到主列表。")
+        }
+            .snDialog("永久删除", isPresented: Binding(
                 get: { noteToPurge != nil },
                 set: { if !$0 { noteToPurge = nil } }
-            )) {
-                Button("取消", role: .cancel) { noteToPurge = nil }
-                Button("永久删除", role: .destructive) {
+            ),
+            primary: AUIDialogAction("永久删除", destructive: true, closes: true, handler: {
                     if let note = noteToPurge {
                         Task {
                             do {
@@ -77,13 +85,13 @@ struct TrashView: View {
                         }
                     }
                     noteToPurge = nil
-                }
-            } message: {
-                Text("永久删除后无法恢复。")
-            }
-            .alert("清空回收站", isPresented: $showEmptyConfirmation) {
-                Button("取消", role: .cancel) {}
-                Button("清空", role: .destructive) {
+                }),
+            secondary: AUIDialogAction("取消", closes: true, handler: { noteToPurge = nil })
+        ) {
+            Text("永久删除后无法恢复。")
+        }
+            .snDialog("清空回收站", isPresented: $showEmptyConfirmation,
+            primary: AUIDialogAction("清空", destructive: true, closes: true, handler: {
                     Task {
                         do {
                             try await vaultStore.emptyTrash()
@@ -91,18 +99,19 @@ struct TrashView: View {
                             actionErrorMessage = "清空失败：\(error.localizedDescription)"
                         }
                     }
-                }
-            } message: {
-                Text("将永久删除回收站中的所有笔记，无法恢复。")
-            }
-            .alert("操作失败", isPresented: Binding(
+                }),
+            secondary: AUIDialogAction("取消", closes: true, handler: {})
+        ) {
+            Text("将永久删除回收站中的所有笔记，无法恢复。")
+        }
+            .snDialog("操作失败", isPresented: Binding(
                 get: { actionErrorMessage != nil },
                 set: { if !$0 { actionErrorMessage = nil } }
-            )) {
-                Button("确定") { actionErrorMessage = nil }
-            } message: {
-                Text(actionErrorMessage ?? "")
-            }
+            ),
+            primary: AUIDialogAction("确定", closes: true, handler: { actionErrorMessage = nil })
+        ) {
+            Text(actionErrorMessage ?? "")
+        }
             .task {
                 await vaultStore.purgeExpiredTrash()
             }
@@ -221,7 +230,8 @@ struct TrashView: View {
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))
+                .accessibilityLabel("笔记操作")
             }
 
             HStack(spacing: DS.s2) {

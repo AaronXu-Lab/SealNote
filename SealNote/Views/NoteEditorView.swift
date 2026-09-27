@@ -1,4 +1,5 @@
 import SwiftUI
+import AaronUI
 
 #if os(iOS)
 import UIKit
@@ -210,6 +211,8 @@ struct NoteEditorView: View {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .semibold))
                     }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
+                    .accessibilityLabel("关闭")
                     .disabled(isSaving)
                 }
 
@@ -225,6 +228,7 @@ struct NoteEditorView: View {
                                   ? "arrow.down.right.and.arrow.up.left"
                                   : "arrow.up.left.and.arrow.down.right")
                         }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                         .accessibilityLabel(isFullScreen ? "退出全屏" : "全屏编辑")
                         .disabled(isSaving)
                     }
@@ -237,6 +241,7 @@ struct NoteEditorView: View {
                             Image(systemName: "rectangle.badge.plus")
                                 .font(.system(size: 16, weight: .semibold))
                         }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                         .accessibilityLabel("在新窗口中打开")
                         .disabled(isSaving)
                     }
@@ -257,6 +262,7 @@ struct NoteEditorView: View {
                             Image(systemName: isMarkdownPreviewing ? "pencil" : "eye")
                                 .font(.system(size: 16, weight: .semibold))
                         }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                         .accessibilityLabel(isMarkdownPreviewing ? "返回编辑" : "Markdown 预览")
                         .disabled(isSaving)
                     }
@@ -267,6 +273,7 @@ struct NoteEditorView: View {
                         Image(systemName: "square.on.square")
                             .font(.system(size: 16, weight: .semibold))
                     }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                     .accessibilityLabel("复制正文")
                     .disabled(noteBody.isEmpty)
 
@@ -287,6 +294,7 @@ struct NoteEditorView: View {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 16, weight: .semibold))
                     }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                     .accessibilityLabel("更多")
 
                     if MobileFeatureVisibility.encryptionActions && !isEditing {
@@ -297,32 +305,33 @@ struct NoteEditorView: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(isEncrypted ? DS.primaryDeep : DS.textSecondary)
                         }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                         .disabled(isSaving)
                     }
                 }
             }
-            .alert("保存失败", isPresented: $showError) {
-                Button("确定") {}
-            } message: {
-                Text(errorMessage)
-            }
-            .alert("删除笔记", isPresented: $showDeleteConfirmation) {
-                Button("取消", role: .cancel) {}
-                Button("删除", role: .destructive) {
+            .snDialog("保存失败", isPresented: $showError,
+            primary: AUIDialogAction("确定", closes: true, handler: {})
+        ) {
+            Text(errorMessage)
+        }
+            .snDialog("删除笔记", isPresented: $showDeleteConfirmation,
+            primary: AUIDialogAction("删除", destructive: true, closes: true, handler: {
                     deleteCurrentNote()
-                }
-            } message: {
-                Text(currentPersistedNote == nil ? "这条未保存的笔记将被丢弃。" : "删除后笔记将进入回收站。")
-            }
-            .alert(keyPromptTitle, isPresented: Binding(
+                }),
+            secondary: AUIDialogAction("取消", closes: true, handler: {})
+        ) {
+            Text(currentPersistedNote == nil ? "这条未保存的笔记将被丢弃。" : "删除后笔记将进入回收站。")
+        }
+            .snDialog(keyPromptTitle, isPresented: Binding(
                 get: { MobileFeatureVisibility.encryptionActions && showFirstKeyPrompt },
                 set: { showFirstKeyPrompt = $0 }
-            )) {
-                Button("打开密钥设置") { showKeySettings = true }
-                Button("取消", role: .cancel) {}
-            } message: {
-                Text(keyPromptMessage)
-            }
+            ),
+            primary: AUIDialogAction("打开密钥设置", closes: true, handler: { showKeySettings = true }),
+            secondary: AUIDialogAction("取消", closes: true, handler: {})
+        ) {
+            Text(keyPromptMessage)
+        }
             .iPadSettingsSheet(isPresented: $showKeySettings) {
                 SettingsView(
                     isPresented: $showKeySettings,

@@ -1,4 +1,5 @@
 import SwiftUI
+import AaronUI
 
 #if os(iOS)
 import AppIntents
@@ -22,7 +23,7 @@ struct SealNoteApp: App {
             if let noteID {
                 IPadNoteWindow(noteID: noteID)
             } else {
-                ContentUnavailableView("未选择笔记", systemImage: "note.text")
+                AUIEmptyState("未选择笔记", systemImage: "note.text")
             }
         }
         #endif

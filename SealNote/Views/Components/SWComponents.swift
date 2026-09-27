@@ -2,6 +2,7 @@ import SwiftUI
 
 #if os(iOS)
 import UIKit
+import AaronUI
 #endif
 
 struct SWShimmer<Content: View>: View {
@@ -76,6 +77,10 @@ struct SWStatusBadge: View {
     }
 
     var body: some View {
+        #if os(iOS)
+        AUIBadge(text, systemImage: systemImage, size: .sm, variant: .light,
+                 color: style == .error ? .red : (style == .success ? .green : .primary))
+        #else
         HStack(spacing: DS.s1) {
             if let systemImage {
                 Image(systemName: systemImage)
@@ -94,6 +99,7 @@ struct SWStatusBadge: View {
             Capsule()
                 .stroke(style.tint.opacity(0.2), lineWidth: 0.5)
         )
+        #endif
     }
 }
 
@@ -113,6 +119,16 @@ struct SWSectionPanel<Content: View>: View {
     }
 
     var body: some View {
+        #if os(iOS)
+        VStack(alignment: .leading, spacing: AUISpacing.sm) {
+            if let title { Text(title).auiText(.headlineSm).accessibilityAddTraits(.isHeader) }
+            AUIItemSectionGroup(size: .sm) { content() }
+            if let footer {
+                Text(footer).auiText(.caption).foregroundStyle(AUIColor.onSurfaceMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        #else
         VStack(alignment: .leading, spacing: DS.s2) {
             if let title {
                 Text(title)
@@ -134,6 +150,7 @@ struct SWSectionPanel<Content: View>: View {
                     .padding(.horizontal, DS.s1)
             }
         }
+        #endif
     }
 }
 
@@ -202,6 +219,12 @@ struct SWPageHeader: View {
     }
 
     var body: some View {
+        #if os(iOS)
+        AUIItemSurface {
+            AUIItem(title, description: subtitle, leading: .symbol(AUISymbol(systemImage: systemImage)))
+        }
+        .padding(.bottom, AUISpacing.lg)
+        #else
         HStack(alignment: .center, spacing: DS.s3) {
             Image(systemName: systemImage)
                 .font(.system(size: 18, weight: .semibold))
@@ -225,6 +248,7 @@ struct SWPageHeader: View {
         .padding(DS.cardPadding)
         .dsCardSurface(shadow: false)
         .padding(.bottom, DS.s4)
+        #endif
     }
 }
 
@@ -234,6 +258,7 @@ struct SWSettingsRow<Trailing: View>: View {
     let systemImage: String
     let tint: Color
     let trailingMinWidth: CGFloat
+    let tallControl: Bool
     @ViewBuilder let trailing: () -> Trailing
 
     init(
@@ -242,17 +267,24 @@ struct SWSettingsRow<Trailing: View>: View {
         systemImage: String,
         tint: Color = DS.primaryDeep,
         trailingMinWidth: CGFloat = 150,
+        tallControl: Bool = false,
         @ViewBuilder trailing: @escaping () -> Trailing = { EmptyView() }
     ) {
         self.title = title
         self.subtitle = subtitle
         self.systemImage = systemImage
         self.tint = tint
+        self.tallControl = tallControl
         self.trailingMinWidth = trailingMinWidth
         self.trailing = trailing
     }
 
     var body: some View {
+        #if os(iOS)
+        AUIItem(title, description: subtitle, size: tallControl ? .lg : .sm, leading: .icon(systemImage)) {
+            trailing()
+        }
+        #else
         HStack(spacing: DS.s3) {
             Image(systemName: systemImage)
                 .font(.system(size: 15, weight: .semibold))
@@ -283,15 +315,21 @@ struct SWSettingsRow<Trailing: View>: View {
         .padding(.horizontal, DS.s3)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
+        #endif
     }
 }
 
 struct SWRowDivider: View {
     var body: some View {
+        #if os(iOS)
+        // AUIItemSectionGroup owns separators on iOS.
+        EmptyView()
+        #else
         Rectangle()
             .fill(DS.line)
             .frame(height: 0.5)
             .padding(.leading, DS.s3 + 28 + DS.s3)
+        #endif
     }
 }
 
@@ -301,15 +339,12 @@ struct SWEmptyState: View {
     let systemImage: String
 
     var body: some View {
-        #if os(macOS)
+        #if os(iOS)
+        AUIEmptyState(title, systemImage: systemImage, description: message)
+        #else
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(DS.s6)
-        #else
-        content
-            .frame(maxWidth: .infinity)
-            .padding(DS.s6)
-            .dsCardSurface(shadow: false)
         #endif
     }
 
@@ -341,10 +376,15 @@ struct SWFilterChip: View {
     let action: () -> Void
 
     var body: some View {
+        #if os(iOS)
+        AUIButton(title, variant: isSelected ? .fill : .outline, size: .sm, action: action)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+        #else
         Button(action: action) {
             SWFilterChipLabel(title: title, isSelected: isSelected)
         }
         .buttonStyle(.plain)
+        #endif
     }
 }
 
@@ -353,6 +393,9 @@ struct SWFilterChipLabel: View {
     let isSelected: Bool
 
     var body: some View {
+        #if os(iOS)
+        AUIBadge(title, variant: isSelected ? .fill : .outline)
+        #else
         Text(title)
             .font(DS.caption())
             .foregroundColor(isSelected ? DS.primaryDeep : DS.textSecondary)
@@ -366,6 +409,7 @@ struct SWFilterChipLabel: View {
                 RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
                     .stroke(isSelected ? DS.primary.opacity(0.28) : DS.line, lineWidth: 0.5)
             )
+        #endif
     }
 }
 

@@ -14,6 +14,7 @@
 		000000000000000642000000 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000125 /* main.swift */; };
 		000000000000000643000000 /* sealnote in Embed sealnote CLI */ = {isa = PBXBuildFile; fileRef = 000000000000000000000123 /* sealnote */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		000000000000000644000000 /* AIGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000129 /* AIGuide.swift */; };
+		B886DBD5306938A000C092B6 /* AaronUI in Frameworks */ = {isa = PBXBuildFile; productRef = B886DBD4306938A000C092B6 /* AaronUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -144,6 +145,7 @@
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				B886DBD5306938A000C092B6 /* AaronUI in Frameworks */,
 				000000000000000630000000 /* MarkdownView in Frameworks */,
 			);
 		};
@@ -233,6 +235,7 @@
 			name = SealNote;
 			packageProductDependencies = (
 				000000000000000610000000 /* MarkdownView */,
+				B886DBD4306938A000C092B6 /* AaronUI */,
 			);
 			productName = SealNote;
 			productReference = 000000000000000000000120 /* SealNote.app */;
@@ -370,6 +373,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				000000000000000600000000 /* XCRemoteSwiftPackageReference "MarkdownView" */,
+				B886DBD3306938A000C092B6 /* XCRemoteSwiftPackageReference "AaronUI-SwiftUI" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 000000000000000000000020 /* Products */;
@@ -547,7 +551,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -611,7 +615,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -653,7 +657,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 0.10.0;
@@ -703,7 +707,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MARKETING_VERSION = 0.10.0;
@@ -731,7 +735,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xuweinan.sealnoteTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -752,7 +756,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.xuweinan.sealnoteTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -990,6 +994,14 @@
 				version = 3.0.0;
 			};
 		};
+		B886DBD3306938A000C092B6 /* XCRemoteSwiftPackageReference "AaronUI-SwiftUI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AaronXu-Lab/AaronUI-SwiftUI.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -997,6 +1009,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 000000000000000600000000 /* XCRemoteSwiftPackageReference "MarkdownView" */;
 			productName = MarkdownView;
+		};
+		B886DBD4306938A000C092B6 /* AaronUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B886DBD3306938A000C092B6 /* XCRemoteSwiftPackageReference "AaronUI-SwiftUI" */;
+			productName = AaronUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

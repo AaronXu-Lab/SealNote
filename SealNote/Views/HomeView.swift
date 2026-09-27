@@ -1,4 +1,5 @@
 import SwiftUI
+import AaronUI
 import UIKit
 
 enum MobileFeatureVisibility {
@@ -138,33 +139,32 @@ struct HomeView: View {
                 ShareSheet(items: [url])
             }
         }
-        .alert("发现本机笔记", isPresented: Binding(
+        .snDialog("发现本机笔记", isPresented: Binding(
             get: { vaultStore.strandedLocalDataDetected },
             set: { if !$0 { vaultStore.dismissStrandedDataPrompt() } }
-        )) {
-            Button("合并到 iCloud") {
+        ),
+            primary: AUIDialogAction("合并到 iCloud", closes: true, handler: {
                 Task { try? await vaultStore.mergeLocalDataIntoICloud() }
-            }
-            Button("暂不", role: .cancel) { vaultStore.dismissStrandedDataPrompt() }
-        } message: {
+            }),
+            secondary: AUIDialogAction("暂不", closes: true, handler: { vaultStore.dismissStrandedDataPrompt() })
+        ) {
             Text("检测到本机存储中还有笔记，可能是 iCloud 退出登录期间创建的。是否合并到当前 iCloud 保险库？重复的笔记会保留为「本机副本」。")
         }
-        .alert("保存密钥", isPresented: Binding(
+        .snDialog("保存密钥", isPresented: Binding(
             get: { MobileFeatureVisibility.encryptionActions && vaultStore.needsKeyExport },
             set: { isPresented in
                 if MobileFeatureVisibility.encryptionActions {
                     vaultStore.needsKeyExport = isPresented
                 }
             }
-        )) {
-            Button("立即保存") { exportKeyFile() }
-            Button("稍后", role: .cancel) { vaultStore.needsKeyExport = false }
-        } message: {
+        ),
+            primary: AUIDialogAction("立即保存", closes: true, handler: { exportKeyFile() }),
+            secondary: AUIDialogAction("稍后", closes: true, handler: { vaultStore.needsKeyExport = false })
+        ) {
             Text("密钥已经创建并加载。\n请导出并妥善保存密钥。丢失密钥后，加密笔记将无法恢复。")
         }
-        .alert("删除笔记", isPresented: $showDeleteConfirmation) {
-            Button("取消", role: .cancel) { noteToDelete = nil }
-            Button("删除", role: .destructive) {
+        .snDialog("删除笔记", isPresented: $showDeleteConfirmation,
+            primary: AUIDialogAction("删除", destructive: true, closes: true, handler: {
                 if let item = noteToDelete {
                     Task {
                         do {
@@ -175,51 +175,52 @@ struct HomeView: View {
                     }
                 }
                 noteToDelete = nil
-            }
-        } message: {
+            }),
+            secondary: AUIDialogAction("取消", closes: true, handler: { noteToDelete = nil })
+        ) {
             Text("删除后笔记将进入回收站，30 天后自动永久删除。")
         }
-        .alert("批量删除", isPresented: $showBatchDeleteConfirmation) {
-            Button("取消", role: .cancel) {}
-            Button("删除\(selectedItems.count)条", role: .destructive) {
+        .snDialog("批量删除", isPresented: $showBatchDeleteConfirmation,
+            primary: AUIDialogAction("删除\(selectedItems.count)条", destructive: true, closes: true, handler: {
                 Task { await performBatchDelete() }
-            }
-        } message: {
+            }),
+            secondary: AUIDialogAction("取消", closes: true, handler: {})
+        ) {
             Text("选中的笔记将移动至回收站，30 天后自动永久删除。")
         }
-        .alert("重命名笔记", isPresented: Binding(
+        .snDialog("重命名笔记", isPresented: Binding(
             get: { noteToRename != nil },
             set: { if !$0 { noteToRename = nil } }
-        )) {
-            TextField("标题", text: $renameTitle)
-            Button("取消", role: .cancel) { noteToRename = nil }
-            Button("保存") { renameSelectedNote() }
-                .disabled(renameTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        } message: {
+        ),
+            primary: AUIDialogAction("保存", disabled: renameTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, closes: true, handler: { renameSelectedNote() }),
+            secondary: AUIDialogAction("取消", closes: true, handler: { noteToRename = nil })
+        ) {
             Text("标题只影响列表和文件名，不会改写正文。")
+            AUIInput("标题", text: $renameTitle, label: "标题")
+                .accessibilityLabel("标题")
         }
-        .alert("操作结果", isPresented: $showBatchResult) {
-            Button("确定") { batchResultMessage = nil }
-        } message: {
+        .snDialog("操作结果", isPresented: $showBatchResult,
+            primary: AUIDialogAction("确定", closes: true, handler: { batchResultMessage = nil })
+        ) {
             Text(batchResultMessage ?? "")
         }
-        .alert(keyIssueTitle, isPresented: $showKeyIssueAlert) {
-            Button("打开密钥设置") { openKeySettings() }
-            Button("取消", role: .cancel) {}
-        } message: {
+        .snDialog(keyIssueTitle, isPresented: $showKeyIssueAlert,
+            primary: AUIDialogAction("打开密钥设置", closes: true, handler: { openKeySettings() }),
+            secondary: AUIDialogAction("取消", closes: true, handler: {})
+        ) {
             Text(keyIssueMessage)
         }
-        .alert("加密笔记", isPresented: $showEncryptedNoteUnavailable) {
-            Button("知道了", role: .cancel) {}
-        } message: {
+        .snDialog("加密笔记", isPresented: $showEncryptedNoteUnavailable,
+            primary: AUIDialogAction("知道了", closes: true, handler: {})
+        ) {
             Text("当前版本暂不支持在 iPhone 或 iPad 上查看和编辑加密笔记，请使用 Seal Note for Mac 打开。")
         }
-        .alert("错误", isPresented: Binding(
+        .snDialog("错误", isPresented: Binding(
             get: { vaultStore.lastError != nil },
             set: { if !$0 { vaultStore.lastError = nil } }
-        )) {
-            Button("确定") { vaultStore.lastError = nil }
-        } message: {
+        ),
+            primary: AUIDialogAction("确定", closes: true, handler: { vaultStore.lastError = nil })
+        ) {
             Text(vaultStore.lastError ?? "")
         }
         .task {
@@ -302,11 +303,12 @@ struct HomeView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .dsLiquidGlassToolbar()
                 .toolbar { homeToolbar }
-                .searchable(
-                    text: $searchQuery,
-                    placement: .toolbar,
-                    prompt: "搜索"
-                )
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    SNSearchField("搜索", text: $searchQuery)
+                        .padding(.horizontal, DS.s3)
+                        .padding(.vertical, DS.s2)
+                        .background(DS.bg)
+                }
                 .autocorrectionDisabled()
             }
             .animation(.easeInOut(duration: 0.2), value: vaultStore.filteredNotes.count)
@@ -327,12 +329,14 @@ struct HomeView: View {
                     Text(selectedItems.count == filteredItems.count && !filteredItems.isEmpty ? "取消全选" : "全选")
                         .font(DS.body())
                 }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .text))
                 .disabled(filteredItems.isEmpty)
             } else {
                 Button { openSettings() } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 17, weight: .semibold))
                 }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                 .accessibilityLabel("设置")
             }
         }
@@ -357,6 +361,7 @@ struct HomeView: View {
                     Image(systemName: "checkmark")
                         .font(.system(size: 17, weight: .semibold))
                 }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
             } else {
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -366,8 +371,8 @@ struct HomeView: View {
                     Image(systemName: "square.and.pencil")
                         .font(.system(size: 17, weight: .semibold))
                 }
+                    .buttonStyle(AUIButtonStyle(variant: .fill, size: .lg, contentType: .icon))
                 .accessibilityLabel("新建笔记")
-                .dsProminentSystemGlassButton()
             }
         }
 
@@ -378,6 +383,7 @@ struct HomeView: View {
                 } label: {
                     Label("复制", systemImage: "doc.on.doc")
                 }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .iconText))
                 .disabled(selectedItems.isEmpty)
 
                 Spacer()
@@ -387,6 +393,7 @@ struct HomeView: View {
                 } label: {
                     Label("删除", systemImage: "trash")
                 }
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .iconText))
                 .disabled(selectedItems.isEmpty)
             }
         }
@@ -396,21 +403,13 @@ struct HomeView: View {
         ScrollView {
             LazyVStack(spacing: DS.memoGap) {
                 ForEach(0..<3, id: \.self) { _ in
-                    SWShimmer {
-                        VStack(alignment: .leading, spacing: DS.s3) {
-                            RoundedRectangle(cornerRadius: DS.rSm, style: .continuous)
-                                .fill(DS.surfaceSunken)
-                                .frame(width: 120, height: 14)
-                            RoundedRectangle(cornerRadius: DS.rSm, style: .continuous)
-                                .fill(DS.surfaceSunken)
-                                .frame(height: 20)
-                            RoundedRectangle(cornerRadius: DS.rSm, style: .continuous)
-                                .fill(DS.surfaceSunken)
-                                .frame(width: 220, height: 14)
+                    AUIItemSurface {
+                        VStack(alignment: .leading, spacing: AUISpacing.lg) {
+                            AUISkeleton().frame(width: 120, height: 14)
+                            AUISkeleton().frame(height: 20)
+                            AUISkeleton().frame(maxWidth: 220).frame(height: 14)
                         }
-                        .padding(DS.cardPadding)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .dsCardSurface(shadow: false)
+                        .padding(.vertical, AUISpacing.lg)
                     }
                 }
             }
@@ -421,22 +420,8 @@ struct HomeView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: DS.s4) {
-            Spacer()
-            Image(systemName: "note.text")
-                .font(.system(size: 44, weight: .regular))
-                .foregroundColor(DS.textSubtle)
-            Text(emptyTitle)
-                .font(DS.title())
-                .foregroundColor(DS.textSecondary)
-            Text(emptyMessage)
-                .font(DS.body())
-                .foregroundColor(DS.textSubtle)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, DS.s6)
-            Spacer()
-        }
-        .frame(minHeight: 360)
+        AUIEmptyState(emptyTitle, systemImage: "note.text", description: emptyMessage)
+            .frame(minHeight: 360)
     }
 
     private var emptyTitle: String {
@@ -446,7 +431,7 @@ struct HomeView: View {
 
     private var emptyMessage: String {
         if !vaultStore.searchText.isEmpty { return "换个关键词试试。" }
-        return "点击下方按钮创建第一条笔记。"
+        return "点击右上角按钮创建第一条笔记。"
     }
 
     private var homeFeed: some View {
@@ -521,7 +506,7 @@ struct HomeView: View {
                             .foregroundColor(DS.primaryDeep)
                             .lineLimit(1)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm))
                 }
             }
             .padding(.horizontal, DS.s1)
@@ -547,50 +532,18 @@ struct HomeView: View {
     }
 
     private func tagChip(title: String, count: Int, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: DS.s1) {
-                Text(title)
-                    .lineLimit(1)
-                Text("\(count)")
-                    .foregroundColor(isSelected ? DS.onPrimary.opacity(0.78) : DS.textSubtle)
-            }
-            .font(DS.caption())
-            .foregroundColor(isSelected ? DS.onPrimary : DS.textBody)
-            .padding(.horizontal, DS.s3)
-            .frame(height: 30)
-            .background(isSelected ? DS.primary : DS.surfaceCard)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(isSelected ? Color.clear : DS.line, lineWidth: 0.5)
-            )
-        }
-        .buttonStyle(.plain)
+        AUIButton("\(title) · \(count)", variant: isSelected ? .fill : .outline, size: .sm, action: action)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func syncErrorBanner(_ message: String) -> some View {
-        HStack(spacing: DS.s3) {
-            Image(systemName: "exclamationmark.icloud")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(DS.destructive)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("同步失败")
-                    .font(DS.body())
-                    .foregroundColor(DS.textEmphasize)
-                Text(message)
-                    .font(DS.caption())
-                    .foregroundColor(DS.textSecondary)
-                    .lineLimit(2)
+        AUIItemSurface(size: .sm) {
+            AUIItem("同步失败", description: message, size: .sm, leading: .icon("exclamationmark.icloud")) {
+                AUIButton("重试", variant: .light, size: .sm) {
+                    Task { await vaultStore.refreshFromStorage() }
+                }
             }
-            Spacer()
-            Button("重试") {
-                Task { await vaultStore.refreshFromStorage() }
-            }
-            .font(DS.caption())
-            .foregroundColor(DS.primaryDeep)
         }
-        .padding(DS.s3)
-        .dsCardSurface(cornerRadius: DS.rMd, shadow: false)
     }
 
     private var listSummary: some View {
@@ -866,9 +819,7 @@ struct PrivacyScreenView: View {
             DS.bg.ignoresSafeArea()
 
             VStack(spacing: DS.s4) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 44, weight: .regular))
-                    .foregroundColor(DS.textSecondary)
+                AUISymbol(systemImage: "lock.fill").frame(width: 56, height: 56)
 
                 Text("Seal Note")
                     .font(DS.page())
@@ -884,50 +835,9 @@ struct ErrorView: View {
     let retryAction: () -> Void
 
     var body: some View {
-        VStack(spacing: DS.s6) {
-            Spacer()
-
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 44, weight: .regular))
-                .foregroundColor(DS.destructive)
-
-            Text("出错了")
-                .font(DS.title())
-                .foregroundColor(DS.textEmphasize)
-
-            Text(message)
-                .font(DS.body())
-                .foregroundColor(DS.textSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-
-            Button("重试", action: retryAction)
-                .font(DS.body())
-                .foregroundColor(DS.onPrimary)
-                .padding(.horizontal, DS.s6)
-                .padding(.vertical, 12)
-                .background(DS.primary)
-                .clipShape(RoundedRectangle(cornerRadius: DS.rSm, style: .continuous))
-
-            Spacer()
+        AUIEmptyState("出错了", systemImage: "exclamationmark.triangle", description: message) {
+            AUIButton("重试", variant: .fill, action: retryAction)
         }
         .dsCanvasBackground()
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func dsProminentSystemGlassButton() -> some View {
-        if #available(iOS 26.0, *) {
-            self
-                .buttonStyle(.glassProminent)
-                .buttonBorderShape(.circle)
-                .tint(DS.primary)
-        } else {
-            self
-                .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.circle)
-                .tint(DS.primary)
-        }
     }
 }

@@ -1,5 +1,6 @@
 #if os(iOS)
 import SwiftUI
+import AaronUI
 import Combine
 import UIKit
 
@@ -102,7 +103,7 @@ struct IPadNoteWindow: View {
         Group {
             switch loadState {
             case .loading:
-                ProgressView("正在载入笔记…")
+                AUILoading(label: "正在载入笔记…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(DS.surfaceRaised.ignoresSafeArea())
 
@@ -117,17 +118,15 @@ struct IPadNoteWindow: View {
                 }
 
             case .failed(let message):
-                ContentUnavailableView {
-                    Label("无法打开笔记", systemImage: "exclamationmark.icloud")
-                } description: {
-                    Text(message)
-                } actions: {
-                    Button("重试") {
+                AUIEmptyState("无法打开笔记", systemImage: "exclamationmark.icloud", description: message) {
+                    HStack {
+                    AUIButton("重试", variant: .fill) {
                         loadState = .loading
                         Task { await loadNote() }
                     }
-                    Button("关闭窗口", role: .cancel) {
+                    AUIButton("关闭窗口", role: .cancel) {
                         dismiss()
+                    }
                     }
                 }
             }

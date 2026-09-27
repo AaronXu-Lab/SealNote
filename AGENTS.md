@@ -1,6 +1,6 @@
 # AGENTS.md
 
-SealNote（“Seal Note”）是一款基于 SwiftUI 的、采用端到端加密的快速记录便签应用。它通过单一代码库构建两个 App Target：**SealNote** (iOS 17+，同时支持 iPhone/iPad) 和 **SealNoteMac** (macOS 26+)；工程另外包含 `SealNoteCLI`、`SealNoteTests` 和 `SealNoteMacTests` Targets。
+SealNote（“Seal Note”）是一款基于 SwiftUI 的、采用端到端加密的快速记录便签应用。它通过单一代码库构建两个 App Target：**SealNote** (iOS 26+，同时支持 iPhone/iPad) 和 **SealNoteMac** (macOS 26+)；工程另外包含 `SealNoteCLI`、`SealNoteTests` 和 `SealNoteMacTests` Targets。
 
 ## 构建 / 运行 / 测试
 
