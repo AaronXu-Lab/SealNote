@@ -13,11 +13,11 @@ SealNote（“Seal Note”）是一款基于 SwiftUI 的、采用端到端加密
 
 ## 平台隔离
 
-共享代码位于 `SealNote/` 的根目录下。平台特定的代码通过 `#if os(iOS)` / `#if os(macOS)` 以及 `Mac/` 子文件夹进行隔离，macOS 子文件夹包括：`App/Mac`、`Views/Mac`、`Stores/Mac`。macOS 版本是一个菜单栏应用（使用 `MacMenuBarController`、`NSStatusItem`），带有悬浮的便签窗口 (`StickyNoteWindow`)；iOS/iPadOS 版本使用 `WindowGroup` → `ContentView`，当前主界面仍以 `NavigationStack` 为基础，iPad 自适应导航应在 iOS 侧实现，不要影响 macOS UI。新增功能前先确定它是共享功能、iOS/iPadOS 专属功能还是 macOS 专属功能，然后再放置文件。
+共享代码位于 `SealNote/` 的根目录下。平台特定的代码通过 `#if os(iOS)` / `#if os(macOS)` 以及 `Mac/` 子文件夹进行隔离，macOS 子文件夹包括：`App/Mac`、`Views/Mac`、`Stores/Mac`。macOS 版本是一个菜单栏应用（使用 `MacMenuBarController`、`NSStatusItem`），带有悬浮的便签窗口 (`StickyNoteWindow`)；iOS/iPadOS 版本使用 `WindowGroup` → `ContentView`，当前主界面为自适应笔记列表，iPad 支持双列布局及独立笔记窗口，设置使用 `NavigationStack`；iPad 自适应导航应在 iOS 侧实现，不要影响 macOS UI。新增功能前先确定它是共享功能、iOS/iPadOS 专属功能还是 macOS 专属功能，然后再放置文件。
 
 ## 存储架构（核心抽象）
 
-便签是 **Markdown 文件，而不是数据库**。每篇便签对应一个 `<noteId>.md` 文件：正常笔记文件位于 vault 根目录，废纸篓文件位于 `trash/`，由 YAML 属性前言（frontmatter，包含 `note_id`、`created_at`、`updated_at`，可选 `title`）和正文组成。`MarkdownNoteFile.parse(from:)` 负责手写的属性前言解析。
+便签是 **Markdown 文件，而不是数据库**。每篇便签对应一个 `.md` 文件（通常按标题命名，重名时添加后缀；旧文件或冲突场景也可能使用 noteId）：正常笔记文件位于 vault 根目录，废纸篓文件位于 `trash/`，由 YAML 属性前言（frontmatter，包含 `note_id`、`created_at`、`updated_at`，可选 `title`）和正文组成。`MarkdownNoteFile.parse(from:)` 负责手写的属性前言解析。
 
 - `VaultStorage`（协议）对文件系统进行了抽象。有两个实现类：**`ICloudVaultStorage`**（首选）和 **`LocalFallbackStorage`**。在 iOS/iPadOS 的默认初始化流程中，`VaultStore` 会根据 `SettingsStore.pinnedStorageRoot` 和 iCloud 可用性选择存储；首次选择后会持久化根目录，避免 iCloud 短暂不可用时静默分叉数据。iCloud 根目录不可用但已固定为 iCloud 时，当前启动会临时使用本地存储并标记 mismatch，不能把它当成新的独立 vault。
 - `NoteIndex` 存储在 vault 根目录的 `notes.json` 中，是便签清单：每个便签的 `NoteIndexEntry` 记录了 `mode`（`.plain`/`.encrypted`）、`location` 以及废纸篓元数据（`deletedAt`、`purgeAfter`、`originalLocation`）。在修改便签时，请保持索引与实际的 `.md` 文件同步。
@@ -25,7 +25,7 @@ SealNote（“Seal Note”）是一款基于 SwiftUI 的、采用端到端加密
 
 ## 加密模型
 
-- 钥匙串 (`KeychainStore`) 中存储了单一的 256 位对称保险库密钥 (`VaultKeyManager`)。该密钥可以导出/导入为 Base64 格式，以便相同的保险库可以在不同设备间解密 (`needsKeyExport`)。
+- iOS / iPadOS 将 256 位保险库密钥的 Base64 材料保存在本机钥匙串 (`KeychainStore`)，不启用 iCloud Keychain 同步；macOS 只持久化所选 `.snkey` 文件的安全作用域书签，按需读取原文件，不将密钥材料复制到 Keychain。`.snkey` 是包含 Base64 密钥材料及身份元数据的 JSON 文件，由 `VaultKeyManager` 解析，可供跨设备导入。当前移动端加密操作入口由 `MobileFeatureVisibility.encryptionActions` 暂停。
 - 每篇便签的加密**仅针对正文**：属性前言（frontmatter）保持明文，以便索引和同步仍能正常工作。`CryptoService.encryptMarkdownBody` 使用 AES-GCM 加密，布局为 `nonce ‖ ciphertext ‖ tag`，进行 base64url 编码，并带有字面前缀 **`snenc:v1:`**。`MarkdownNoteFile.isEncrypted` 根据该前缀进行判断 —— 如果该前缀发生变更，请确保 `MarkdownNoteFile` 和 `CryptoService` 中的 `encryptedPrefix` 保持一致。
 - 当密钥缺失时，明文正文将通过 `NoteObfuscator` 显示为混淆的 base64 文本，以便锁定的内容在视觉上与真实的密文预览相匹配。
 

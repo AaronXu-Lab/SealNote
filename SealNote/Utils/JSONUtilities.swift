@@ -1,11 +1,5 @@
 import Foundation
 
-enum JSONError: Error {
-    case encodingFailed
-    case decodingFailed
-    case invalidData
-}
-
 struct JSONEncoder {
     static let `default`: Foundation.JSONEncoder = {
         let encoder = Foundation.JSONEncoder()

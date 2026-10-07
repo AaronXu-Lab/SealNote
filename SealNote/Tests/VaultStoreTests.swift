@@ -1630,15 +1630,9 @@ final class VaultStoreTests: XCTestCase {
         try await store.createKey()
         _ = try await store.createNote(body: "机密", isEncrypted: true)
 
-        // The old code silently deleted the key here when this flag was set.
-        settings.autoUnloadKeyOnForeground = true
         await store.handleEnterForeground()
         XCTAssertEqual(keyStore.allVaultIdCandidates().count, 1)
         XCTAssertEqual(store.decryptedNotes.count, 1)
-
-        settings.autoUnloadKeyOnForeground = false
-        await store.handleEnterForeground()
-        XCTAssertEqual(keyStore.allVaultIdCandidates().count, 1)
 
         try? FileManager.default.removeItem(at: tmpDir)
     }

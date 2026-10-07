@@ -1,6 +1,14 @@
 # iOS / iPadOS AaronUI 组件替换清单
 
-本次使用 `AaronUI-SwiftUI 0.1.1`。范围为 SealNote iOS / iPadOS，最低系统版本为 iOS 26。macOS 继续使用原来的组件实现。
+当前使用 `AaronUI-SwiftUI 0.3.0`。范围为 Seal Note iOS / iPadOS，最低系统版本为 iOS 26。macOS 继续使用原来的组件实现。
+
+## 0.3.0 升级检查（2026-10-07）
+
+- 从 0.1.1 升至远程最新发布标签 0.3.0，更新最低依赖版本与 `Package.resolved`；其他依赖版本不变。
+- 核对 Button、Input、Item、Selection、EmptyState、Dialog 和语义色接口；现有调用保持兼容，无需修改业务代码。0.3.0 移除的旧 Toast API 未被本项目使用。
+- 开关、复选框和单选框的按压反馈现在只缩放指示器；Item 支持窄屏下将较宽的尾部控件移到下一行，并允许标题换行。这些变化由组件库直接提供。
+- 新增 Slider 和主题色覆盖接口属于可选能力，本次升级保留现有系统滑块与配色策略。
+- Xcode Beta：`SealNote` Scheme 在 `iPad Air 11-inch (M4)` / iOS 27 模拟器目标构建通过。本次完成源码兼容性检查与编译验证，未进行运行时交互或视觉验收。
 
 ## 已替换
 
@@ -30,7 +38,7 @@
 | 组件 | 位置 | 保留原因 |
 | --- | --- | --- |
 | Markdown 正文编辑器、语法高亮及预览 | `NoteEditorContentView.swift`、`MarkdownHighlighter.swift`、`NoteCardView.swift` | `AUIInputArea` 是普通多行输入，不提供富文本高亮、光标／选区、格式操作、中文输入处理及现有编辑会话接口。卡片表面已替换，正文渲染保留。 |
-| 字号与行高滑块 | `SettingsView.swift` | 0.1.1 没有 Slider；保留范围、步进和数值绑定，外层行改为 AUIItem。 |
+| 字号与行高滑块 | `SettingsView.swift` | 初次迁移时 0.1.1 没有 Slider；0.3.0 已提供 AUISlider，本次依赖升级保留现有系统滑块、范围、步进和数值绑定，外层行使用 AUIItem。 |
 | 系统导航栈、返回按钮、导航工具栏容器 | 首页、设置和编辑器 | `AUITopbar` 是布局组件，不负责导航历史、系统返回手势、工具栏溢出或窗口命令。可替换的工具栏按钮已使用库样式。 |
 | 系统菜单、上下文菜单及滑动操作 | 笔记卡片、编辑器、回收站 | AaronUI 的 `Menu.swift` 明确将弹出菜单映射为原生 `Menu` / `Button` / `Section`；`AUIMenuPanel` 只适用于内联面板。库没有 swipe actions 替代品。菜单触发按钮已接入库样式。 |
 | 笔记编辑 Sheet、iPad 全屏切换和独立窗口 | `HomeView.swift`、`NoteEditorView.swift`、`IPadNoteWindow.swift` | `auiSheet` 自带顶部栏、滚动容器和预设 detents，不支持当前编辑器焦点、交互关闭限制、大小切换及窗口移交协议。保留容器及 EditorSession 生命周期。 |
@@ -44,11 +52,11 @@
 
 ## 组件库限制
 
-- AaronUI 0.1.1 使用自身的浅色／深色语义色，没有产品主题色注入接口。主题选择仍作用于 SealNote 的画布、正文和保留的系统控件；AaronUI 控件采用组件库自身颜色。
+- AaronUI 0.3.0 已提供 `AUIColorTheme` 浅色／深色语义色覆盖接口，本项目尚未接入。主题选择仍作用于 Seal Note 的画布、正文和保留的系统控件；AaronUI 控件采用组件库自身颜色。
 - Badge 没有 warning 色值，警示状态通过原有文字／图标表达，未在消费端复制一套黄色徽标。
 - 未修改远程组件库，未开启原先暂停的加密、标签、Markdown 预览或批量操作功能。
 
-## 验证结果
+## 初次迁移验证结果（0.1.1）
 
 - Xcode Beta：SealNote iOS Simulator 构建通过；SealNoteMac 构建通过。
 - iPhone 17 Pro / iOS 27 模拟器：检查首页、设置导航、字号／行高行、开关和重命名弹窗；修正滑块行高度、弹窗内容重叠及自定义 ToggleStyle 不遵循 labelsHidden 导致的重复标签。取消重命名后原笔记保持不变。

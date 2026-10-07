@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AaronUI
 import AppKit
 import UniformTypeIdentifiers
 
@@ -32,37 +33,23 @@ struct MacSettingsView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            generalTab
-                .tabItem {
-                    Label("通用", systemImage: "gear")
-                }
-                .tag(Tab.general)
-
-            editorTab
-                .tabItem {
-                    Label("编辑器", systemImage: "textformat")
-                }
-                .tag(Tab.editor)
-
-            shortcutTab
-                .tabItem {
-                    Label("快捷键", systemImage: "keyboard")
-                }
-                .tag(Tab.shortcuts)
-
-            advancedTab
-                .tabItem {
-                    Label("高级", systemImage: "gearshape.2")
-                }
-                .tag(Tab.advanced)
-
-            aboutTab
-                .tabItem {
-                    Label("关于", systemImage: "info.circle")
-                }
-                .tag(Tab.about)
+        VStack(spacing: AUISpacing.lg) {
+            AUITabs(selection: $selectedTab, items: [
+                AUISegmentItem("通用", value: .general, systemImage: "gear"),
+                AUISegmentItem("编辑器", value: .editor, systemImage: "textformat"),
+                AUISegmentItem("快捷键", value: .shortcuts, systemImage: "keyboard"),
+                AUISegmentItem("高级", value: .advanced, systemImage: "gearshape.2"),
+                AUISegmentItem("关于", value: .about, systemImage: "info.circle")
+            ], content: .iconText, width: .fill)
+            switch selectedTab {
+            case .general: generalTab
+            case .editor: editorTab
+            case .shortcuts: shortcutTab
+            case .advanced: advancedTab
+            case .about: aboutTab
+            }
         }
+        .macAaronUITheme()
         .padding(.horizontal, DS.s4)
         .padding(.bottom, DS.s4)
         .frame(
@@ -127,52 +114,37 @@ struct MacSettingsView: View {
             macPanel("菜单栏") {
                 toggleRow("启动时打开菜单栏应用", systemImage: "menubar.rectangle", isOn: launchAtLoginBinding)
 
-                SWRowDivider()
-
-                SWSettingsRow("最近笔记数量", systemImage: "list.number") {
-                    Picker("最近笔记数量", selection: recentNotesLimitBinding) {
-                        ForEach(SettingsStore.macRecentNotesLimitOptions, id: \.self) { count in
-                            Text("\(count)").tag(count)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .tint(DS.primary)
+                AUIItem("最近笔记数量", leading: .icon("list.number")) {
+                    AUISegmented(selection: recentNotesLimitBinding, items: SettingsStore.macRecentNotesLimitOptions.map { AUISegmentItem(String($0), value: $0) }, size: .sm)
+                    .accessibilityLabel("最近笔记数量")
                 }
             }
 
             macPanel("笔记") {
                 toggleRow("笔记默认置顶", systemImage: "pin.fill", isOn: $settings.pinNewNotesByDefault)
-                SWRowDivider()
+
                 toggleRow("新建笔记自动加密", subtitle: vaultStore.isKeyLoaded ? nil : "需要先在“密钥”中创建或加载密钥。", systemImage: "lock", isOn: newEncryptedNoteBinding)
                     .disabled(!vaultStore.isKeyLoaded)
             }
 
             macPanel("存储") {
-                SWSettingsRow(
+                AUIItem(
                     vaultStore.isUsingICloudStorage ? "iCloud 文件夹" : "本地文件夹",
-                    subtitle: vaultStore.isUsingICloudStorage ? "笔记文件直接位于 iCloud Drive 公开文件夹中。" : "当前未使用 iCloud，已回退到本地存储。",
-                    systemImage: vaultStore.isUsingICloudStorage ? "icloud" : "folder",
-                    tint: vaultStore.isUsingICloudStorage ? DS.primaryDeep : DS.pro
+                    description: vaultStore.isUsingICloudStorage ? "笔记文件直接位于 iCloud Drive 公开文件夹中。" : "当前未使用 iCloud，已回退到本地存储。",
+                    leading: .icon(vaultStore.isUsingICloudStorage ? "icloud" : "folder")
                 ) {
                     Button("打开") {
                         openStorageFolder()
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(AUIButtonStyle(variant: .outline))
                     .controlSize(.regular)
                 }
             }
 
             macPanel("主题") {
-                SWSettingsRow("主题色", systemImage: "paintpalette", tint: DS.primaryDeep) {
-                    Picker("主题色", selection: $settings.appTheme) {
-                        ForEach(AppTheme.allCases) { theme in
-                            Text(theme.title).tag(theme)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .tint(DS.primary)
+                AUIItem("主题色", leading: .icon("paintpalette")) {
+                    AUISegmented(selection: $settings.appTheme, items: AppTheme.allCases.map { AUISegmentItem($0.title, value: $0) }, size: .sm)
+                    .accessibilityLabel("主题色")
                 }
             }
         }
@@ -182,11 +154,10 @@ struct MacSettingsView: View {
         panelStack {
             let keyStatus = vaultStore.macKeyStatus
             macPanel("密钥状态") {
-                SWSettingsRow(
+                AUIItem(
                     keyStatusTitle(keyStatus),
-                    subtitle: keyManagementSubtitle(for: keyStatus),
-                    systemImage: keyManagementIcon(for: keyStatus),
-                    tint: keyManagementTint(for: keyStatus)
+                    description: keyManagementSubtitle(for: keyStatus),
+                    leading: .icon(keyManagementIcon(for: keyStatus))
                 ) {
                     keyManagementActions(for: keyStatus)
                 }
@@ -203,7 +174,7 @@ struct MacSettingsView: View {
                 // Encrypted-note CLI access is temporarily hidden for
                 // product-positioning reasons. Keep this UI implementation so
                 // it can be restored without rebuilding the interaction.
-//                SWRowDivider()
+
 //
 //                toggleRow(
 //                    "允许访问加密笔记",
@@ -221,7 +192,7 @@ struct MacSettingsView: View {
                 Button("复制安装命令") {
                     copyToPasteboard(cliInstallCommand)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(AUIButtonStyle(variant: .outline))
                 .controlSize(.regular)
             }
         }
@@ -229,7 +200,7 @@ struct MacSettingsView: View {
 
     private var aboutTab: some View {
         panelStack {
-            SWSectionPanel {
+            AUIItemSurface {
                 VStack(spacing: DS.s8){
                     VStack(spacing: DS.s6) {
                         aboutLogo
@@ -274,32 +245,32 @@ struct MacSettingsView: View {
             }
 
             macPanel("版本更新") {
-                SWSettingsRow("检查更新", subtitle: "从 GitHub Release 检查 Seal Note 的最新版本。", systemImage: "arrow.triangle.2.circlepath") {
+                AUIItem("检查更新", description: "从 GitHub Release 检查 Seal Note 的最新版本。", leading: .icon("arrow.triangle.2.circlepath")) {
                     Button(isCheckingForUpdates ? "正在检查…" : "检查更新") {
                         checkForUpdates()
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(AUIButtonStyle(variant: .outline))
                     .controlSize(.regular)
                     .disabled(isCheckingForUpdates)
                 }
             }
 
             macPanel("组件") {
-                SWSettingsRow("查看组件", systemImage: "square.grid.2x2") {
+                AUIItem("查看组件", leading: .icon("square.grid.2x2")) {
                     Button {
                         MacMenuBarController.shared.openComponentCatalogWindow()
                     } label: {
                         Image(systemName: "arrow.up.right")
                             .font(.body)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(AUIButtonStyle(variant: .outline))
                     .controlSize(.regular)
                     .help("打开组件目录")
                 }
             }
 
             macPanel("维护日志") {
-                SWSettingsRow("开启日志记录", subtitle: "记录保存、索引等元数据；不记录正文或密钥。", systemImage: "doc.text.magnifyingglass") {
+                AUIItem("开启日志记录", description: "记录保存、索引等元数据；不记录正文或密钥。", leading: .icon("doc.text.magnifyingglass")) {
                     if settings.maintenanceLoggingEnabled {
                         HStack(spacing: DS.s2) {
                             Button {
@@ -307,21 +278,21 @@ struct MacSettingsView: View {
                             } label: {
                                 Image(systemName: "folder")
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(AUIButtonStyle(variant: .outline))
                             .controlSize(.regular)
                             .help("打开日志文件夹")
 
                             Button("关闭", role: .destructive) {
                                 settings.maintenanceLoggingEnabled = false
                             }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(AUIButtonStyle(variant: .outline))
                             .controlSize(.regular)
                         }
                     } else {
                         Button("开启") {
                             settings.maintenanceLoggingEnabled = true
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(AUIButtonStyle(variant: .fill))
                         .controlSize(.regular)
                         .tint(DS.primary)
                     }
@@ -336,7 +307,7 @@ struct MacSettingsView: View {
                 Button("恢复所有默认") {
                     isShowingRestoreDefaultsConfirmation = true
                 }
-                .buttonStyle(.link)
+                .buttonStyle(AUIButtonStyle(variant: .ghost))
                 #endif
             }
             .font(DS.caption())
@@ -391,13 +362,13 @@ struct MacSettingsView: View {
     private var editorTab: some View {
         panelStack {
             macPanel("编辑体验") {
-                SWSettingsRow("编辑字号", systemImage: "textformat.size") {
+                AUIItem("编辑字号", leading: .icon("textformat.size")) {
                     VStack(alignment: .trailing, spacing: DS.s1) {
                         Text(String(format: "%.0f", settings.editorFontSize))
                             .font(DS.caption())
                             .foregroundColor(DS.textSecondary)
                             .monospacedDigit()
-                        Slider(
+                        AUISlider("编辑字号",
                             value: fontSizeBinding,
                             in: SettingsStore.editorFontSizeRange,
                             step: SettingsStore.editorFontSizeStep
@@ -407,15 +378,13 @@ struct MacSettingsView: View {
                     }
                 }
 
-                SWRowDivider()
-
-                SWSettingsRow("行高", systemImage: "line.3.horizontal.decrease") {
+                AUIItem("行高", leading: .icon("line.3.horizontal.decrease")) {
                     VStack(alignment: .trailing, spacing: DS.s1) {
                         Text(String(format: "%.2fx", settings.editorLineHeightMultiple))
                             .font(DS.caption())
                             .foregroundColor(DS.textSecondary)
                             .monospacedDigit()
-                        Slider(
+                        AUISlider("行高",
                             value: lineHeightBinding,
                             in: SettingsStore.editorLineHeightRange,
                             step: 0.05
@@ -434,21 +403,14 @@ struct MacSettingsView: View {
                     isOn: $settings.limitEditorMaximumWidth
                 )
 
-                SWRowDivider()
-
                 toggleRow("关闭空白笔记时自动丢弃", systemImage: "trash", isOn: $settings.autoDeleteEmptyNotes)
 
-                SWRowDivider()
-
                 toggleRow("自动命名笔记", subtitle: "开启后每次自动保存都会按正文重新命名；关闭时仅保留手动标题和首次标题规则。", systemImage: "text.cursor", isOn: $settings.autoRenameNotesOnSave)
-
-                SWRowDivider()
 
                 toggleRow("不将 Hex 色值识别为标签", subtitle: "忽略 #RRGGBB 和含透明度的 #RRGGBBAA 色值。", systemImage: "paintpalette", isOn: $settings.excludeHexColorsFromTags)
             }
         }
     }
-
 
     private var shortcutTab: some View {
         panelStack {
@@ -504,7 +466,7 @@ struct MacSettingsView: View {
                     shortcutStore.resetAllShortcuts()
                     recordingAction = nil
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(AUIButtonStyle(variant: .outline))
                 .controlSize(.regular)
             }
         }
@@ -531,19 +493,6 @@ struct MacSettingsView: View {
             return "密钥正在下载"
         case .invalid:
             return "密钥失效"
-        }
-    }
-
-    private func keyStatusSubtitle(_ status: MacVaultKeyStatus) -> String {
-        switch status {
-        case .noReference:
-            return "加载密钥后才能查看加密笔记正文"
-        case .available:
-            return "这台 Mac 已经可以解锁加密笔记"
-        case .invalid(.keyDownloadPending):
-            return "密钥文件仍在从 iCloud 下载，请稍后再试"
-        case .invalid:
-            return "密钥需要重新定位后才能解锁加密笔记"
         }
     }
 
@@ -592,17 +541,6 @@ struct MacSettingsView: View {
         }
     }
 
-    private func keyManagementTint(for status: MacVaultKeyStatus) -> Color {
-        switch status {
-        case .noReference:
-            return DS.textSubtle
-        case .available:
-            return DS.primaryDeep
-        case .invalid:
-            return DS.destructive
-        }
-    }
-
     @ViewBuilder
     private func keyManagementActions(for status: MacVaultKeyStatus) -> some View {
         switch status {
@@ -612,14 +550,14 @@ struct MacSettingsView: View {
                     Button("加载已有密钥") {
                         loadKey()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(AUIButtonStyle(variant: .fill))
                     .controlSize(.regular)
                     .tint(DS.primary)
 
                     Button("创建新密钥") {
                         createNewKey()
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(AUIButtonStyle(variant: .outline))
                     .controlSize(.regular)
                 }
             } else {
@@ -627,14 +565,14 @@ struct MacSettingsView: View {
                     Button("创建新密钥") {
                         createNewKey()
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(AUIButtonStyle(variant: .fill))
                     .controlSize(.regular)
                     .tint(DS.primary)
 
                     Button("加载已有密钥") {
                         loadKey()
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(AUIButtonStyle(variant: .outline))
                     .controlSize(.regular)
                 }
             }
@@ -645,14 +583,14 @@ struct MacSettingsView: View {
                 } label: {
                     Image(systemName: "folder")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(AUIButtonStyle(variant: .outline))
                 .controlSize(.regular)
                 .help("打开密钥位置")
 
                 Button("移除引用", role: .destructive) {
                     unloadKey()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(AUIButtonStyle(variant: .outline))
                 .controlSize(.regular)
             }
         case .invalid:
@@ -660,14 +598,14 @@ struct MacSettingsView: View {
                 Button("重新定位密钥") {
                     loadKey()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(AUIButtonStyle(variant: .fill))
                 .controlSize(.regular)
                 .tint(DS.primary)
 
                 Button("移除引用", role: .destructive) {
                     unloadKey()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(AUIButtonStyle(variant: .outline))
                 .controlSize(.regular)
             }
         }
@@ -794,26 +732,20 @@ struct MacSettingsView: View {
         _ title: String,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        SWSectionPanel {
-            VStack(alignment: .leading, spacing: DS.s2) {
-                content()
-            }
-            .padding(.horizontal, DS.s3)
-            .padding(.vertical, DS.s2)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        AUIItemSectionGroup(size: .sm) {
+            content()
         }
     }
 
     private func toggleRow(_ title: String, subtitle: String? = nil, systemImage: String? = nil, isOn: Binding<Bool>) -> some View {
-        SWSettingsRow(
+        AUIItem(
             title,
-            subtitle: subtitle,
-            systemImage: systemImage ?? (isOn.wrappedValue ? "checkmark.circle.fill" : "circle"),
-            trailingMinWidth: 72
+            description: subtitle,
+            leading: .icon(systemImage ?? (isOn.wrappedValue ? "checkmark.circle.fill" : "circle"))
         ) {
-            Toggle("", isOn: isOn)
+            Toggle(isOn: isOn) { EmptyView() }.accessibilityLabel(title)
                 .labelsHidden()
-                .toggleStyle(.switch)
+                .toggleStyle(.auiSwitch)
                 .tint(DS.primary)
         }
     }
@@ -847,7 +779,7 @@ struct MacSettingsView: View {
                 Label(isRecording ? "正在录制" : "录制快捷键", systemImage: isRecording ? "record.circle.fill" : "record.circle")
                     .labelStyle(.iconOnly)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))
             .controlSize(.regular)
             .tint(isRecording ? DS.primary : nil)
             .help(isRecording ? "正在录制" : "录制快捷键")
@@ -861,12 +793,6 @@ struct MacSettingsView: View {
                 RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
                     .stroke(DS.primary.opacity(0.26), lineWidth: 0.5)
             }
-        }
-    }
-
-    private func statusRow(_ title: String, systemImage: String, tint: Color) -> some View {
-        SWSettingsRow(title, systemImage: systemImage, tint: tint) {
-            EmptyView()
         }
     }
 

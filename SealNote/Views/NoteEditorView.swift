@@ -37,10 +37,7 @@ struct NoteEditorView: View {
     @State private var isSaving = false
     @State private var editorSelection = NSRange(location: 0, length: 0)
     @State private var persistedNote: Note?
-    @State private var lastSavedBody = ""
-    @State private var lastSavedEncrypted = false
     @State private var didConfigureInitialState = false
-    @State private var didDiscardEmptyNote = false
     @State private var shouldSkipDisappearPersistence = false
     @State private var isMarkdownPreviewing = false
     @State private var isTextEditing = false
@@ -99,8 +96,6 @@ struct NoteEditorView: View {
             _noteBody = State(initialValue: note.body)
             _isEncrypted = State(initialValue: note.isEncrypted)
             _persistedNote = State(initialValue: note)
-            _lastSavedBody = State(initialValue: note.body)
-            _lastSavedEncrypted = State(initialValue: note.isEncrypted)
             _didConfigureInitialState = State(initialValue: true)
         }
 
@@ -520,8 +515,6 @@ struct NoteEditorView: View {
             IPadTemporaryNoteRegistry.shared.finish(createdNoteID)
         }
         #endif
-        lastSavedBody = noteBody
-        lastSavedEncrypted = isEncrypted
         if dismissAfterSave { dismiss() }
     }
 
@@ -578,8 +571,6 @@ struct NoteEditorView: View {
             isEncrypted = false
 
         }
-        lastSavedBody = noteBody
-        lastSavedEncrypted = isEncrypted
         didConfigureInitialState = true
     }
 
@@ -589,7 +580,6 @@ struct NoteEditorView: View {
 
     private var shouldDiscardEmptyExistingNote: Bool {
         isNewFlow
-            && !didDiscardEmptyNote
             && currentPersistedNote != nil
             && noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

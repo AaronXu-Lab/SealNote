@@ -1,5 +1,7 @@
 # Seal Note iOS 稳定化说明 / iOS Stabilization Notes
 
+最低系统版本为 iOS / iPadOS 26。当前移动端加密、预览、标签、批量操作及统计入口暂停；下述相关能力保留在代码中，涉及这些入口的人工验证应在重新开启 feature flag 后进行。
+
 本文档记录 iOS 端稳定化（阶段 0–12）所做的改动、测试方法与需人工验证的清单，并汇总加密与数据相关的用户须知。macOS 端不受本轮影响（共享代码保持双平台可编译）。
 
 ---
@@ -30,7 +32,7 @@
 ## 二、测试与验证
 
 ```bash
-cd /Users/wally/Documents/SealNote
+cd SealNote
 ./script/verify.sh ios-build      # iOS 构建
 ./script/verify.sh mac-build      # macOS 构建（共享代码必须保持可编译）
 ./script/verify.sh mac-test       # SealNoteMacTests（CLICommandServiceTests）
@@ -39,8 +41,7 @@ cd /Users/wally/Documents/SealNote
 
 注意事项（`script/verify.sh` 已封装 `DEVELOPER_DIR=Xcode-beta`、模拟器发现与预启动）：
 
-- **两个既有（豁免）失败**：`SettingsStoreTests.testRecentNotesLimitIsClamped` 与 `testRecentNotesLimitPersists` 在本轮之前即失败，因此 `ios-test` 恒退出 65。验收标准是「相对基线无新增失败」——请比对失败**列表**而非退出码。
-- **串联顺序**：`ios-test` 恒非零，`&&` 串联时必须把 `mac-test` 放在 `ios-test` **之前**，否则永远跑不到 mac-test。
+- **设置测试**：最近笔记数量的合法值为 5、10、15；测试按当前范围与持久化行为验证，不再豁免旧断言失败。
 - **测试包偶发不重建**：改测试文件后若新测试没跑到，删除 `~/Library/Developer/Xcode/DerivedData/SealNote-*/Build/Products/*/SealNoteTests.xctest` 再跑。
 
 新增单元测试（均通过）：保险库身份 5、云端占位 2、存储根 3、串行写入/冲突 2、会话锁 2、EditorSession 5、增量高亮 2。

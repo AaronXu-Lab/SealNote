@@ -531,7 +531,6 @@ struct MacToolbarHoverRegion: NSViewRepresentable {
 final class ToolbarHoverTrackingView: NSView {
     var onHover: ((Bool) -> Void)?
     private var trackingAreaRef: NSTrackingArea?
-    private var pendingHoverOn: DispatchWorkItem?
     private var pendingHoverOff: DispatchWorkItem?
     private var isHovering = false
     private var mouseMonitor: Any?
@@ -573,8 +572,6 @@ final class ToolbarHoverTrackingView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window == nil {
-            pendingHoverOn?.cancel()
-            pendingHoverOn = nil
             pendingHoverOff?.cancel()
             pendingHoverOff = nil
             removeMouseMonitor()
@@ -591,30 +588,13 @@ final class ToolbarHoverTrackingView: NSView {
         removeMouseMonitor()
     }
 
-    private func scheduleHoverOn() {
-        pendingHoverOff?.cancel()
-        pendingHoverOff = nil
-        pendingHoverOn?.cancel()
-        let item = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            guard self.containsCurrentMouseLocation() else { return }
-            self.setHovering(true)
-        }
-        pendingHoverOn = item
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04, execute: item)
-    }
-
     private func showHoverImmediately() {
         pendingHoverOff?.cancel()
         pendingHoverOff = nil
-        pendingHoverOn?.cancel()
-        pendingHoverOn = nil
         setHovering(true)
     }
 
     private func scheduleHoverOff() {
-        pendingHoverOn?.cancel()
-        pendingHoverOn = nil
         pendingHoverOff?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }

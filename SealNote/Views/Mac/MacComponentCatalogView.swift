@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import AaronUI
 
 struct MacComponentCatalogView: View {
     fileprivate enum ComponentKind {
@@ -14,10 +15,10 @@ struct MacComponentCatalogView: View {
             }
         }
 
-        var badgeStyle: SWStatusBadgeStyle {
+        var badgeColor: AUIBadgeColor {
             switch self {
-            case .system: return .neutral
-            case .custom: return .success
+            case .system: return .primary
+            case .custom: return .green
             }
         }
     }
@@ -43,23 +44,13 @@ struct MacComponentCatalogView: View {
         ComponentEntry(name: "NSStatusItem", description: "macOS 菜单栏入口。", source: "AppKit", kind: .system),
         ComponentEntry(name: "NSTextView / NSScrollView", description: "macOS 便签编辑器和 Markdown 高亮编辑体验。", source: "AppKit", kind: .system),
         ComponentEntry(name: "NSWindow", description: "便签、全部笔记、回收站、设置和组件目录窗口。", source: "AppKit", kind: .system),
-        ComponentEntry(name: "Picker", description: "设置页分段选项和模式选择。", source: "SwiftUI", kind: .system),
         ComponentEntry(name: "ProgressView", description: "导入、导出、加载等等待状态。", source: "SwiftUI", kind: .system),
         ComponentEntry(name: "ScrollView", description: "设置页、关于页和组件目录滚动容器。", source: "SwiftUI", kind: .system),
         ComponentEntry(name: "SecureField", description: "密钥与敏感字段输入。", source: "SwiftUI", kind: .system),
-        ComponentEntry(name: "Slider", description: "编辑器字号、行高和透明度设置。", source: "SwiftUI", kind: .system),
-        ComponentEntry(name: "TabView", description: "设置页分栏。", source: "SwiftUI", kind: .system),
         ComponentEntry(name: "TextField", description: "搜索、标题、路径和 API Key 输入。", source: "SwiftUI", kind: .system),
-        ComponentEntry(name: "Toggle", description: "设置页开关项。", source: "SwiftUI", kind: .system)
     ]
 
     private static let customComponents: [ComponentEntry] = [
-        ComponentEntry(name: "SWStatusBadge", description: "状态胶囊标签。", source: "Views/Components/SWComponents.swift", kind: .custom),
-        ComponentEntry(name: "SWSectionPanel", description: "设置页和信息页的分组面板。", source: "Views/Components/SWComponents.swift", kind: .custom),
-        ComponentEntry(name: "SWSettingsRow", description: "设置页列表行。", source: "Views/Components/SWComponents.swift", kind: .custom),
-        ComponentEntry(name: "SWRowDivider", description: "设置列表行分割线。", source: "Views/Components/SWComponents.swift", kind: .custom),
-        ComponentEntry(name: "SWEmptyState", description: "空状态展示。", source: "Views/Components/SWComponents.swift", kind: .custom),
-        ComponentEntry(name: "SWFilterChip", description: "标签和过滤条件胶囊。", source: "Views/Components/SWComponents.swift", kind: .custom),
         ComponentEntry(name: "AllNotesListRow", description: "全部笔记窗口的自定义列表项。", source: "Views/Mac/AllNotesWindow.swift", kind: .custom),
         ComponentEntry(name: "MacListSearchBar", description: "macOS 列表窗口搜索栏。", source: "Views/Mac/AllNotesWindow.swift", kind: .custom),
         ComponentEntry(name: "TrashListRow", description: "回收站窗口的自定义列表项。", source: "Views/Mac/TrashWindow.swift", kind: .custom),
@@ -78,6 +69,7 @@ struct MacComponentCatalogView: View {
         }
         .frame(minWidth: 680, minHeight: 560)
         .background(DS.bg)
+        .macAaronUITheme()
     }
 
     private var header: some View {
@@ -87,8 +79,8 @@ struct MacComponentCatalogView: View {
                 .foregroundStyle(DS.textEmphasize)
 
             HStack(spacing: DS.s2) {
-                SWStatusBadge("系统组件 \(Self.systemComponents.count)", systemImage: "macwindow", style: .neutral)
-                SWStatusBadge("自建组件 \(Self.customComponents.count)", systemImage: "shippingbox", style: .success)
+                AUIBadge("系统组件 \(Self.systemComponents.count)", systemImage: "macwindow", size: .sm, variant: .light, color: .primary)
+                AUIBadge("自建组件 \(Self.customComponents.count)", systemImage: "shippingbox", size: .sm, variant: .light, color: .green)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,7 +125,7 @@ struct MacComponentCatalogView: View {
                             .foregroundStyle(DS.textEmphasize)
                             .lineLimit(1)
 
-                        SWStatusBadge(entry.kind.title, style: entry.kind.badgeStyle)
+                        AUIBadge(entry.kind.title, size: .sm, variant: .light, color: entry.kind.badgeColor)
                     }
 
                     Text(entry.description)
@@ -249,6 +241,7 @@ private struct MacComponentPreviewView: View {
         }
         .padding(DS.s6)
         .frame(minWidth: 560, minHeight: 520)
+        .macAaronUITheme()
         .background(DS.bg)
         .alert("系统 Alert", isPresented: $isAlertPresented) {
             Button("确定", role: .cancel) {}
@@ -285,7 +278,7 @@ private struct MacComponentPreviewView: View {
                     .foregroundStyle(DS.textEmphasize)
                     .lineLimit(1)
 
-                SWStatusBadge(entry.kind.title, style: entry.kind.badgeStyle)
+                AUIBadge(entry.kind.title, size: .sm, variant: .light, color: entry.kind.badgeColor)
             }
 
             Text(entry.description)
@@ -373,26 +366,6 @@ private struct MacComponentPreviewView: View {
                 Label("更多操作", systemImage: "ellipsis.circle")
             }
             .menuStyle(.button)
-        case "Picker":
-            Picker("保存方式", selection: $pickerValue) {
-                Text("明文").tag("明文")
-                Text("加密").tag("加密")
-            }
-            .pickerStyle(.segmented)
-            .tint(DS.primary)
-            .frame(width: 220)
-        case "Toggle":
-            Toggle("开启日志记录", isOn: $toggleValue)
-                .toggleStyle(.switch)
-                .frame(width: 220)
-        case "Slider":
-            VStack(alignment: .leading, spacing: DS.s2) {
-                Text("透明度 \(Int(sliderValue * 100))%")
-                    .font(DS.caption())
-                    .foregroundStyle(DS.textSecondary)
-                Slider(value: $sliderValue)
-            }
-            .frame(width: 260)
         case "TextField":
             TextField("搜索笔记...", text: $textValue)
                 .textFieldStyle(.roundedBorder)
@@ -435,12 +408,6 @@ private struct MacComponentPreviewView: View {
                 }
             }
             .frame(width: 280)
-        case "TabView":
-            TabView {
-                Text("通用").tabItem { Label("通用", systemImage: "gear") }
-                Text("关于").tabItem { Label("关于", systemImage: "info.circle") }
-            }
-            .frame(width: 320, height: 180)
         case "ProgressView":
             VStack(spacing: DS.s3) {
                 ProgressView()
@@ -511,53 +478,6 @@ private struct MacComponentPreviewView: View {
                 .navigationTitle("笔记")
             }
             .frame(width: 420, height: 360)
-        case "SWShimmer":
-            SWShimmer {
-                RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
-                    .fill(DS.surfaceSunken)
-                    .frame(width: 260, height: 84)
-            }
-        case "SWStatusBadge":
-            HStack(spacing: DS.s2) {
-                SWStatusBadge("系统组件", style: .neutral)
-                SWStatusBadge("已启用", systemImage: "checkmark", style: .success)
-                SWStatusBadge("30 天", systemImage: "clock", style: .warning)
-            }
-        case "SWSectionPanel":
-            SWSectionPanel("分组标题", footer: "这里是 footer 文案。") {
-                SWSettingsRow("设置项", subtitle: "说明文本", systemImage: "gear") {
-                    EmptyView()
-                }
-            }
-            .frame(width: 340)
-        case "SWPanelStack":
-            SWPanelStack {
-                SWSectionPanel("第一组") { Text("内容区域").font(DS.body()) }
-                SWSectionPanel("第二组") { Text("内容区域").font(DS.body()) }
-            }
-            .frame(width: 340)
-        case "SWPageHeader":
-            SWPageHeader(title: "页面标题", subtitle: "页面说明", systemImage: "sparkles")
-                .frame(width: 340)
-        case "SWSettingsRow":
-            SWSettingsRow("设置项", subtitle: "右侧可放按钮或状态", systemImage: "slider.horizontal.3") {
-                SWStatusBadge("已保存", style: .success)
-            }
-            .frame(width: 360)
-        case "SWRowDivider":
-            VStack(spacing: 0) {
-                SWSettingsRow("上一行", systemImage: "1.circle") { EmptyView() }
-                SWRowDivider()
-                SWSettingsRow("下一行", systemImage: "2.circle") { EmptyView() }
-            }
-            .frame(width: 360)
-        case "SWEmptyState":
-            SWEmptyState(title: "暂无内容", message: "内容会在这里显示。", systemImage: "tray")
-        case "SWFilterChip":
-            HStack(spacing: DS.s2) {
-                SWFilterChip(title: "全部", isSelected: true) {}
-                SWFilterChip(title: "工作", isSelected: false) {}
-            }
         case "NoteCardView":
             NoteCardView(
                 note: Note(
@@ -623,8 +543,8 @@ private struct MacComponentPreviewView: View {
                 subtitle: "昨天删除 · 29 天后永久删除"
             ) {
                 HStack(spacing: DS.s2) {
-                    SWStatusBadge("加密", systemImage: "lock.fill", style: .neutral)
-                    SWStatusBadge("29 天", systemImage: "clock", style: .warning)
+                    AUIBadge("加密", systemImage: "lock.fill", size: .sm, variant: .light, color: .primary)
+                    AUIBadge("29 天", systemImage: "clock", size: .sm, variant: .light, color: .primary)
                 }
             }
             .frame(width: 520)

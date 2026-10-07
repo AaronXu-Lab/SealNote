@@ -3,11 +3,15 @@ import AaronUI
 import UIKit
 
 enum MobileFeatureVisibility {
-    // Keep paused implementations compiled so they can be re-enabled later.
+    // 暂停预览入口，当前移动端聚焦快速纯文本编辑。重新开启需验证长文档、附件渲染和编辑/预览切换。
     static let markdownPreview = false
+    // 暂停移动端加密操作，当前加密笔记由 Mac 管理。重新开启需验证创建/导入/导出密钥、会话锁及跨设备解密。
     static let encryptionActions = false
+    // 暂停标签入口以简化列表。重新开启需验证标签筛选、搜索组合、失效标签清理及 Hex 色值排除设置。
     static let tags = false
+    // 暂停批量操作以简化移动端交互。重新开启需验证选择状态、删除确认、复制/导出及云端占位笔记保护。
     static let bulkActions = false
+    // 暂停列表统计以减少首页信息密度。重新开启需验证搜索/标签筛选后的计数及云端占位笔记处理。
     static let statistics = false
 }
 
@@ -224,7 +228,7 @@ struct HomeView: View {
             Text(vaultStore.lastError ?? "")
         }
         .task {
-            vaultStore.selectedTag = nil
+            if !MobileFeatureVisibility.tags { vaultStore.selectedTag = nil }
             if case .loading = vaultStore.state {
                 await vaultStore.initialize()
             }
@@ -260,8 +264,8 @@ struct HomeView: View {
         Group {
             switch destination {
             case .create:
-                NoteEditorView(mode: .create, presentation: .sheet) { body, _ in
-                    let note = try await vaultStore.createNote(body: body, isEncrypted: false, generatesTitle: false)
+                NoteEditorView(mode: .create, presentation: .sheet) { body, encrypted in
+                    let note = try await vaultStore.createNote(body: body, isEncrypted: MobileFeatureVisibility.encryptionActions && encrypted, generatesTitle: false)
                     IPadTemporaryNoteRegistry.shared.register(note.id)
                     return note
                 }
@@ -273,13 +277,6 @@ struct HomeView: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
-    }
-
-    private func clearInvalidTagSelectionIfNeeded() {
-        guard let selectedTag = vaultStore.selectedTag else { return }
-        if !vaultStore.allTags.contains(where: { $0.tag == selectedTag }) {
-            vaultStore.selectedTag = nil
-        }
     }
 
     @ViewBuilder
@@ -373,6 +370,13 @@ struct HomeView: View {
                 }
                     .buttonStyle(AUIButtonStyle(variant: .fill, size: .lg, contentType: .icon))
                 .accessibilityLabel("新建笔记")
+            }
+        }
+
+        if MobileFeatureVisibility.bulkActions && !isSelecting {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("选择", action: enterSelectMode)
+                    .disabled(filteredItems.isEmpty)
             }
         }
 
@@ -491,11 +495,7 @@ struct HomeView: View {
     private var tagChips: some View {
         VStack(alignment: .leading, spacing: DS.s1) {
             HStack {
-//                Text("标签")
-//                    .font(DS.caption())
-//                    .foregroundColor(DS.textSubtle)
 //
-//                Spacer()
 
                 if let selectedTag = vaultStore.selectedTag {
                     Button {
@@ -654,7 +654,7 @@ struct HomeView: View {
     }
 
     private func openReadableNote(_ note: Note) {
-        guard !note.isEncrypted else {
+        guard MobileFeatureVisibility.encryptionActions || !note.isEncrypted else {
             showEncryptedNoteUnavailable = true
             return
         }

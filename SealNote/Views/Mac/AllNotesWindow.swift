@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AaronUI
 import AppKit
 
 struct AllNotesView: View {
@@ -23,17 +24,13 @@ struct AllNotesView: View {
             tagFilters
 
             if isLoading {
-                SWEmptyState(
-                    title: "正在加载笔记",
-                    message: "笔记会在同步和索引读取完成后显示。",
-                    systemImage: "tray.full"
-                )
+                AUIEmptyState("正在加载笔记", systemImage: "tray.full", description: "笔记会在同步和索引读取完成后显示。")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(DS.s6)
             } else if filteredNotes.isEmpty {
-                SWEmptyState(
-                    title: "没有匹配的笔记",
-                    message: emptyStateMessage,
-                    systemImage: "magnifyingglass"
-                )
+                AUIEmptyState("没有匹配的笔记", systemImage: "magnifyingglass", description: emptyStateMessage)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(DS.s6)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -62,6 +59,7 @@ struct AllNotesView: View {
         }
         .safeAreaPadding(.top, DS.s2)
         .background(DS.bg)
+        .macAaronUITheme()
         .dsLiquidGlassToolbar()
         .navigationTitle("全部笔记")
         .toolbar { allNotesToolbar }
@@ -116,9 +114,6 @@ struct AllNotesView: View {
                 .font(DS.caption())
                 .foregroundColor(DS.textSubtle)
                 .padding(.top, 8)
-//            if listSnapshot.emptyReadableCount > 0 {
-//                SWStatusBadge("\(listSnapshot.emptyReadableCount) 条空笔记", systemImage: "exclamationmark.triangle", style: .warning)
-//            }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, DS.s3)
@@ -152,16 +147,18 @@ struct AllNotesView: View {
         let overflowTags = Array(tagCounts.dropFirst(visibleCount))
 
         return HStack(spacing: DS.s1) {
-            SWFilterChip(title: "全部", isSelected: selectedTag == nil) {
+            AUIButton("全部", variant: selectedTag == nil ? .fill : .outline, size: .sm) {
                 selectedTag = nil
             }
+            .accessibilityAddTraits(selectedTag == nil ? .isSelected : [])
             ForEach(visibleTags) { tagCount in
-                SWFilterChip(title: tagCount.tag, isSelected: selectedTag == tagCount.tag) {
+                AUIButton(tagCount.tag, variant: selectedTag == tagCount.tag ? .fill : .outline, size: .sm) {
                     selectedTag = tagCount.tag
                 }
+                .accessibilityAddTraits(selectedTag == tagCount.tag ? .isSelected : [])
             }
             if let selectedTag, !visibleTags.contains(where: { $0.tag == selectedTag }) {
-                SWFilterChip(title: selectedTag, isSelected: true) {}
+                AUIButton(selectedTag, variant: .fill, size: .sm) {}
             }
             if !overflowTags.isEmpty {
                 SWFilterChipMenu(title: "…", items: overflowTags.map(\.tag)) { tag in
@@ -381,10 +378,8 @@ struct AllNotesView: View {
 
 }
 
+/// Keeps note actions and metadata together; AaronUI owns row layout and hover controls.
 struct AllNotesListRow<MenuContent: View>: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isHovering = false
-
     let title: String
     let subtitle: String
     let isLocked: Bool
@@ -393,77 +388,21 @@ struct AllNotesListRow<MenuContent: View>: View {
     @ViewBuilder let menu: () -> MenuContent
 
     var body: some View {
-        HStack(spacing: DS.s3) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(DS.textStrong)
-                    .lineLimit(1)
-
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(DS.caption())
-                        .foregroundColor(DS.textSubtle)
-                        .lineLimit(1)
+        AUIItemSurface(size: .sm) {
+            AUIItem(title, description: subtitle.isEmpty ? nil : subtitle, size: .sm,
+                    titleBadge: isLocked ? AUIBadge("加密", systemImage: "lock.fill", size: .sm) : nil) {
+                Text(timeText).monospacedDigit()
+            } trailingHover: {
+                HStack(spacing: AUISpacing.sm) {
+                    AUIButton("打开", variant: .ghost, size: .sm, action: onOpen)
+                    Menu { menu() } label: { Image(systemName: "ellipsis") }
+                        .menuStyle(.borderlessButton)
+                        .buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm, contentType: .icon))
+                        .menuIndicator(.hidden)
+                        .accessibilityLabel("更多操作")
+                        .help("更多操作")
                 }
             }
-
-            Spacer(minLength: DS.s3)
-
-            if isHovering {
-                HStack(spacing: DS.s1) {
-                    Button(action: onOpen) {
-                        Text("打开")
-                            .foregroundStyle(DS.textSecondary)
-                    }
-                    .buttonStyle(.borderless)
-                    .controlSize(.regular)
-                    .help("打开")
-
-                    Menu {
-                        menu()
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .foregroundStyle(DS.textSecondary)
-                    }
-                    .menuStyle(.borderlessButton)
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
-                    .tint(DS.textSecondary)
-                    .menuIndicator(.hidden)
-                    .help("更多操作")
-                }
-            } else {
-                HStack(spacing: DS.s2) {
-                    if isLocked {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(DS.textSecondary)
-                            .frame(width: 22, height: 22)
-                            .background(DS.surfaceSunken)
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(DS.line, lineWidth: 0.5))
-                    }
-
-                    Text(timeText)
-                        .font(DS.caption())
-                        .foregroundColor(DS.textSubtle)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .padding(.horizontal, DS.s3)
-        .padding(.vertical, 10)
-        .frame(minHeight: 58)
-        .background(isHovering ? DS.primaryContainer.opacity(0.42) : DS.surfaceCard.opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: DS.rMd, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
-                .stroke(isHovering ? DS.primary.opacity(0.28) : DS.line, lineWidth: 0.5)
-        )
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: isHovering)
-        .onHover { hovering in
-            isHovering = hovering
         }
     }
 }
@@ -492,7 +431,7 @@ struct MacListSearchBar: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(DS.textSubtle)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm, contentType: .icon))
                     .help("清空搜索")
                 }
             }
@@ -506,13 +445,12 @@ struct MacListSearchBar: View {
                 Label("关闭搜索", systemImage: "xmark")
                     .labelStyle(.iconOnly)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm, contentType: .icon))
             .foregroundColor(DS.textSecondary)
             .help("关闭搜索")
         }
         .padding(.horizontal, DS.s3)
         .padding(.vertical, DS.s2)
-//        .background(Color(nsColor: .windowBackgroundColor))
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(DS.line)

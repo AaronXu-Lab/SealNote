@@ -1,4 +1,5 @@
 import SwiftUI
+import AaronUI
 import AppKit
 
 struct MacIntroView: View {
@@ -55,21 +56,11 @@ struct MacIntroView: View {
             Spacer(minLength: DS.s8)
 
             VStack(spacing: DS.s3) {
-                Button {
-                    onClose()
-                } label: {
-                    Text("关闭")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 104, height: 34)
-                        .background(DS.primary)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
+                AUIButton("关闭", variant: .fill, action: onClose)
                 .keyboardShortcut(.defaultAction)
 
                 Toggle("不再显示", isOn: $settings.hideMacIntroOnLaunch)
-                    .toggleStyle(.checkbox)
+                    .toggleStyle(.auiCheckbox)
                     .font(DS.body())
                     .foregroundStyle(DS.textSecondary)
             }
@@ -86,6 +77,7 @@ struct MacIntroView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(DS.line, lineWidth: 0.5)
         )
+        .macAaronUITheme()
     }
 
     @ViewBuilder

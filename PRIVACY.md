@@ -17,9 +17,11 @@ Seal Note 不要求注册账户，不包含广告、用户追踪或第三方分�
 
 ## 存储、同步与加密
 
-笔记优先保存在你的 Apple iCloud Drive 容器中，以便在登录同一 Apple Account 的设备间同步；iCloud 不可用时，笔记保存在设备本地。iCloud 数据由 Apple 按照 Apple 的条款和隐私政策处理，开发者无法访问你的 iCloud Drive 内容。
+笔记优先保存在你的 Apple iCloud Drive 容器中，以便在登录同一 Apple Account 的设备间同步；首次选择存储时 iCloud 不可用会使用本地存储。iOS / iPadOS 会固定所选存储根；已固定 iCloud 时，临时本地回退会标记存储不一致，不会另建独立保险库。iCloud 数据由 Apple 按照 Apple 的条款和隐私政策处理，开发者无法访问你的 iCloud Drive 内容。
 
-使用加密笔记时，笔记正文会在设备端使用 AES-GCM 加密后再写入存储。用于文件识别和同步的部分元数据（例如笔记标识符和时间戳）不会加密。明文笔记不会加密。
+使用加密笔记时，笔记正文会在设备端使用 AES-GCM 加密后再写入存储。用于文件识别和同步的部分元数据（例如笔记标识符、标题、文件名和时间戳）不会加密。明文笔记不会加密。
+
+iOS / iPadOS 的密钥材料保存在本机 Keychain，不随 iCloud 同步；macOS 保存 `.snkey` 文件的访问书签并按需读取原文件，不复制密钥材料到 Keychain。密钥需自行备份，开发者无法恢复遗失的密钥。当前移动端暂停加密操作入口，已有加密笔记请使用 macOS 管理。
 
 ## 数据保留与删除
 
@@ -59,7 +61,9 @@ Seal Note does not require an account and contains no advertising, user tracking
 
 Your notes, note metadata, settings, window state, shortcuts, and user-managed encryption key file or local key reference are processed on your device to provide the app's features. Optional maintenance logs are disabled by default, remain on your device, and record operational metadata only—not note content or encryption keys.
 
-Notes are stored in your Apple iCloud Drive container when available so they can sync between devices signed in to the same Apple Account; otherwise, they are stored locally. Apple processes iCloud data under its own terms and privacy policy, and the developer cannot access your iCloud Drive content. Encrypted-note bodies are encrypted on device using AES-GCM before storage. Metadata needed for file identification and synchronization, such as note identifiers and timestamps, is not encrypted. Plain notes are not encrypted.
+Notes are stored in your Apple iCloud Drive container when available so they can sync between devices signed in to the same Apple Account; local storage is selected if iCloud is unavailable at first setup. iOS / iPadOS pins the selected storage root; temporary local fallback from a pinned iCloud vault is marked as a mismatch and does not establish a separate vault. Apple processes iCloud data under its own terms and privacy policy, and the developer cannot access your iCloud Drive content. Encrypted-note bodies are encrypted on device using AES-GCM before storage. Metadata needed for file identification and synchronization, such as note identifiers, titles, filenames, and timestamps, is not encrypted. Plain notes are not encrypted.
+
+iOS / iPadOS stores key material in local Keychain without iCloud synchronization. macOS retains a security-scoped bookmark to the selected `.snkey` file and reads that file when needed, without copying key material into Keychain. Back up your key: the developer cannot recover a lost key. Mobile encryption controls are currently paused; manage existing encrypted notes on macOS.
 
 Data remains on your device or in iCloud Drive until you delete it in the app, empty the trash, or remove the files through Finder or iCloud Drive. You can disable Seal Note's iCloud access or iCloud Drive syncing in system settings. Uninstalling the app may not remove files stored in iCloud Drive. You can disable maintenance logging at any time and delete its local log file from the folder shown by the app. A third party receives a log only if you intentionally export and share it.
 

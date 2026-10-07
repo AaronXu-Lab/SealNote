@@ -14,6 +14,7 @@
 		000000000000000642000000 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000125 /* main.swift */; };
 		000000000000000643000000 /* sealnote in Embed sealnote CLI */ = {isa = PBXBuildFile; fileRef = 000000000000000000000123 /* sealnote */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		000000000000000644000000 /* AIGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000129 /* AIGuide.swift */; };
+		A03000000000000000000001 /* AaronUI in Frameworks */ = {isa = PBXBuildFile; productRef = B886DBD4306938A000C092B6 /* AaronUI */; };
 		B886DBD5306938A000C092B6 /* AaronUI in Frameworks */ = {isa = PBXBuildFile; productRef = B886DBD4306938A000C092B6 /* AaronUI */; };
 /* End PBXBuildFile section */
 
@@ -157,6 +158,7 @@
 		000000000000000530000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				A03000000000000000000001 /* AaronUI in Frameworks */,
 				000000000000000620000000 /* MarkdownView in Frameworks */,
 			);
 		};
@@ -282,6 +284,7 @@
 			);
 			name = SealNoteMac;
 			packageProductDependencies = (
+				B886DBD4306938A000C092B6 /* AaronUI */,
 				000000000000000610000000 /* MarkdownView */,
 			);
 			productName = SealNoteMac;
@@ -999,7 +1002,7 @@
 			repositoryURL = "https://github.com/AaronXu-Lab/AaronUI-SwiftUI.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.1.1;
+				minimumVersion = 0.3.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

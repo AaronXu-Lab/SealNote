@@ -440,15 +440,3 @@ private final class StickyNoteWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 }
-
-struct MacWindowDragRegion: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        DragRegionView()
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
-}
-
-private final class DragRegionView: NSView {
-    override var mouseDownCanMoveWindow: Bool { true }
-}

@@ -28,7 +28,8 @@ struct SettingsView: View {
     ) {
         _isPresented = isPresented
         _showTrash = showTrash
-        _path = State(initialValue: initialRoute.map { [$0] } ?? [])
+        let availableRoute = initialRoute == .key && !MobileFeatureVisibility.encryptionActions ? nil : initialRoute
+        _path = State(initialValue: availableRoute.map { [$0] } ?? [])
     }
 
     var body: some View {
@@ -45,7 +46,7 @@ struct SettingsView: View {
                         settingsLink(.key, "密钥与加密", subtitle: "创建、导入、移除或处理加密笔记", systemImage: "lock", tint: DS.primaryDeep)
                     }
                     SWRowDivider()
-                    settingsLink(.privacy, "隐私保护", subtitle: "切换应用时隐藏笔记内容", systemImage: "hand.raised", tint: DS.pro)
+                    settingsLink(.privacy, "隐私保护", subtitle: "切换应用时隐藏笔记内容", systemImage: "hand.raised", tint: DS.warning)
                     SWRowDivider()
                     settingsLink(.data, "数据", subtitle: "回收站、同步、导出与维护", systemImage: "externaldrive", tint: DS.link)
                     SWRowDivider()
@@ -61,7 +62,7 @@ struct SettingsView: View {
                 case .notes:
                     NotesSettingsView()
                 case .key:
-                    KeyManagementView()
+                    if MobileFeatureVisibility.encryptionActions { KeyManagementView() }
                 case .privacy:
                     PrivacySettingsView()
                 case .data:
@@ -971,7 +972,7 @@ private struct DataSettingsView: View {
     private var syncTint: Color {
         switch syncStore.status {
         case .failed: return DS.destructive
-        case .syncing, .pendingDownloads: return DS.pro
+        case .syncing, .pendingDownloads: return DS.warning
         case .saved: return DS.primaryDeep
         }
     }
@@ -1073,10 +1074,6 @@ private struct AppearanceSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func themeSubtitle(_ theme: AppTheme) -> String? {
-        theme == settings.appTheme ? "当前主题色" : nil
-    }
-
     private func tint(for theme: AppTheme) -> Color {
         switch theme {
         case .pink: return Color(light: 0x8F2D5A, dark: 0xFFD8E8)
@@ -1095,10 +1092,6 @@ private struct AppearanceSettingsView: View {
     #if os(iOS)
     private var currentIconChoice: IOSAppIconChoice {
         IOSAppIconChoice.choice(for: settings.iOSAppIconName)
-    }
-
-    private func iconSubtitle(_ choice: IOSAppIconChoice) -> String? {
-        choice == currentIconChoice ? "当前图标" : nil
     }
 
     private func iconTint(_ choice: IOSAppIconChoice) -> Color {
@@ -1157,7 +1150,9 @@ private struct AboutView: View {
                     EmptyView()
                 }
                 SWRowDivider()
-                SWSettingsRow("内容安全", subtitle: "明文笔记不会加密，敏感内容建议使用加密笔记。", systemImage: "shield") {
+                SWSettingsRow("内容安全", subtitle: MobileFeatureVisibility.encryptionActions
+                    ? "明文笔记不会加密，敏感内容建议使用加密笔记。"
+                    : "当前移动端创建明文笔记，请勿记录敏感内容。加密笔记请使用 Seal Note for Mac 管理。", systemImage: "shield") {
                     EmptyView()
                 }
             }

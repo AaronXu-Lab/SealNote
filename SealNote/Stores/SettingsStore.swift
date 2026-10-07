@@ -102,7 +102,6 @@ final class SettingsStore: ObservableObject {
     #endif
 
     private let defaults: UserDefaults
-    private let keychainStore: KeychainStore
 
     @Published var preferredNoteMode: NoteMode {
         didSet { defaults.set(preferredNoteMode.rawValue, forKey: Keys.preferredNoteMode) }
@@ -110,12 +109,6 @@ final class SettingsStore: ObservableObject {
 
     @Published var hideContentOnBackground: Bool {
         didSet { defaults.set(hideContentOnBackground, forKey: Keys.hideContentOnBackground) }
-    }
-
-    // ponytail: dead setting — retained only because tests reference it; the destructive
-    // foreground auto-unload it drove was removed in favor of lockSession (P0-4).
-    @Published var autoUnloadKeyOnForeground: Bool {
-        didSet { defaults.set(autoUnloadKeyOnForeground, forKey: Keys.autoUnloadKeyOnForeground) }
     }
 
     /// When set, encrypted notes are locked (the in-memory key is forgotten, Keychain
@@ -203,6 +196,7 @@ final class SettingsStore: ObservableObject {
         didSet {
             defaults.set(appTheme.rawValue, forKey: Self.macThemeDefaultsKey)
             #if os(macOS)
+            MacAaronUITheme.apply(appTheme)
             MacAppIconController.shared.apply(theme: appTheme)
             #endif
         }
@@ -276,12 +270,10 @@ final class SettingsStore: ObservableObject {
     }
     #endif
 
-    init(defaults: UserDefaults = .standard, keychainStore: KeychainStore? = nil) {
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.keychainStore = keychainStore ?? .shared
         self.preferredNoteMode = NoteMode(rawValue: defaults.string(forKey: Keys.preferredNoteMode) ?? "") ?? .plain
         self.hideContentOnBackground = defaults.object(forKey: Keys.hideContentOnBackground) as? Bool ?? true
-        self.autoUnloadKeyOnForeground = defaults.object(forKey: Keys.autoUnloadKeyOnForeground) as? Bool ?? false
         self.lockSessionOnBackground = defaults.object(forKey: Keys.lockSessionOnBackground) as? Bool ?? false
         self.hasSeenFirstKeyPrompt = defaults.bool(forKey: Keys.hasSeenFirstKeyPrompt)
         self.hasSeededDefaultNotes = defaults.bool(forKey: Keys.hasSeededDefaultNotes)
@@ -358,7 +350,6 @@ final class SettingsStore: ObservableObject {
     func resetForTesting() {
         preferredNoteMode = .plain
         hideContentOnBackground = true
-        autoUnloadKeyOnForeground = false
         lockSessionOnBackground = false
         hasSeenFirstKeyPrompt = false
         hasSeededDefaultNotes = false
@@ -397,7 +388,6 @@ final class SettingsStore: ObservableObject {
 
         preferredNoteMode = .plain
         hideContentOnBackground = true
-        autoUnloadKeyOnForeground = false
         lockSessionOnBackground = false
         hasSeenFirstKeyPrompt = false
         editorFontSize = Self.defaultEditorFontSize
@@ -497,7 +487,6 @@ final class SettingsStore: ObservableObject {
     private enum Keys {
         static let preferredNoteMode = "SNPreferredNoteMode"
         static let hideContentOnBackground = "SNHideContentOnBackground"
-        static let autoUnloadKeyOnForeground = "SNAutoUnloadKeyOnForeground"
         static let lockSessionOnBackground = "SNLockSessionOnBackground"
         static let hasSeenFirstKeyPrompt = "SNHasSeenFirstKeyPrompt"
         static let hasSeededDefaultNotes = "SNHasSeededDefaultNotes"

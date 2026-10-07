@@ -1,68 +1,16 @@
 import SwiftUI
+import AaronUI
 
 #if os(iOS)
 import UIKit
-import AaronUI
 #endif
 
-struct SWShimmer<Content: View>: View {
-    @State private var animate = false
-
-    var duration: Double = 1.8
-    var delay: Double = 0.4
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        content()
-            .overlay {
-                GeometryReader { geo in
-                    let bandWidth = geo.size.width * 0.55
-                    LinearGradient(
-                        colors: [.clear, .white.opacity(0.36), .clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .frame(width: bandWidth)
-                    .offset(x: animate ? geo.size.width + bandWidth : -bandWidth * 1.5)
-                    .animation(
-                        .linear(duration: duration)
-                        .delay(delay)
-                        .repeatForever(autoreverses: false),
-                        value: animate
-                    )
-                }
-                .clipped()
-            }
-            .task {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                animate = true
-            }
-    }
-}
-
+#if os(iOS)
 enum SWStatusBadgeStyle {
     case success
     case warning
     case error
     case neutral
-
-    var tint: Color {
-        switch self {
-        case .success: return DS.primaryDeep
-        case .warning: return DS.pro
-        case .error: return DS.destructive
-        case .neutral: return DS.textSecondary
-        }
-    }
-
-    var fill: Color {
-        switch self {
-        case .success: return DS.primaryContainer
-        case .warning: return DS.pro.opacity(0.12)
-        case .error: return DS.destructive.opacity(0.12)
-        case .neutral: return DS.surfaceSunken
-        }
-    }
 }
 
 struct SWStatusBadge: View {
@@ -77,29 +25,8 @@ struct SWStatusBadge: View {
     }
 
     var body: some View {
-        #if os(iOS)
         AUIBadge(text, systemImage: systemImage, size: .sm, variant: .light,
                  color: style == .error ? .red : (style == .success ? .green : .primary))
-        #else
-        HStack(spacing: DS.s1) {
-            if let systemImage {
-                Image(systemName: systemImage)
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            Text(text)
-                .font(DS.caption())
-                .lineLimit(1)
-        }
-        .foregroundColor(style.tint)
-        .padding(.horizontal, DS.s2)
-        .padding(.vertical, DS.s1)
-        .background(style.fill)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule()
-                .stroke(style.tint.opacity(0.2), lineWidth: 0.5)
-        )
-        #endif
     }
 }
 
@@ -119,7 +46,6 @@ struct SWSectionPanel<Content: View>: View {
     }
 
     var body: some View {
-        #if os(iOS)
         VStack(alignment: .leading, spacing: AUISpacing.sm) {
             if let title { Text(title).auiText(.headlineSm).accessibilityAddTraits(.isHeader) }
             AUIItemSectionGroup(size: .sm) { content() }
@@ -128,29 +54,6 @@ struct SWSectionPanel<Content: View>: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        #else
-        VStack(alignment: .leading, spacing: DS.s2) {
-            if let title {
-                Text(title)
-                    .font(DS.title())
-                    .foregroundColor(DS.textEmphasize)
-                    .padding(.horizontal, DS.s1)
-            }
-
-            VStack(spacing: 0) {
-                content()
-            }
-            .dsCardSurface(shadow: false)
-
-            if let footer {
-                Text(footer)
-                    .font(DS.caption())
-                    .foregroundColor(DS.textSubtle)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, DS.s1)
-            }
-        }
-        #endif
     }
 }
 
@@ -200,58 +103,6 @@ struct SWPanelStack<Content: View>: View {
     }
 }
 
-struct SWPageHeader: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let tint: Color
-
-    init(
-        title: String,
-        subtitle: String,
-        systemImage: String,
-        tint: Color = DS.primaryDeep
-    ) {
-        self.title = title
-        self.subtitle = subtitle
-        self.systemImage = systemImage
-        self.tint = tint
-    }
-
-    var body: some View {
-        #if os(iOS)
-        AUIItemSurface {
-            AUIItem(title, description: subtitle, leading: .symbol(AUISymbol(systemImage: systemImage)))
-        }
-        .padding(.bottom, AUISpacing.lg)
-        #else
-        HStack(alignment: .center, spacing: DS.s3) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(tint)
-                .frame(width: 38, height: 38)
-                .background(tint.opacity(0.14))
-                .clipShape(RoundedRectangle(cornerRadius: DS.rLg, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(DS.title())
-                    .foregroundColor(DS.textEmphasize)
-                Text(subtitle)
-                    .font(DS.caption())
-                    .foregroundColor(DS.textSubtle)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: DS.s3)
-        }
-        .padding(DS.cardPadding)
-        .dsCardSurface(shadow: false)
-        .padding(.bottom, DS.s4)
-        #endif
-    }
-}
-
 struct SWSettingsRow<Trailing: View>: View {
     let title: String
     let subtitle: String?
@@ -280,56 +131,16 @@ struct SWSettingsRow<Trailing: View>: View {
     }
 
     var body: some View {
-        #if os(iOS)
         AUIItem(title, description: subtitle, size: tallControl ? .lg : .sm, leading: .icon(systemImage)) {
             trailing()
         }
-        #else
-        HStack(spacing: DS.s3) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(tint)
-                .frame(width: 28, height: 28)
-                .background(tint.opacity(0.14))
-                .clipShape(RoundedRectangle(cornerRadius: DS.rMd, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(DS.bodyLg())
-                    .foregroundColor(DS.textStrong)
-                    .lineLimit(1)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(DS.caption())
-                        .foregroundColor(DS.textSubtle)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-
-            Spacer(minLength: DS.s3)
-
-            trailing()
-                .foregroundStyle(.primary)
-                .frame(minWidth: trailingMinWidth, alignment: .trailing)
-        }
-        .padding(.horizontal, DS.s3)
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
-        #endif
     }
 }
 
 struct SWRowDivider: View {
     var body: some View {
-        #if os(iOS)
         // AUIItemSectionGroup owns separators on iOS.
         EmptyView()
-        #else
-        Rectangle()
-            .fill(DS.line)
-            .frame(height: 0.5)
-            .padding(.leading, DS.s3 + 28 + DS.s3)
-        #endif
     }
 }
 
@@ -339,79 +150,11 @@ struct SWEmptyState: View {
     let systemImage: String
 
     var body: some View {
-        #if os(iOS)
         AUIEmptyState(title, systemImage: systemImage, description: message)
-        #else
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(DS.s6)
-        #endif
-    }
-
-    private var content: some View {
-        VStack(spacing: DS.s3) {
-            Image(systemName: systemImage)
-                .font(.system(size: 34, weight: .regular))
-                .foregroundColor(DS.primaryDeep)
-                .frame(width: 58, height: 58)
-                .background(DS.primaryContainer)
-                .clipShape(RoundedRectangle(cornerRadius: DS.rLg, style: .continuous))
-
-            Text(title)
-                .font(DS.title())
-                .foregroundColor(DS.textStrong)
-
-            Text(message)
-                .font(DS.body())
-                .foregroundColor(DS.textSubtle)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 }
 
-struct SWFilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        #if os(iOS)
-        AUIButton(title, variant: isSelected ? .fill : .outline, size: .sm, action: action)
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
-        #else
-        Button(action: action) {
-            SWFilterChipLabel(title: title, isSelected: isSelected)
-        }
-        .buttonStyle(.plain)
-        #endif
-    }
-}
-
-struct SWFilterChipLabel: View {
-    let title: String
-    let isSelected: Bool
-
-    var body: some View {
-        #if os(iOS)
-        AUIBadge(title, variant: isSelected ? .fill : .outline)
-        #else
-        Text(title)
-            .font(DS.caption())
-            .foregroundColor(isSelected ? DS.primaryDeep : DS.textSecondary)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, DS.s3)
-            .padding(.vertical, DS.s2)
-            .background(isSelected ? DS.primaryContainer : DS.surfaceCard)
-            .clipShape(RoundedRectangle(cornerRadius: DS.rMd, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
-                    .stroke(isSelected ? DS.primary.opacity(0.28) : DS.line, lineWidth: 0.5)
-            )
-        #endif
-    }
-}
+#endif
 
 #if os(macOS)
 struct SWFilterChipMenu: View {
@@ -422,7 +165,7 @@ struct SWFilterChipMenu: View {
     @State private var presenter = SWFilterChipMenuPresenter()
 
     var body: some View {
-        SWFilterChip(title: title, isSelected: false) {
+        AUIButton(title, variant: .outline, size: .sm) {
             presenter.present(items: items, onSelect: onSelect)
         }
         .background(SWFilterChipMenuAnchor(presenter: presenter))

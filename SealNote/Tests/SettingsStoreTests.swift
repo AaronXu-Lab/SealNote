@@ -4,19 +4,21 @@ import XCTest
 @MainActor
 final class SettingsStoreTests: XCTestCase {
     private var defaults: UserDefaults!
+    private var suiteName: String!
 
     override func setUp() {
         super.setUp()
-        let suiteName = "SettingsStoreTests-\(UUID().uuidString)"
+        suiteName = "SettingsStoreTests-\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
     }
 
     override func tearDown() {
-        if let suiteName = defaults.string(forKey: "suiteNameMarker") {
+        if let suiteName {
             defaults.removePersistentDomain(forName: suiteName)
         }
         defaults = nil
+        suiteName = nil
         super.tearDown()
     }
 
@@ -132,6 +134,56 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertTrue(reloaded.maintenanceLoggingEnabled)
     }
 
+    func testPrivacyAndVaultDefaults() {
+        let store = makeStore()
+        XCTAssertEqual(store.preferredNoteMode, .plain)
+        XCTAssertTrue(store.hideContentOnBackground)
+        XCTAssertFalse(store.lockSessionOnBackground)
+        XCTAssertFalse(store.needsKeyExportPending)
+        XCTAssertNil(store.pinnedStorageRoot)
+    }
+
+    func testEditorPreferencesAndVaultStatePersist() {
+        let store = makeStore()
+        store.editorFontSize = 16
+        store.editorLineHeightMultiple = 1.8
+        store.lockSessionOnBackground = true
+        store.needsKeyExportPending = true
+        store.pinnedStorageRoot = "icloud"
+
+        let reloaded = makeStore()
+        XCTAssertEqual(reloaded.editorFontSize, 16)
+        XCTAssertEqual(reloaded.editorLineHeightMultiple, 1.8, accuracy: 0.0001)
+        XCTAssertTrue(reloaded.lockSessionOnBackground)
+        XCTAssertTrue(reloaded.needsKeyExportPending)
+        XCTAssertEqual(reloaded.pinnedStorageRoot, "icloud")
+        reloaded.pinnedStorageRoot = nil
+        XCTAssertNil(makeStore().pinnedStorageRoot)
+    }
+
+    func testStoredValuesAreValidatedOnLoad() {
+        defaults.set("unknown", forKey: "SNPreferredNoteMode")
+        defaults.set("unknown", forKey: SettingsStore.macThemeDefaultsKey)
+        defaults.set(100.0, forKey: "SNMacEditorFontSize")
+        defaults.set(3.0, forKey: "SNMacEditorLineHeightMultiple")
+        defaults.set(7, forKey: "SNMacRecentNotesLimit")
+
+        let store = makeStore()
+        XCTAssertEqual(store.preferredNoteMode, .plain)
+        XCTAssertEqual(store.appTheme, .pink)
+        XCTAssertEqual(store.editorFontSize, 18)
+        XCTAssertEqual(store.editorLineHeightMultiple, 2.0, accuracy: 0.0001)
+        XCTAssertEqual(store.macRecentNotesLimit, 5)
+    }
+
+    func testEveryRecentNotesLimitOptionPersists() {
+        let store = makeStore()
+        for limit in [5, 10, 15] {
+            store.macRecentNotesLimit = limit
+            XCTAssertEqual(makeStore().macRecentNotesLimit, limit)
+        }
+    }
+
     #if os(iOS)
     func testIOSAppIconPreferencePersists() {
         let store = makeStore()
@@ -158,16 +210,16 @@ final class SettingsStoreTests: XCTestCase {
     func testRecentNotesLimitIsClamped() {
         let store = makeStore()
         store.macRecentNotesLimit = 1
-        XCTAssertEqual(store.macRecentNotesLimit, 3)
+        XCTAssertEqual(store.macRecentNotesLimit, 5)
         store.macRecentNotesLimit = 99
-        XCTAssertEqual(store.macRecentNotesLimit, 12)
+        XCTAssertEqual(store.macRecentNotesLimit, 15)
     }
 
     func testRecentNotesLimitPersists() {
         let store = makeStore()
-        store.macRecentNotesLimit = 7
+        store.macRecentNotesLimit = 10
         let reloaded = makeStore()
-        XCTAssertEqual(reloaded.macRecentNotesLimit, 7)
+        XCTAssertEqual(reloaded.macRecentNotesLimit, 10)
     }
 
     #if os(macOS)

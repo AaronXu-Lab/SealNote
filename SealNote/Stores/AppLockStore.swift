@@ -50,7 +50,6 @@ final class AppLockStore: ObservableObject {
                 shield.show()
                 #endif
             }
-            vaultStore.handleEnterBackground()
             #if os(iOS)
             if settings.lockSessionOnBackground && vaultStore.encryptedEntryCount > 0 {
                 isSessionLocked = true

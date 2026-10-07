@@ -22,7 +22,7 @@
 - **快速捕捉**：macOS 菜单栏常驻，通过全局快捷键随时唤起悬浮便签。
 - **自由迁移**：每篇笔记都是带 YAML frontmatter 的标准 Markdown 文件，不依赖私有数据库。
 - **安心加密**：可选择仅加密敏感笔记的正文；加解密均在设备端完成。
-- **自然同步**：优先使用 iCloud Drive，同一 Apple Account 下跨设备同步；iCloud 不可用时回退到本地存储。
+- **自然同步**：优先使用 iCloud Drive，同一 Apple Account 下跨设备同步；首次选择时 iCloud 不可用会使用本地存储；iOS / iPadOS 会固定所选根目录，已固定 iCloud 时的临时回退不会更改保险库归属。
 - **原生体验**：SwiftUI 与 AppKit 构建，支持 Markdown 编辑/预览、搜索、标签、回收站、主题与自定义快捷键。
 
 ## 平台与要求
@@ -30,15 +30,15 @@
 | 平台 | 最低版本 | 形态 |
 | --- | --- | --- |
 | macOS | macOS 26 | 菜单栏应用 + 独立悬浮便签窗口 |
-| iOS / iPadOS | iOS 17 | 笔记列表 + 全屏编辑器（iPhone 与 iPad 通用） |
+| iOS / iPadOS | iOS 26 | 笔记列表 + 全屏编辑器（iPhone 与 iPad 通用） |
 
-iOS 端支持 iCloud Drive 同步与本机端侧加密（AES-256，仅正文）。密钥存于本机 Keychain、不随 iCloud 同步，请通过导出 `.snkey` 备份。加密范围与密钥管理等说明见[隐私政策](PRIVACY.md)与 [docs/ios-stabilization.md](docs/ios-stabilization.md)。
+iOS / iPadOS 当前开放明文笔记编辑与 iCloud Drive 同步；Markdown 预览、加密操作、标签、批量操作与统计入口暂时关闭，底层实现保留。已有加密笔记请使用 macOS 版本管理。重新开启移动端加密后，密钥存于本机 Keychain、不随 iCloud 同步，可通过导出 `.snkey` 备份。加密范围与密钥管理等说明见[隐私政策](PRIVACY.md)与 [docs/ios-stabilization.md](docs/ios-stabilization.md)。
 
 ## 数据与安全
 
 Seal Note 不要求注册账号，也不包含广告、用户追踪或第三方分析 SDK。
 
-每篇笔记保存为 `<noteId>.md`：YAML frontmatter 记录笔记 ID 与时间戳，正文保存 Markdown 内容。选择加密后，正文使用 256 位密钥和 AES-GCM 加密，并以 `snenc:v1:` 格式落盘；用于文件识别与同步的 frontmatter 不加密。
+每篇笔记保存为独立 `.md` 文件，文件名通常来自标题（重名时添加后缀），笔记 ID 保存在 frontmatter 与索引中：YAML frontmatter 记录笔记 ID 与时间戳，正文保存 Markdown 内容。选择加密后，正文使用 256 位密钥和 AES-GCM 加密，并以 `snenc:v1:` 格式落盘；用于文件识别与同步的 frontmatter 不加密。
 
 macOS 会保存所选 `.snkey` 文件的访问授权，并在需要时直接读取原文件，不会把密钥材料复制到 Keychain。Seal Note 无法恢复遗失的密钥，请妥善保存密钥文件。明文笔记不会加密，不应存放敏感内容。完整说明请阅读[隐私政策](PRIVACY.md)。
 
@@ -107,7 +107,7 @@ CLI 服务只监听 `127.0.0.1`，使用每次 App 启动时重新生成的会�
 
 ```text
 SealNote/
-├── App/                 # macOS 应用入口
+├── App/                 # iOS / iPadOS 与 macOS 应用入口
 ├── Crypto/              # AES-GCM 与 .snkey 密钥解析
 ├── Models/              # Note、Markdown 文件与索引模型
 ├── Storage/             # iCloud 与本地文件存储

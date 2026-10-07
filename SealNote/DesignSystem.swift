@@ -46,7 +46,7 @@ enum DS {
     /// AI 洞察强调色。
     static let ai = Color(hex: 0xA94AD9)
     /// PRO / 会员琥珀色。
-    static let pro = Color(hex: 0xF07200)
+    static let warning = Color(hex: 0xF07200)
 
     /// 应用画布。
     static let bg = Color(light: 0xF9F9F9, dark: 0x121212)

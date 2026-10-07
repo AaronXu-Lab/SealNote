@@ -2897,12 +2897,6 @@ final class VaultStore: ObservableObject {
         return try cryptoService.decryptMarkdownBody(mdFile.body, using: key)
     }
 
-    private func logicalBody(for file: MarkdownNoteFile, key: CryptoKit.SymmetricKey?) throws -> String {
-        guard file.isEncrypted else { return file.body }
-        let resolvedKey = try key ?? currentEncryptionKey()
-        return try cryptoService.decryptMarkdownBody(file.body, using: resolvedKey)
-    }
-
     // ponytail: single global IO lane; per-note lanes only if profiling demands
     private func saveReadableNote(
         _ note: Note,
@@ -3546,10 +3540,6 @@ final class VaultStore: ObservableObject {
         try? FileManager.default.removeItem(at: tmpDir)
 
         return (zipURL, plainOnly.count, skippedCount)
-    }
-
-    func handleEnterBackground() {
-        guard settings.autoUnloadKeyOnForeground == false else { return }
     }
 
     func handleEnterForeground() async {

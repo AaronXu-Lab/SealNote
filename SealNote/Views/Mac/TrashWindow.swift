@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AaronUI
 
 struct TrashView: View {
     @ObservedObject private var vaultStore = VaultStore.shared
@@ -48,6 +49,7 @@ struct TrashView: View {
             }
         }
         .background(DS.bg)
+        .macAaronUITheme()
         .dsLiquidGlassToolbar()
         .navigationTitle("回收站")
         .toolbar { trashToolbar }
@@ -132,11 +134,9 @@ struct TrashView: View {
     }
 
     private var emptyRow: some View {
-        SWEmptyState(
-            title: vaultStore.trashNotes.isEmpty ? "回收站为空" : "没有匹配的笔记",
-            message: vaultStore.trashNotes.isEmpty ? "删除的笔记会在这里保留 30 天" : "换个关键词试试，或清空搜索内容。",
-            systemImage: "trash"
-        )
+        AUIEmptyState(vaultStore.trashNotes.isEmpty ? "回收站为空" : "没有匹配的笔记", systemImage: "trash", description: vaultStore.trashNotes.isEmpty ? "删除的笔记会在这里保留 30 天" : "换个关键词试试，或清空搜索内容。")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(DS.s6)
     }
 
     @ViewBuilder
@@ -156,7 +156,7 @@ struct TrashView: View {
                             .clipShape(Circle())
                             .overlay(Circle().stroke(DS.line, lineWidth: 0.5))
                     }
-                    SWStatusBadge("\(trashNote.remainingDays) 天", systemImage: "clock", style: .warning)
+                    AUIBadge("\(trashNote.remainingDays) 天", systemImage: "clock", size: .sm, variant: .light, color: .primary)
                 }
 
                 Menu {
@@ -172,7 +172,7 @@ struct TrashView: View {
                         .foregroundStyle(DS.textSecondary)
                 }
                 .menuStyle(.borderlessButton)
-                .buttonStyle(.bordered)
+                .buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm, contentType: .icon))
                 .controlSize(.regular)
                 .tint(DS.textSecondary)
                 .menuIndicator(.hidden)
@@ -197,12 +197,6 @@ struct TrashView: View {
 
     private func firstLine(of body: String) -> String {
         NoteTitleFormatter.displayTitle(from: body, emptyTitle: NoteTitleFormatter.emptyTitle)
-    }
-
-    private func timeString(from date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
     }
 
     private var actionErrorBinding: Binding<Bool> {
@@ -252,46 +246,15 @@ struct TrashView: View {
     }
 }
 
+/// Product metadata/actions remain caller-owned; the row surface comes from AaronUI.
 struct TrashListRow<Trailing: View>: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isHovering = false
-
     let title: String
     let subtitle: String
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
-        HStack(spacing: DS.s3) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(DS.textStrong)
-                    .lineLimit(1)
-
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(DS.caption())
-                        .foregroundColor(DS.textSubtle)
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer(minLength: DS.s3)
-
-            trailing()
-        }
-        .padding(.horizontal, DS.s3)
-        .padding(.vertical, 10)
-        .frame(minHeight: 58)
-        .background(isHovering ? DS.primaryContainer.opacity(0.42) : DS.surfaceCard.opacity(0.72))
-        .clipShape(RoundedRectangle(cornerRadius: DS.rMd, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
-                .stroke(isHovering ? DS.primary.opacity(0.28) : DS.line, lineWidth: 0.5)
-        )
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: isHovering)
-        .onHover { hovering in
-            isHovering = hovering
+        AUIItemSurface(size: .sm) {
+            AUIItem(title, description: subtitle.isEmpty ? nil : subtitle, size: .sm, trailing: trailing)
         }
     }
 }
