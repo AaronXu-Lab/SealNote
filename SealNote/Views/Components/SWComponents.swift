@@ -46,12 +46,18 @@ struct SWSectionPanel<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AUISpacing.sm) {
-            if let title { Text(title).auiText(.headlineSm).accessibilityAddTraits(.isHeader) }
-            AUIItemSectionGroup(size: .sm) { content() }
+        Group {
+            if let title {
+                AUIItemSectionGroup(title) { content() }
+            } else {
+                AUIItemSectionGroup { content() }
+            }
             if let footer {
                 Text(footer).auiText(.caption).foregroundStyle(AUIColor.onSurfaceMuted)
                     .fixedSize(horizontal: false, vertical: true)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .auiListRowInsets()
             }
         }
     }
@@ -84,15 +90,12 @@ struct SWPanelStack<Content: View>: View {
                 DS.bg.frame(height: viewportTopPadding)
             }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: DS.s4) {
-                    content()
-                }
-                .padding(.top, topPadding)
-                .padding(.horizontal, DS.s4)
-                .padding(.bottom, bottomPadding)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            List {
+                content()
             }
+            .auiItemListStyle()
+            .contentMargins(.top, topPadding, for: .scrollContent)
+            .contentMargins(.bottom, bottomPadding, for: .scrollContent)
             .scrollContentBackground(.hidden)
 
             if viewportBottomPadding > 0 {
@@ -131,7 +134,7 @@ struct SWSettingsRow<Trailing: View>: View {
     }
 
     var body: some View {
-        AUIItem(title, description: subtitle, size: tallControl ? .lg : .sm, leading: .icon(systemImage)) {
+        AUIItem(title, description: subtitle, leading: .icon(systemImage)) {
             trailing()
         }
     }
@@ -139,7 +142,7 @@ struct SWSettingsRow<Trailing: View>: View {
 
 struct SWRowDivider: View {
     var body: some View {
-        // AUIItemSectionGroup owns separators on iOS.
+        // The caller-owned List supplies native row separators.
         EmptyView()
     }
 }

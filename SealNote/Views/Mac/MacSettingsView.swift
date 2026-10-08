@@ -33,21 +33,36 @@ struct MacSettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: AUISpacing.lg) {
-            AUITabs(selection: $selectedTab, items: [
-                AUISegmentItem("通用", value: .general, systemImage: "gear"),
-                AUISegmentItem("编辑器", value: .editor, systemImage: "textformat"),
-                AUISegmentItem("快捷键", value: .shortcuts, systemImage: "keyboard"),
-                AUISegmentItem("高级", value: .advanced, systemImage: "gearshape.2"),
-                AUISegmentItem("关于", value: .about, systemImage: "info.circle")
-            ], content: .iconText, width: .fill)
-            switch selectedTab {
-            case .general: generalTab
-            case .editor: editorTab
-            case .shortcuts: shortcutTab
-            case .advanced: advancedTab
-            case .about: aboutTab
-            }
+        TabView(selection: $selectedTab) {
+            generalTab
+                .tabItem {
+                    Label("通用", systemImage: "gear")
+                }
+                .tag(Tab.general)
+
+            editorTab
+                .tabItem {
+                    Label("编辑器", systemImage: "textformat")
+                }
+                .tag(Tab.editor)
+
+            shortcutTab
+                .tabItem {
+                    Label("快捷键", systemImage: "keyboard")
+                }
+                .tag(Tab.shortcuts)
+
+            advancedTab
+                .tabItem {
+                    Label("高级", systemImage: "gearshape.2")
+                }
+                .tag(Tab.advanced)
+
+            aboutTab
+                .tabItem {
+                    Label("关于", systemImage: "info.circle")
+                }
+                .tag(Tab.about)
         }
         .macAaronUITheme()
         .padding(.horizontal, DS.s4)
@@ -60,7 +75,7 @@ struct MacSettingsView: View {
             idealHeight: 660,
             maxHeight: 660
         )
-        .background(DS.bg)
+        .background(AUIColor.canvas)
         .background(shortcutRecorder)
         .alert("设置失败", isPresented: settingsErrorBinding) {
             Button("确定", role: .cancel) {}
@@ -732,7 +747,7 @@ struct MacSettingsView: View {
         _ title: String,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        AUIItemSectionGroup(size: .sm) {
+        AUIItemSectionGroup {
             content()
         }
     }
@@ -1120,15 +1135,16 @@ private struct MacSettingsPage<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.s3) {
+        List {
             content()
-            Spacer(minLength: 0)
         }
+        .auiItemListStyle()
+        .scrollContentBackground(.hidden)
         .padding(.top, DS.s6)
         .padding(.horizontal, DS.s3)
         .padding(.bottom, DS.s4)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(DS.bg)
+        .background(AUIColor.canvas)
     }
 }
 

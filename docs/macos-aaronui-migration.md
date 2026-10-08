@@ -9,19 +9,21 @@
 - SWSettingsRow → AUIItem。
 - SWEmptyState → AUIEmptyState。
 - SWFilterChip → AUIButton，保留选中状态和标签过滤行为。
-- 设置页系统 TabView、分段 Picker、Switch、Slider → AUITabs、AUISegmented、AUISwitchToggleStyle、AUISlider。
+- 设置页分段 Picker、Switch、Slider → AUISegmented、AUISwitchToggleStyle、AUISlider。
 - 设置页普通按钮、列表行操作按钮、搜索清空／关闭按钮、介绍页关闭按钮与复选框接入库组件或样式。
 - 全部笔记和回收站的业务行保留元信息／操作组合，视觉布局和表面由 AUIItem / AUIItemSurface 提供；全部笔记的悬停操作由 AUIItem.trailingHover 提供。
 
-被替代的手绘 macOS 实现已删除；iOS 仍有调用的 SW 封装限制在 `#if os(iOS)` 内。无调用的 SWShimmer、SWPageHeader、SWFilterChip 和 SWFilterChipLabel 已删除。组件目录删除旧 SW 条目和预览，以及已经迁移的 Picker、Slider、Toggle、TabView 条目和预览，没有新增 AaronUI 展示目录。
+被替代的手绘 macOS 实现已删除；iOS 仍有调用的 SW 封装限制在 `#if os(iOS)` 内。无调用的 SWShimmer、SWPageHeader、SWFilterChip 和 SWFilterChipLabel 已删除。组件目录删除旧 SW 条目和预览，以及已经迁移的 Picker、Slider、Toggle 条目和预览，没有新增 AaronUI 展示目录。
 
 ## 主题
 
-`MacAaronUITheme` 在应用启动前配置 AUIColorTheme，并在 SettingsStore.appTheme 变更时重新应用。分别提供粉、青、绿的浅色／深色主色、实色按钮文字、背景、表面及中性文字配置。显式覆盖 onSurface 等文字别名，避免库默认别名跟随 primary 把正文染成主题色。
+`MacAaronUITheme` 在应用启动前配置 AUIColorTheme，并在 SettingsStore.appTheme 变更时重新应用。分别提供粉、青、绿的浅色／深色主色、实色按钮文字、表面及中性文字配置。设置页及其分页背景使用 `AUIColor.canvas`，画布色不再覆盖，跟随 AaronUI 默认的浅色／深色设计系统配置。显式覆盖 onSurface 等文字别名，避免库默认别名跟随 primary 把正文染成主题色。
 
 仅在设置、列表、介绍和组件目录／预览的展示内容边界刷新视图；设置选项卡、搜索及过滤状态仍在父视图，便签编辑器和 EditorSession 不重建。主题切换可能重置展示内容的滚动位置。
 
 ## 暂时保留
+
+- 设置页 Tab 使用原生 SwiftUI TabView（按用户要求恢复）；组件目录保留其条目及预览。
 
 - SWFilterChipMenu：库按钮配合原有 NSMenu 锚点与选择回调。
 - MacSettingsPage 和 macPanel：仅组合滚动、页面留白与库分组，不另绘组件。

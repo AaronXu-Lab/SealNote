@@ -47,6 +47,7 @@ struct MacComponentCatalogView: View {
         ComponentEntry(name: "ProgressView", description: "导入、导出、加载等等待状态。", source: "SwiftUI", kind: .system),
         ComponentEntry(name: "ScrollView", description: "设置页、关于页和组件目录滚动容器。", source: "SwiftUI", kind: .system),
         ComponentEntry(name: "SecureField", description: "密钥与敏感字段输入。", source: "SwiftUI", kind: .system),
+        ComponentEntry(name: "TabView", description: "设置页原生选项卡。", source: "SwiftUI", kind: .system),
         ComponentEntry(name: "TextField", description: "搜索、标题、路径和 API Key 输入。", source: "SwiftUI", kind: .system),
     ]
 
@@ -408,6 +409,12 @@ private struct MacComponentPreviewView: View {
                 }
             }
             .frame(width: 280)
+        case "TabView":
+            TabView {
+                Text("通用").tabItem { Label("通用", systemImage: "gear") }
+                Text("关于").tabItem { Label("关于", systemImage: "info.circle") }
+            }
+            .frame(width: 320, height: 180)
         case "ProgressView":
             VStack(spacing: DS.s3) {
                 ProgressView()

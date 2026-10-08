@@ -93,11 +93,11 @@ struct SettingsView: View {
         NavigationLink(value: SettingsRoute.key) {
             AUIItemSurface(size: .sm) {
                 AUIItem("密钥未加载", description: "\(vaultStore.lockedNoteCount) 条加密笔记", leading: .icon("lock.fill")) {
-                    Image(systemName: "chevron.right")
                 }
             }
         }
         .buttonStyle(.plain)
+        .auiListRowInsets()
         .accessibilityLabel("密钥未加载，\(vaultStore.lockedNoteCount) 条加密笔记")
         .accessibilityHint("打开密钥与加密设置")
     }
@@ -115,13 +115,11 @@ struct SettingsView: View {
                     if title == "数据", vaultStore.trashCount > 0 {
                         SWStatusBadge("\(vaultStore.trashCount)", style: .neutral)
                     }
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(DS.textSubtle)
                 }
             }
         }
         .buttonStyle(.plain)
+        .auiListRowInsets()
     }
 }
 
@@ -437,6 +435,7 @@ private struct KeyManagementView: View {
                 }
             }
             .buttonStyle(.plain)
+            .auiListRowInsets()
             SWRowDivider()
             Button(role: .destructive) {
                 removeKeyReference()
@@ -446,6 +445,7 @@ private struct KeyManagementView: View {
                 }
             }
             .buttonStyle(.plain)
+            .auiListRowInsets()
         }
     }
 
@@ -460,6 +460,7 @@ private struct KeyManagementView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
                 SWRowDivider()
                 Button {
                     activeAlert = .exportPlaintext
@@ -469,6 +470,7 @@ private struct KeyManagementView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
                 SWRowDivider()
             }
             Button(role: .destructive) {
@@ -479,6 +481,7 @@ private struct KeyManagementView: View {
                 }
             }
             .buttonStyle(.plain)
+            .auiListRowInsets()
         }
     }
 
@@ -838,6 +841,7 @@ private struct DataSettingsView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .auiListRowInsets()
                 }
             }
 
@@ -853,6 +857,7 @@ private struct DataSettingsView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
                 SWRowDivider()
                 Button {
                     Task { await vaultStore.purgeExpiredTrash() }
@@ -862,6 +867,7 @@ private struct DataSettingsView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
                 SWRowDivider()
                 Button(role: .destructive) {
                     showEmptyConfirmation = true
@@ -871,6 +877,7 @@ private struct DataSettingsView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
             }
 
             SWSectionPanel("导出与维护") {
@@ -882,6 +889,7 @@ private struct DataSettingsView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
                 SWRowDivider()
                 Button(role: .destructive) {
                     showClearEmptyConfirmation = true
@@ -891,6 +899,7 @@ private struct DataSettingsView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
                 SWRowDivider()
                 SWSettingsRow("记录维护日志", subtitle: "不记录正文或密钥", systemImage: "doc.text.magnifyingglass") {
                     Toggle("", isOn: $settings.maintenanceLoggingEnabled)
@@ -908,6 +917,7 @@ private struct DataSettingsView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .auiListRowInsets()
             }
         }
         .navigationTitle("数据")
@@ -1157,16 +1167,17 @@ private struct AboutView: View {
                 }
             }
 
-            Link(destination: privacyPolicyURL) {
-                SWSectionPanel {
+            SWSectionPanel {
+                Link(destination: privacyPolicyURL) {
                     SWSettingsRow("隐私政策", subtitle: "查看 Seal Note 如何处理数据", systemImage: "hand.raised") {
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(DS.textSubtle)
                     }
                 }
+                .buttonStyle(.plain)
+                .auiListRowInsets()
             }
-            .buttonStyle(.plain)
         }
         .navigationTitle("关于")
         .navigationBarTitleDisplayMode(.inline)

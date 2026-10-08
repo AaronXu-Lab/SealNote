@@ -24,7 +24,6 @@ enum MacAaronUITheme {
                 .onSurfaceStrong: Color(hex: dark ? 0xFFFFFF : 0x121212),
                 .onSurfaceMuted: Color(hex: dark ? 0xABABAB : 0x686868),
                 .onSurfaceFaint: Color(hex: dark ? 0x949494 : 0x787878),
-                .canvas: Color(hex: dark ? 0x121212 : 0xF9F9F9),
                 .canvasRecessed: Color(hex: dark ? 0x101010 : 0xF5F5F5),
                 .surface: Color(hex: dark ? 0x202020 : 0xFFFFFF),
                 .surfaceSubtle: Color(hex: dark ? 0x282828 : 0xF5F5F5),
