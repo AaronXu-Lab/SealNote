@@ -77,7 +77,6 @@ struct MacIntroView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(DS.line, lineWidth: 0.5)
         )
-        .macAaronUITheme()
     }
 
     @ViewBuilder

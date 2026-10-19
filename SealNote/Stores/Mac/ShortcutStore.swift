@@ -76,6 +76,28 @@ struct MarkdownShortcut: Codable, Equatable {
     let keyEquivalent: String
 }
 
+enum MacShortcutRecordingAction: Equatable, Identifiable {
+    case newNote
+    case markdown(MarkdownShortcutAction)
+    case editor(EditorShortcutAction)
+
+    var title: String {
+        switch self {
+        case .newNote: return "新建笔记"
+        case .markdown(let action): return action.title
+        case .editor(let action): return action.title
+        }
+    }
+
+    var id: String {
+        switch self {
+        case .newNote: return "newNote"
+        case .markdown(let action): return "markdown.\(action.rawValue)"
+        case .editor(let action): return "editor.\(action.rawValue)"
+        }
+    }
+}
+
 @MainActor
 final class ShortcutStore: ObservableObject {
     static let shared = ShortcutStore()
@@ -88,6 +110,10 @@ final class ShortcutStore: ObservableObject {
 
     private var hotKeyRefs: [UInt32: EventHotKeyRef] = [:]
     private var eventHandlerRef: EventHandlerRef?
+    private let integratesWithSystem: Bool
+    private var recordingTokens = Set<UUID>()
+    var isRecordingShortcuts: Bool { !recordingTokens.isEmpty }
+
     private let defaults: UserDefaults
 
     private let newNoteKeyDefaults = "mac.shortcut.newNote"
@@ -99,7 +125,8 @@ final class ShortcutStore: ObservableObject {
         static let activateMenu: UInt32 = 20
     }
 
-    private init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, integratesWithSystem: Bool = true) {
+        self.integratesWithSystem = integratesWithSystem
         self.defaults = defaults
 
         if let data = defaults.data(forKey: newNoteKeyDefaults),
@@ -140,14 +167,74 @@ final class ShortcutStore: ObservableObject {
         registerHotKeys()
     }
 
+    // Tokens keep overlapping recorder lifetimes from restoring hotkeys prematurely.
+    func beginShortcutRecording() -> UUID {
+        let token = UUID()
+        recordingTokens.insert(token)
+        unregisterHotKeys()
+        return token
+    }
+
+    func endShortcutRecording(_ token: UUID) {
+        guard recordingTokens.remove(token) != nil else { return }
+        if !isRecordingShortcuts { registerHotKeys() }
+    }
+
+    private static let fixedGlobalShortcuts: [(id: UInt32, title: String, shortcut: MarkdownShortcut)] = [
+        (HotKeyID.openRecentBase + 1, "打开最近笔记 1", .init(keyCode: 18, modifiers: UInt32(controlKey | cmdKey), keyEquivalent: "1")),
+        (HotKeyID.openRecentBase + 2, "打开最近笔记 2", .init(keyCode: 19, modifiers: UInt32(controlKey | cmdKey), keyEquivalent: "2")),
+        (HotKeyID.openRecentBase + 3, "打开最近笔记 3", .init(keyCode: 20, modifiers: UInt32(controlKey | cmdKey), keyEquivalent: "3")),
+        (HotKeyID.activateMenu, "打开菜单栏", .init(keyCode: 50, modifiers: UInt32(controlKey | cmdKey), keyEquivalent: "`"))
+    ]
+
+    /// Validate before touching published state, persistence, menus or global registrations.
+    @discardableResult
+    func applyRecordedShortcut(_ shortcut: MarkdownShortcut, for action: MacShortcutRecordingAction) -> String? {
+        if let conflict = conflict(for: shortcut, excluding: action) { return conflict }
+        switch action {
+        case .newNote: setNewNoteShortcut(shortcut)
+        case .markdown(let action): setMarkdownShortcut(shortcut, for: action)
+        case .editor(let action): setEditorShortcut(shortcut, for: action)
+        }
+        return nil
+    }
+
+    func conflict(for candidate: MarkdownShortcut, excluding action: MacShortcutRecordingAction, menu: NSMenu? = nil) -> String? {
+        guard candidate.isConfigured else { return nil }
+        var entries: [(MacShortcutRecordingAction, MarkdownShortcut)] = [(.newNote, newNoteShortcut)]
+        entries += EditorShortcutAction.allCases.map { (.editor($0), shortcut(for: $0)) }
+        entries += MarkdownShortcutAction.allCases.map { (.markdown($0), shortcut(for: $0)) }
+        if let match = entries.first(where: { other, shortcut in
+            other != action && shortcut.isConfigured && shortcut.keyCode == candidate.keyCode && shortcut.modifiers == candidate.modifiers
+        }) { return match.0.title }
+        if let match = Self.fixedGlobalShortcuts.first(where: {
+            $0.shortcut.keyCode == candidate.keyCode && $0.shortcut.modifiers == candidate.modifiers
+        }) { return match.title }
+
+        // Read actual native menus so platform/SwiftUI commands do not need a second shortcut table.
+        func match(in menu: NSMenu) -> String? {
+            for item in menu.items {
+                if let submenu = item.submenu, let title = match(in: submenu) { return title }
+                if MarkdownShortcutAction.allCases.contains(where: { item.action == $0.selector }) { continue }
+                if !item.keyEquivalent.isEmpty,
+                   item.keyEquivalent.lowercased() == candidate.keyEquivalent.lowercased(),
+                   Self.carbonModifiers(from: item.keyEquivalentModifierMask) == candidate.modifiers {
+                    return item.title
+                }
+            }
+            return nil
+        }
+        return (menu ?? NSApp.mainMenu).flatMap { match(in: $0) }
+    }
+
     func registerHotKeys() {
         unregisterHotKeys()
+        guard integratesWithSystem, !isRecordingShortcuts else { return }
 
         registerHotKey(id: HotKeyID.newNote, keyCode: newNoteKey.keyCode, modifiers: newNoteKey.modifiers)
-        registerHotKey(id: HotKeyID.openRecentBase + 1, keyCode: 18, modifiers: UInt32(controlKey | cmdKey))
-        registerHotKey(id: HotKeyID.openRecentBase + 2, keyCode: 19, modifiers: UInt32(controlKey | cmdKey))
-        registerHotKey(id: HotKeyID.openRecentBase + 3, keyCode: 20, modifiers: UInt32(controlKey | cmdKey))
-        registerHotKey(id: HotKeyID.activateMenu, keyCode: 50, modifiers: UInt32(controlKey | cmdKey))
+        for entry in Self.fixedGlobalShortcuts {
+            registerHotKey(id: entry.id, keyCode: entry.shortcut.keyCode, modifiers: entry.shortcut.modifiers)
+        }
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(), hotKeyEventHandler, 1, &eventType, nil, &eventHandlerRef)
@@ -197,7 +284,7 @@ final class ShortcutStore: ObservableObject {
     func setMarkdownShortcut(_ shortcut: MarkdownShortcut, for action: MarkdownShortcutAction) {
         markdownShortcuts[action] = shortcut
         persistMarkdownShortcuts()
-        MacMainMenuController.shared.installMainMenu()
+        if integratesWithSystem { MacMainMenuController.shared.installMainMenu() }
     }
 
     func setEditorShortcut(_ shortcut: MarkdownShortcut, for action: EditorShortcutAction) {
@@ -208,7 +295,7 @@ final class ShortcutStore: ObservableObject {
     func resetMarkdownShortcuts() {
         markdownShortcuts = Self.defaultMarkdownShortcuts
         defaults.removeObject(forKey: markdownShortcutDefaults)
-        MacMainMenuController.shared.installMainMenu()
+        if integratesWithSystem { MacMainMenuController.shared.installMainMenu() }
     }
 
     func resetEditorShortcuts() {
@@ -225,10 +312,11 @@ final class ShortcutStore: ObservableObject {
         defaults.removeObject(forKey: markdownShortcutDefaults)
         defaults.removeObject(forKey: editorShortcutDefaults)
         registerHotKeys()
-        MacMainMenuController.shared.installMainMenu()
+        if integratesWithSystem { MacMainMenuController.shared.installMainMenu() }
     }
 
     func markdownAction(matching event: NSEvent) -> MarkdownShortcutAction? {
+        guard !isRecordingShortcuts else { return nil }
         let modifiers = Self.carbonModifiers(from: event.modifierFlags)
         let keyCode = UInt32(event.keyCode)
         return MarkdownShortcutAction.allCases.first { action in
@@ -239,6 +327,7 @@ final class ShortcutStore: ObservableObject {
     }
 
     func editorAction(matching event: NSEvent) -> EditorShortcutAction? {
+        guard !isRecordingShortcuts else { return nil }
         let modifiers = Self.carbonModifiers(from: event.modifierFlags)
         let keyCode = UInt32(event.keyCode)
         return EditorShortcutAction.allCases.first { action in
@@ -290,16 +379,20 @@ final class ShortcutStore: ObservableObject {
         return flags
     }
 
-    static func displayStringForKey(keyCode: UInt32, modifiers: UInt32) -> String {
-        if keyCode == 0 && modifiers == 0 {
-            return "未设置"
-        }
+    static func displayStringForModifiers(_ modifiers: UInt32) -> String {
         var parts: [String] = []
         if modifiers & UInt32(controlKey) != 0 { parts.append("⌃") }
         if modifiers & UInt32(optionKey) != 0 { parts.append("⌥") }
         if modifiers & UInt32(shiftKey) != 0 { parts.append("⇧") }
         if modifiers & UInt32(cmdKey) != 0 { parts.append("⌘") }
 
+        return parts.joined()
+    }
+
+    static func displayStringForKey(keyCode: UInt32, modifiers: UInt32) -> String {
+        if keyCode == 0 && modifiers == 0 {
+            return "未设置"
+        }
         let keyString: String
         switch keyCode {
         case 0: keyString = "A"
@@ -319,6 +412,9 @@ final class ShortcutStore: ObservableObject {
         case 15: keyString = "R"
         case 16: keyString = "Y"
         case 17: keyString = "T"
+        case 18: keyString = "1"
+        case 19: keyString = "2"
+        case 20: keyString = "3"
         case 27: keyString = "-"
         case 31: keyString = "O"
         case 32: keyString = "U"
@@ -342,8 +438,7 @@ final class ShortcutStore: ObservableObject {
         case 126: keyString = "↑"
         default: keyString = "?"
         }
-        parts.append(keyString)
-        return parts.joined()
+        return displayStringForModifiers(modifiers) + keyString
     }
 
     private func registerHotKey(id: UInt32, keyCode: UInt32, modifiers: UInt32) {
@@ -407,6 +502,7 @@ private let hotKeyEventHandler: EventHandlerUPP = { (_, eventRef, _) -> OSStatus
     GetEventParameter(eventRef, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &hkID)
 
     DispatchQueue.main.async {
+        guard !ShortcutStore.shared.isRecordingShortcuts else { return }
         if hkID.id == ShortcutStore.HotKeyID.newNote {
             NotificationCenter.default.post(name: .macNewNote, object: nil)
         } else if hkID.id >= ShortcutStore.HotKeyID.openRecentBase + 1,

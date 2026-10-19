@@ -376,7 +376,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				000000000000000600000000 /* XCRemoteSwiftPackageReference "MarkdownView" */,
-				B886DBD3306938A000C092B6 /* XCRemoteSwiftPackageReference "AaronUI-SwiftUI" */,
+				B886DBD3306938A000C092B6 /* XCLocalSwiftPackageReference "../AaronUI-SwiftUI" */,
 			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 000000000000000000000020 /* Products */;
@@ -988,6 +988,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		B886DBD3306938A000C092B6 /* XCLocalSwiftPackageReference "../AaronUI-SwiftUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../AaronUI-SwiftUI";
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		000000000000000600000000 /* XCRemoteSwiftPackageReference "MarkdownView" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -995,14 +1002,6 @@
 			requirement = {
 				kind = exactVersion;
 				version = 3.0.0;
-			};
-		};
-		B886DBD3306938A000C092B6 /* XCRemoteSwiftPackageReference "AaronUI-SwiftUI" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/AaronXu-Lab/AaronUI-SwiftUI.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.4.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -1015,7 +1014,7 @@
 		};
 		B886DBD4306938A000C092B6 /* AaronUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = B886DBD3306938A000C092B6 /* XCRemoteSwiftPackageReference "AaronUI-SwiftUI" */;
+			package = B886DBD3306938A000C092B6 /* XCLocalSwiftPackageReference "../AaronUI-SwiftUI" */;
 			productName = AaronUI;
 		};
 /* End XCSwiftPackageProductDependency section */

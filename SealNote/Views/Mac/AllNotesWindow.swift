@@ -7,20 +7,12 @@ struct AllNotesView: View {
     @ObservedObject private var vaultStore = VaultStore.shared
     @ObservedObject private var settings = SettingsStore.shared
     @State private var searchText = ""
+    @State private var isSearching = false
     @State private var selectedTag: String?
-    @State private var isSearchBarVisible = false
     @State private var actionErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
-            if isSearchBarVisible {
-                MacListSearchBar(
-                    placeholder: "搜索笔记…",
-                    text: $searchText,
-                    onClose: { hideSearchBar() }
-                )
-            }
-
             tagFilters
 
             if isLoading {
@@ -57,13 +49,16 @@ struct AllNotesView: View {
                 .background(DS.bg)
             }
         }
-        .safeAreaPadding(.top, DS.s2)
         .background(DS.bg)
-        .macAaronUITheme()
         .dsLiquidGlassToolbar()
         .navigationTitle("全部笔记")
-        .toolbar { allNotesToolbar }
-        .background(MacListSearchToolbarAppearance(isActive: isSearchBarVisible))
+        .searchable(text: $searchText, isPresented: $isSearching, placement: .toolbar, prompt: "搜索笔记…")
+        .background {
+            Button("搜索") { isSearching = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .hidden()
+                .accessibilityHidden(true)
+        }
         .onChange(of: listSnapshot.tagCounts) { _, tagCounts in
             guard let selectedTag else { return }
             if !tagCounts.contains(where: { $0.tag == selectedTag }) {
@@ -79,45 +74,16 @@ struct AllNotesView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var allNotesToolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                toggleSearchBar()
-            } label: {
-                Label("搜索", systemImage: "magnifyingglass")
-                    .labelStyle(.iconOnly)
-            }
-            .help("搜索")
-            .keyboardShortcut("f", modifiers: .command)
-            .controlSize(.small)
-        }
-    }
-
-    private func toggleSearchBar() {
-        if isSearchBarVisible {
-            hideSearchBar()
-        } else {
-            isSearchBarVisible = true
-        }
-    }
-
-    private func hideSearchBar() {
-        isSearchBarVisible = false
-        searchText = ""
-    }
-
     private var listSummary: some View {
         HStack(spacing: DS.s2) {
             Spacer(minLength: 0)
             Text(noteCountText)
                 .font(DS.caption())
                 .foregroundColor(DS.textSubtle)
-                .padding(.top, 8)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, DS.s3)
-        .padding(.top, DS.s3 - DS.s4)
+        .padding(.top, DS.s3)
         .padding(.bottom, DS.s2)
     }
 
@@ -138,6 +104,7 @@ struct AllNotesView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, DS.s3)
+            .padding(.top, DS.s2)
             .padding(.bottom, DS.s2)
         }
     }
@@ -404,101 +371,5 @@ struct AllNotesListRow<MenuContent: View>: View {
                 }
             }
         }
-    }
-}
-
-struct MacListSearchBar: View {
-    let placeholder: String
-    @Binding var text: String
-    let onClose: () -> Void
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        HStack(spacing: DS.s2) {
-            HStack(spacing: DS.s2) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(DS.textSubtle)
-
-                TextField(placeholder, text: $text)
-                    .textFieldStyle(.plain)
-                    .font(DS.body())
-                    .focused($isFocused)
-
-                if !text.isEmpty {
-                    Button {
-                        text = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(DS.textSubtle)
-                    }
-                    .buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm, contentType: .icon))
-                    .help("清空搜索")
-                }
-            }
-            .padding(.horizontal, DS.s3)
-            .padding(.vertical, DS.s2)
-            .dsInputSurface(cornerRadius: DS.rMd)
-
-            Button {
-                onClose()
-            } label: {
-                Label("关闭搜索", systemImage: "xmark")
-                    .labelStyle(.iconOnly)
-            }
-            .buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm, contentType: .icon))
-            .foregroundColor(DS.textSecondary)
-            .help("关闭搜索")
-        }
-        .padding(.horizontal, DS.s3)
-        .padding(.vertical, DS.s2)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(DS.line)
-                .frame(height: 0.5)
-        }
-        .onAppear {
-            DispatchQueue.main.async {
-                isFocused = true
-            }
-        }
-        .onExitCommand {
-            onClose()
-        }
-    }
-}
-
-struct MacListSearchToolbarAppearance: NSViewRepresentable {
-    let isActive: Bool
-
-    func makeNSView(context: Context) -> MacListSearchToolbarAppearanceView {
-        let view = MacListSearchToolbarAppearanceView()
-        view.isActive = isActive
-        return view
-    }
-
-    func updateNSView(_ nsView: MacListSearchToolbarAppearanceView, context: Context) {
-        nsView.isActive = isActive
-        nsView.apply()
-    }
-
-    static func dismantleNSView(_ nsView: MacListSearchToolbarAppearanceView, coordinator: ()) {
-        nsView.isActive = false
-        nsView.apply()
-    }
-}
-
-final class MacListSearchToolbarAppearanceView: NSView {
-    var isActive = false
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        apply()
-    }
-
-    func apply() {
-        guard let window else { return }
-        window.titlebarAppearsTransparent = !isActive
-        window.backgroundColor = isActive ? .white : .textBackgroundColor
-        window.titlebarSeparatorStyle = isActive ? .line : .automatic
     }
 }

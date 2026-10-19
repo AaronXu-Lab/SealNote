@@ -163,38 +163,34 @@ private struct NotesSettingsView: View {
             }
 
             SWSectionPanel("编辑外观") {
-                SWSettingsRow("编辑字号", systemImage: "textformat.size", tallControl: true) {
-                    VStack(alignment: .trailing, spacing: DS.s1) {
-                        Text(String(format: "%.0f", settings.editorFontSize))
-                            .font(DS.caption())
-                            .foregroundColor(DS.textSecondary)
-                            .monospacedDigit()
-                        Slider(
-                            value: $settings.editorFontSize,
-                            in: SettingsStore.editorFontSizeRange,
-                            step: SettingsStore.editorFontSizeStep
-                        )
-                        .frame(width: 132)
-                        .tint(DS.primary)
+                SWSettingsRow("编辑字号", systemImage: "textformat.size") {
+                    Picker("编辑字号", selection: $settings.editorFontSize) {
+                        ForEach(12...18, id: \.self) { value in
+                            Text(String(value)).tag(Double(value))
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .fixedSize()
                 }
 
                 SWRowDivider()
 
-                SWSettingsRow("行高", systemImage: "line.3.horizontal.decrease", tallControl: true) {
-                    VStack(alignment: .trailing, spacing: DS.s1) {
-                        Text(String(format: "%.2fx", settings.editorLineHeightMultiple))
-                            .font(DS.caption())
-                            .foregroundColor(DS.textSecondary)
-                            .monospacedDigit()
-                        Slider(
-                            value: $settings.editorLineHeightMultiple,
-                            in: SettingsStore.editorLineHeightRange,
-                            step: 0.05
-                        )
-                        .frame(width: 132)
-                        .tint(DS.primary)
+                SWSettingsRow("行高", systemImage: "line.3.horizontal.decrease") {
+                    Picker("行高", selection: $settings.editorLineHeightMultiple) {
+                        let options = (12...18).map { Double($0) / 10 }
+                        // Preserve older slider values until the user chooses a new preset.
+                        if !options.contains(settings.editorLineHeightMultiple) {
+                            Text(settings.editorLineHeightMultiple.formatted(.number.precision(.fractionLength(1...2))))
+                                .tag(settings.editorLineHeightMultiple)
+                        }
+                        ForEach(options, id: \.self) { value in
+                            Text(String(format: "%.1f", value)).tag(value)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .fixedSize()
                 }
             }
 

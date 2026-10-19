@@ -1,6 +1,6 @@
 # iOS / iPadOS AaronUI 组件替换清单
 
-当前使用 `AaronUI-SwiftUI 0.3.0`。范围为 Seal Note iOS / iPadOS，最低系统版本为 iOS 26。macOS 继续使用原来的组件实现。
+开发阶段与 macOS 共用本地 `../AaronUI-SwiftUI` 依赖；[来源切换说明](aaronui-dependency.md)。本清单范围为 Seal Note iOS / iPadOS，最低系统版本为 iOS 26。
 
 ## 0.3.0 升级检查（2026-10-07）
 

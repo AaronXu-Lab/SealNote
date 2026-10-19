@@ -1824,7 +1824,14 @@ final class VaultStore: ObservableObject {
                   FileManager.default.fileExists(atPath: url.path) else {
                 continue
             }
-            let mdFile = try storage.loadMarkdownFile(at: url)
+            let mdFile: MarkdownNoteFile
+            do {
+                mdFile = try storage.loadMarkdownFile(at: url)
+            } catch StorageError.iCloudDownloadPending {
+                // Validate against another readable note; a cloud download says
+                // nothing about whether the configured key matches this vault.
+                continue
+            }
             do {
                 _ = try cryptoService.decryptMarkdownBody(mdFile.body, using: key)
             } catch {
@@ -1934,11 +1941,27 @@ final class VaultStore: ObservableObject {
     }
 
     func decryptAllEncryptedNotesAndRemoveKey() async throws -> Int {
-        let decrypted = try preflightDecryptAllEncryptedNotes()
+        let result = try preflightDecryptEncryptedNotes()
+        let decrypted = result.notes
         for item in decrypted {
             try convertEncryptedEntryToPlain(item.entry, mdFile: item.mdFile, decryptedBody: item.body)
         }
         try storage.saveIndex(noteIndex)
+        // A temporarily missing iCloud file must never cause its key to be removed.
+        // Keep its index entry so the operation can finish after synchronization.
+        if result.unavailableCount > 0 {
+            let snapshot = try Self.loadNotesSnapshot(
+                storage: storage, index: noteIndex, currentKey: currentKey, preferredMode: .plain
+            )
+            plainNotes = snapshot.plainNotes
+            decryptedNotes = snapshot.decryptedNotes
+            lockedEncryptedNotes = snapshot.lockedEncryptedNotes
+            trashNotes = snapshot.trashNotes
+            throw EncryptedNoteConversionError.filesUnavailable(
+                remaining: result.unavailableCount,
+                converted: decrypted.count
+            )
+        }
         try clearLoadedKeyReference()
         await reloadAllNotes(keyReloadMode: .explicit(nil))
         settings.preferredNoteMode = .plain
@@ -1969,20 +1992,69 @@ final class VaultStore: ObservableObject {
     }
 
     private func preflightDecryptAllEncryptedNotes() throws -> [DecryptedEncryptedNote] {
+        let result = try preflightDecryptEncryptedNotes()
+        guard result.unavailableCount == 0 else {
+            throw EncryptedNoteConversionError.filesUnavailable(remaining: result.unavailableCount, converted: 0)
+        }
+        return result.notes
+    }
+
+    private func preflightDecryptEncryptedNotes() throws -> (notes: [DecryptedEncryptedNote], unavailableCount: Int) {
         let key = try currentEncryptionKey()
+        var index = noteIndex
+        // Resolve files renamed or moved by another device before using stale paths.
+        // Unlike normal reconciliation, retain missing entries until they are readable.
+        if index.entries.contains(where: { entry in
+            guard entry.mode == .encrypted else { return false }
+            guard let url = Self.urlForEntry(entry, storage: storage) else { return true }
+            return !FileManager.default.fileExists(atPath: url.path)
+        }) {
+            _ = try Self.discoverUnindexedMarkdownFiles(in: &index, storage: storage)
+        }
         var decrypted: [DecryptedEncryptedNote] = []
-        for entry in noteIndex.entries where entry.mode == .encrypted {
-            guard let url = Self.urlForEntry(entry, storage: storage) else { continue }
-            let mdFile = try storage.loadMarkdownFile(at: url)
+        var unavailableCount = 0
+        // Include newly discovered encrypted files before removing their key too.
+        let originalIDs = Set(noteIndex.entries.filter { $0.mode == .encrypted }.map(\.noteId))
+        for discovered in index.entries where discovered.mode == .encrypted || originalIDs.contains(discovered.noteId) {
+            var entry = discovered
+            if let original = noteIndex.entry(for: discovered.noteId), original.location == discovered.location {
+                entry = NoteIndexEntry(
+                    noteId: discovered.noteId, fileName: discovered.fileName, mode: discovered.mode,
+                    location: discovered.location, deletedAt: original.deletedAt,
+                    purgeAfter: original.purgeAfter, originalLocation: original.originalLocation
+                )
+            }
+            guard let url = Self.urlForEntry(entry, storage: storage) else {
+                throw StorageError.iCloudUnavailable
+            }
+            let mdFile: MarkdownNoteFile
+            do {
+                mdFile = try storage.loadMarkdownFile(at: url)
+            } catch StorageError.fileNotFound {
+                unavailableCount += 1
+                continue
+            } catch StorageError.iCloudDownloadPending {
+                unavailableCount += 1
+                continue
+            } catch let error as CocoaError where error.code == .fileReadNoSuchFile || error.code == .fileNoSuchFile {
+                unavailableCount += 1
+                continue
+            }
+            guard mdFile.noteId == entry.noteId else {
+                // Never overwrite a different note that now occupies an old path.
+                throw StorageError.invalidData
+            }
             let body: String
             do {
-                body = try cryptoService.decryptMarkdownBody(mdFile.body, using: key)
+                body = mdFile.isEncrypted
+                    ? try cryptoService.decryptMarkdownBody(mdFile.body, using: key)
+                    : mdFile.body
             } catch {
                 throw VaultKeyFileError.keyMismatch
             }
             decrypted.append(DecryptedEncryptedNote(entry: entry, mdFile: mdFile, body: body))
         }
-        return decrypted
+        return (decrypted, unavailableCount)
     }
 
     private func convertEncryptedEntryToPlain(_ entry: NoteIndexEntry, mdFile: MarkdownNoteFile, decryptedBody: String) throws {
@@ -3643,5 +3715,17 @@ nonisolated enum VaultKeyFileError: Error, LocalizedError, Equatable {
 actor VaultFileIO {
     func perform<T: Sendable>(_ op: @Sendable () throws -> T) async throws -> T {
         try op()
+    }
+}
+
+nonisolated enum EncryptedNoteConversionError: Error, LocalizedError, Equatable {
+    case filesUnavailable(remaining: Int, converted: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .filesUnavailable(let remaining, let converted):
+            let progress = converted > 0 ? "已将 \(converted) 条笔记解密为明文。" : "尚未解密任何笔记。"
+            return "\(progress)另有 \(remaining) 条笔记文件缺失或尚未从 iCloud 下载，已保留这些记录和密钥引用。请确认 iCloud 同步完成或恢复文件后重试。"
+        }
     }
 }

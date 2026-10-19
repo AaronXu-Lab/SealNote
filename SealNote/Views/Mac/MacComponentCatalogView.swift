@@ -53,7 +53,6 @@ struct MacComponentCatalogView: View {
 
     private static let customComponents: [ComponentEntry] = [
         ComponentEntry(name: "AllNotesListRow", description: "全部笔记窗口的自定义列表项。", source: "Views/Mac/AllNotesWindow.swift", kind: .custom),
-        ComponentEntry(name: "MacListSearchBar", description: "macOS 列表窗口搜索栏。", source: "Views/Mac/AllNotesWindow.swift", kind: .custom),
         ComponentEntry(name: "TrashListRow", description: "回收站窗口的自定义列表项。", source: "Views/Mac/TrashWindow.swift", kind: .custom),
     ]
 
@@ -70,7 +69,6 @@ struct MacComponentCatalogView: View {
         }
         .frame(minWidth: 680, minHeight: 560)
         .background(DS.bg)
-        .macAaronUITheme()
     }
 
     private var header: some View {
@@ -242,7 +240,6 @@ private struct MacComponentPreviewView: View {
         }
         .padding(DS.s6)
         .frame(minWidth: 560, minHeight: 520)
-        .macAaronUITheme()
         .background(DS.bg)
         .alert("系统 Alert", isPresented: $isAlertPresented) {
             Button("确定", role: .cancel) {}
@@ -529,18 +526,6 @@ private struct MacComponentPreviewView: View {
                 Button("删除", role: .destructive) {}
             }
             .frame(width: 520)
-        case "MacListSearchBar":
-            MacListSearchBar(placeholder: "搜索笔记...", text: $textValue, onClose: {})
-                .frame(width: 380)
-        case "MacListSearchToolbarAppearance":
-            VStack(spacing: DS.s3) {
-                MacListSearchBar(placeholder: "搜索笔记...", text: $textValue, onClose: {})
-                    .frame(width: 460)
-                Text("该桥接组件正在把当前详情窗口切换为搜索工具栏外观")
-                    .font(DS.caption())
-                    .foregroundStyle(DS.textSecondary)
-            }
-            .background(MacListSearchToolbarAppearance(isActive: true))
         case "TrashView":
             TrashView()
                 .frame(width: 660, height: 560)

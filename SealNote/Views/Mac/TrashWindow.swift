@@ -6,19 +6,11 @@ struct TrashView: View {
     @ObservedObject private var vaultStore = VaultStore.shared
     @State private var showingEmptyTrashConfirmation = false
     @State private var searchText = ""
-    @State private var isSearchBarVisible = false
+    @State private var isSearching = false
     @State private var actionErrorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
-            if isSearchBarVisible {
-                MacListSearchBar(
-                    placeholder: "搜索回收站…",
-                    text: $searchText,
-                    onClose: { hideSearchBar() }
-                )
-            }
-
             if filteredTrashNotes.isEmpty {
                 emptyRow
             } else {
@@ -49,11 +41,16 @@ struct TrashView: View {
             }
         }
         .background(DS.bg)
-        .macAaronUITheme()
         .dsLiquidGlassToolbar()
         .navigationTitle("回收站")
         .toolbar { trashToolbar }
-        .background(MacListSearchToolbarAppearance(isActive: isSearchBarVisible))
+        .searchable(text: $searchText, isPresented: $isSearching, placement: .toolbar, prompt: "搜索回收站…")
+        .background {
+            Button("搜索") { isSearching = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .hidden()
+                .accessibilityHidden(true)
+        }
         .alert("确认清空回收站？", isPresented: $showingEmptyTrashConfirmation) {
             Button("取消", role: .cancel) {}
             Button("清空", role: .destructive) {
@@ -74,15 +71,6 @@ struct TrashView: View {
     @ToolbarContentBuilder
     private var trashToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                toggleSearchBar()
-            } label: {
-                Label("搜索", systemImage: "magnifyingglass")
-                    .labelStyle(.iconOnly)
-            }
-            .help("搜索")
-            .keyboardShortcut("f", modifiers: .command)
-
             Button(role: .destructive) {
                 showingEmptyTrashConfirmation = true
             } label: {
@@ -92,19 +80,6 @@ struct TrashView: View {
             .disabled(vaultStore.trashNotes.isEmpty)
             .help(vaultStore.trashNotes.isEmpty ? "回收站为空" : "永久删除回收站中的所有笔记")
         }
-    }
-
-    private func toggleSearchBar() {
-        if isSearchBarVisible {
-            hideSearchBar()
-        } else {
-            isSearchBarVisible = true
-        }
-    }
-
-    private func hideSearchBar() {
-        isSearchBarVisible = false
-        searchText = ""
     }
 
     private var listSummary: some View {
@@ -119,9 +94,8 @@ struct TrashView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, DS.s3)
-        .padding(.top, DS.s3 - DS.s4)
+        .padding(.top, DS.s3)
         .padding(.bottom, DS.s2)
-        .padding(.top, 8)
     }
 
     private var filteredTrashNotes: [TrashNote] {

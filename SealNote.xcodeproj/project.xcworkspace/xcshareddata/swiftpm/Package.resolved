@@ -1,15 +1,6 @@
 {
-  "originHash" : "8a67133e51305b5c054f033106a0fa223dbca4b0c3f92c33e3a24512408b9e43",
+  "originHash" : "0c6b21c6e00d15337a000fd5bd982ca84640c824066aba86dd348b0a561611dc",
   "pins" : [
-    {
-      "identity" : "aaronui-swiftui",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/AaronXu-Lab/AaronUI-SwiftUI.git",
-      "state" : {
-        "revision" : "5d9d972af48abe7470a53289dfe79bfe02ba15c7",
-        "version" : "0.4.2"
-      }
-    },
     {
       "identity" : "highlightr",
       "kind" : "remoteSourceControl",

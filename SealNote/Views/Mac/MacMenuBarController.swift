@@ -505,6 +505,10 @@ final class MacMenuBarController: NSObject, NSMenuDelegate {
 
     func openIntroWindowIfNeeded() {
         guard !settings.hideMacIntroOnLaunch else { return }
+        openIntroWindow()
+    }
+
+    func openIntroWindow() {
         if introWindow == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 620, height: 720),

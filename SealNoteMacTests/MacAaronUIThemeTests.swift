@@ -11,9 +11,16 @@ final class MacAaronUIThemeTests: XCTestCase {
         for theme in AppTheme.allCases {
             MacAaronUITheme.apply(theme)
             for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-                let background = try resolve(AUIColor.primary, appearance)
-                let foreground = try resolve(AUIColor.onSolid, appearance)
+                let background = try resolve(AUIColor.primaryFill, appearance)
+                let foreground = try resolve(AUIColor.onPrimaryFill, appearance)
+                if appearance == .aqua {
+                    XCTAssertEqual(foreground.redComponent, 1, accuracy: 0.001)
+                    XCTAssertEqual(foreground.greenComponent, 1, accuracy: 0.001)
+                    XCTAssertEqual(foreground.blueComponent, 1, accuracy: 0.001)
+                }
                 XCTAssertGreaterThanOrEqual(contrast(background, foreground), 4.5, "\(theme) / \(appearance)")
+                let hover = try resolve(AUIColor.primaryFillHover, appearance)
+                XCTAssertGreaterThanOrEqual(contrast(hover, foreground), 4.5, "hover: \(theme) / \(appearance)")
                 let surface = try resolve(AUIColor.surface, appearance)
                 let body = try resolve(AUIColor.onSurface, appearance)
                 XCTAssertGreaterThanOrEqual(contrast(surface, body), 4.5)
@@ -21,19 +28,57 @@ final class MacAaronUIThemeTests: XCTestCase {
         }
     }
 
-    func testChangingBrandDoesNotTintNeutralText() throws {
+    func testChangingBrandKeepsTextNearNeutral() throws {
         defer { MacAaronUITheme.apply(SettingsStore.shared.appTheme) }
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-            var neutral: NSColor?
             var previousAccent: NSColor?
             for theme in AppTheme.allCases {
                 MacAaronUITheme.apply(theme)
                 let text = try resolve(AUIColor.onSurface, appearance)
                 let accent = try resolve(AUIColor.primary, appearance)
-                if let neutral { XCTAssertEqual(text, neutral) }
+                // Official presets allow a subtle hue in near-neutral text.
+                let channels = [text.redComponent, text.greenComponent, text.blueComponent]
+                XCTAssertLessThan(channels.max()! - channels.min()!, 0.06, "\(theme) / \(appearance)")
                 if let previousAccent { XCTAssertNotEqual(accent, previousAccent) }
-                neutral = text
                 previousAccent = accent
+            }
+        }
+    }
+
+    func testBrandInkRemainsReadableOnSoftSurfaces() throws {
+        defer { MacAaronUITheme.apply(SettingsStore.shared.appTheme) }
+        for theme in AppTheme.allCases {
+            MacAaronUITheme.apply(theme)
+            for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                let ink = try resolve(AUIColor.primaryInk, appearance)
+                for surface in [AUIColor.surface, AUIColor.primarySoft, AUIColor.accentSubtle] {
+                    XCTAssertGreaterThanOrEqual(contrast(ink, try resolve(surface, appearance)), 4.5,
+                                                "\(theme) / \(appearance)")
+                }
+            }
+        }
+    }
+
+    func testBrandControlContrastInBothAppearances() throws {
+        defer { MacAaronUITheme.apply(SettingsStore.shared.appTheme) }
+        for theme in AppTheme.allCases {
+            MacAaronUITheme.apply(theme)
+            for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                let pairs: [(String, Color, Color, Double)] = [
+                    ("fill text", AUIColor.onPrimaryFill, AUIColor.primaryFill, 4.5),
+                    ("fill hover text", AUIColor.onPrimaryFill, AUIColor.primaryFillHover, 4.5),
+                    ("selected switch thumb", AUIColor.switchThumbSelected, AUIColor.primaryFill, 3),
+                    ("unselected switch thumb", AUIColor.switchThumb, AUIColor.surfaceTrack, 3),
+                    ("selected switch track", AUIColor.primaryFill, AUIColor.surface, 3),
+                    ("unselected switch track", AUIColor.surfaceTrack, AUIColor.surface, 3),
+                    ("muted text", AUIColor.onSurfaceMuted, AUIColor.surface, 4.5),
+                    ("faint text", AUIColor.onSurfaceFaint, AUIColor.surface, 4.5)
+                ]
+                for (name, foreground, background, minimum) in pairs {
+                    let ratio = contrast(try resolve(foreground, appearance), try resolve(background, appearance))
+                    print("COLOR-AUDIT \(theme) \(appearance.rawValue) \(name): \(String(format: "%.3f", ratio))")
+                    XCTAssertGreaterThanOrEqual(ratio, minimum, "\(theme) / \(appearance) / \(name)")
+                }
             }
         }
     }

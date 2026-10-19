@@ -18,7 +18,9 @@ struct MacSettingsView: View {
     @ObservedObject private var settings = SettingsStore.shared
     @State private var selectedTab: Tab
     @State private var recordingAction: MacShortcutRecordingAction?
+    @State private var shortcutConflictMessage: String?
     @State private var settingsErrorMessage: String?
+    @State private var settingsErrorTitle = "设置失败"
     @State private var isCheckingForUpdates = false
     @State private var isShowingCLIEnableConfirmation = false
     // Temporarily hidden for product-positioning reasons. Keep the state and
@@ -64,9 +66,7 @@ struct MacSettingsView: View {
                 }
                 .tag(Tab.about)
         }
-        .macAaronUITheme()
         .padding(.horizontal, DS.s4)
-        .padding(.bottom, DS.s4)
         .frame(
             minWidth: 640,
             idealWidth: 640,
@@ -77,7 +77,7 @@ struct MacSettingsView: View {
         )
         .background(AUIColor.canvas)
         .background(shortcutRecorder)
-        .alert("设置失败", isPresented: settingsErrorBinding) {
+        .alert(settingsErrorTitle, isPresented: settingsErrorBinding) {
             Button("确定", role: .cancel) {}
         } message: {
             Text(settingsErrorMessage ?? "无法保存这个设置。")
@@ -148,11 +148,10 @@ struct MacSettingsView: View {
                     description: vaultStore.isUsingICloudStorage ? "笔记文件直接位于 iCloud Drive 公开文件夹中。" : "当前未使用 iCloud，已回退到本地存储。",
                     leading: .icon(vaultStore.isUsingICloudStorage ? "icloud" : "folder")
                 ) {
-                    Button("打开") {
+                    AUIButton("打开存储文件夹", systemImage: "folder", iconOnly: true, variant: .ghost) {
                         openStorageFolder()
                     }
-                    .buttonStyle(AUIButtonStyle(variant: .outline))
-                    .controlSize(.regular)
+                    .help("打开存储文件夹")
                 }
             }
 
@@ -180,11 +179,18 @@ struct MacSettingsView: View {
 
             macPanel("访问权限") {
                 toggleRow(
-                    "启用命令行访问",
-                    subtitle: "仅在 Seal Note 正在运行时可用，默认关闭。",
+                    "命令行访问",
+                    subtitle: "允许本机工具读写明文笔记，需保持应用运行。",
                     systemImage: "terminal",
                     isOn: cliAccessBinding
                 )
+
+                AUIItem("安装命令", description: cliInstallCommand, leading: .icon("arrow.down.to.line"), trailingType: .button) {
+                    AUIButton("复制安装命令", systemImage: "doc.on.doc", iconOnly: true, variant: .ghost) {
+                        copyToPasteboard(cliInstallCommand)
+                    }
+                    .help("复制安装命令")
+                }
 
                 // Encrypted-note CLI access is temporarily hidden for
                 // product-positioning reasons. Keep this UI implementation so
@@ -201,135 +207,96 @@ struct MacSettingsView: View {
 //                )
 //                .disabled(!settings.cliAccessEnabled)
             }
-
-            HStack(spacing: DS.s2) {
-                Spacer(minLength: DS.s3)
-                Button("复制安装命令") {
-                    copyToPasteboard(cliInstallCommand)
-                }
-                .buttonStyle(AUIButtonStyle(variant: .outline))
-                .controlSize(.regular)
-            }
         }
     }
 
     private var aboutTab: some View {
         panelStack {
-            AUIItemSurface {
-                VStack(spacing: DS.s8){
-                    VStack(spacing: DS.s6) {
+            macPanel("关于") {
+                HStack(spacing: DS.s4) {
+                    Button {
+                        MacMenuBarController.shared.openIntroWindow()
+                    } label: {
                         aboutLogo
-                        
-                        VStack(spacing: DS.s2) {
-                            Text("Seal Note")
-                                .font(.system(size: 34, weight: .semibold))
-                                .foregroundStyle(DS.textEmphasize)
-                            
-                            Text("v\(appVersion)")
-                                .font(DS.caption())
-                                .foregroundStyle(DS.textSubtle)
-                            
-                            Text("快速记录，不打断当前工作。")
-                                .font(.system(size: 16, weight: .regular))
-                                .foregroundStyle(DS.textSecondary)
-                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    HStack(alignment: .top, spacing: DS.s6) {
-                        feature(
-                            systemImage: "menubar.rectangle",
-                            title: "快速捕捉",
-                            detail: "从菜单栏新建或打开最近笔记，不打断当前工作。"
-                        )
-                        
-                        feature(
-                            systemImage: "doc.plaintext",
-                            title: "自由迁移",
-                            detail: "以标准 Markdown 文件保存，方便同步、迁移和跨工具读取。"
-                        )
-                        
-                        feature(
-                            systemImage: "lock.shield",
-                            title: "安心加密",
-                            detail: "端侧加密，密钥文件由你保存和管理。"
-                        )
+                    .buttonStyle(.plain)
+                    .help("打开欢迎页")
+                    .accessibilityLabel("打开 Seal Note 欢迎页")
+                    VStack(alignment: .leading, spacing: DS.s2) {
+                        Text("Seal Note")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(DS.textStrong)
+                        Text("版本 \(appVersion)")
+                            .font(DS.caption())
+                            .foregroundStyle(DS.textSubtle)
+                        Text("快速记录，不打断当前工作。")
+                            .font(DS.body())
+                            .foregroundStyle(DS.textSecondary)
                     }
-                    .padding(.horizontal, DS.s6)
+                    Spacer(minLength: 0)
                 }
-                .padding(.vertical, DS.s8)
-            }
-
-            macPanel("版本更新") {
-                AUIItem("检查更新", description: "从 GitHub Release 检查 Seal Note 的最新版本。", leading: .icon("arrow.triangle.2.circlepath")) {
-                    Button(isCheckingForUpdates ? "正在检查…" : "检查更新") {
-                        checkForUpdates()
-                    }
-                    .buttonStyle(AUIButtonStyle(variant: .outline))
-                    .controlSize(.regular)
-                    .disabled(isCheckingForUpdates)
-                }
+                .padding(.vertical, DS.s6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .listRowSeparator(.hidden)
             }
 
             macPanel("组件") {
                 AUIItem("查看组件", leading: .icon("square.grid.2x2")) {
-                    Button {
+                    AUIButton("打开组件目录", systemImage: "arrow.up.right", iconOnly: true, variant: .ghost) {
                         MacMenuBarController.shared.openComponentCatalogWindow()
-                    } label: {
-                        Image(systemName: "arrow.up.right")
-                            .font(.body)
                     }
-                    .buttonStyle(AUIButtonStyle(variant: .outline))
-                    .controlSize(.regular)
                     .help("打开组件目录")
                 }
             }
 
             macPanel("维护日志") {
-                AUIItem("开启日志记录", description: "记录保存、索引等元数据；不记录正文或密钥。", leading: .icon("doc.text.magnifyingglass")) {
+                AUIItem("开启日志记录", description: "记录保存、索引等元数据；不记录正文或密钥。", leading: .icon("doc.text.magnifyingglass"), trailingType: settings.maintenanceLoggingEnabled ? .buttons : .button) {
                     if settings.maintenanceLoggingEnabled {
                         HStack(spacing: DS.s2) {
-                            Button {
+                            AUIButton("打开日志文件夹", systemImage: "folder", iconOnly: true, variant: .ghost) {
                                 openMaintenanceLogFolder()
-                            } label: {
-                                Image(systemName: "folder")
                             }
-                            .buttonStyle(AUIButtonStyle(variant: .outline))
-                            .controlSize(.regular)
                             .help("打开日志文件夹")
 
-                            Button("关闭", role: .destructive) {
+                            AUIButton("关闭", variant: .light, role: .destructive) {
                                 settings.maintenanceLoggingEnabled = false
                             }
-                            .buttonStyle(AUIButtonStyle(variant: .outline))
-                            .controlSize(.regular)
                         }
                     } else {
-                        Button("开启") {
+                        AUIButton("开启", variant: .light) {
                             settings.maintenanceLoggingEnabled = true
                         }
-                        .buttonStyle(AUIButtonStyle(variant: .fill))
-                        .controlSize(.regular)
-                        .tint(DS.primary)
                     }
                 }
             }
 
-            HStack(spacing: DS.s3) {
-                Link("隐私政策", destination: privacyPolicyURL)
+            VStack(spacing: DS.s3) {
+                HStack(spacing: 0) {
+                    Link(destination: privacyPolicyURL) {
+                        Text("隐私政策")
+                            .foregroundStyle(AUIColor.primary)
+                    }
+                    Text(" · ")
+                        .foregroundStyle(DS.textSubtle)
+                    Button(isCheckingForUpdates ? "正在检查…" : "检查更新") {
+                        checkForUpdates()
+                    }
+                    .disabled(isCheckingForUpdates)
+                }
                 #if DEBUG
-                Text("·")
-                    .foregroundStyle(DS.textSubtle)
                 Button("恢复所有默认") {
                     isShowingRestoreDefaultsConfirmation = true
                 }
-                .buttonStyle(AUIButtonStyle(variant: .ghost))
                 #endif
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(AUIColor.primary)
             .font(DS.caption())
             .frame(maxWidth: .infinity, alignment: .center)
-        
+            .listRowSeparator(.hidden)
         }
     }
+
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
@@ -351,78 +318,51 @@ struct MacSettingsView: View {
     }
     #endif
     
-    private func feature(systemImage: String, title: String, detail: String) -> some View {
-        VStack(spacing: DS.s2) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(DS.primaryDeep)
-                .frame(width: 32, height: 32)
-                .background(DS.primaryContainer)
-                .clipShape(Circle())
-
-            Text(title)
-                .font(DS.bodyLg().weight(.semibold))
-                .foregroundStyle(DS.textStrong)
-                .multilineTextAlignment(.center)
-
-            Text(detail)
-                .font(DS.caption())
-                .foregroundStyle(DS.textSubtle)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
-    }
-
     private var editorTab: some View {
         panelStack {
             macPanel("编辑体验") {
-                AUIItem("编辑字号", leading: .icon("textformat.size")) {
-                    VStack(alignment: .trailing, spacing: DS.s1) {
-                        Text(String(format: "%.0f", settings.editorFontSize))
-                            .font(DS.caption())
-                            .foregroundColor(DS.textSecondary)
-                            .monospacedDigit()
-                        AUISlider("编辑字号",
-                            value: fontSizeBinding,
-                            in: SettingsStore.editorFontSizeRange,
-                            step: SettingsStore.editorFontSizeStep
-                        )
-                        .frame(width: 150)
-                        .tint(DS.primary)
+                AUIItem("编辑字号", leading: .icon("textformat.size"), trailingType: .dropdown) {
+                    Picker("编辑字号", selection: $settings.editorFontSize) {
+                        ForEach(12...18, id: \.self) { value in
+                            Text(String(value)).tag(Double(value))
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .fixedSize()
                 }
 
-                AUIItem("行高", leading: .icon("line.3.horizontal.decrease")) {
-                    VStack(alignment: .trailing, spacing: DS.s1) {
-                        Text(String(format: "%.2fx", settings.editorLineHeightMultiple))
-                            .font(DS.caption())
-                            .foregroundColor(DS.textSecondary)
-                            .monospacedDigit()
-                        AUISlider("行高",
-                            value: lineHeightBinding,
-                            in: SettingsStore.editorLineHeightRange,
-                            step: 0.05
-                        )
-                        .frame(width: 150)
-                        .tint(DS.primary)
+                AUIItem("行高", leading: .icon("line.3.horizontal.decrease"), trailingType: .dropdown) {
+                    Picker("行高", selection: $settings.editorLineHeightMultiple) {
+                        let options = (12...18).map { Double($0) / 10 }
+                        // Preserve older slider values until the user chooses a new preset.
+                        if !options.contains(settings.editorLineHeightMultiple) {
+                            Text(settings.editorLineHeightMultiple.formatted(.number.precision(.fractionLength(1...2))))
+                                .tag(settings.editorLineHeightMultiple)
+                        }
+                        ForEach(options, id: \.self) { value in
+                            Text(String(format: "%.1f", value)).tag(value)
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .fixedSize()
                 }
             }
 
             macPanel("编辑行为") {
                 toggleRow(
-                    "限制笔记最大宽度",
-                    subtitle: "窗口较宽时，将可编辑区域限制为约 30 个字号宽度。",
+                    "正文宽度限制",
+                    subtitle: "正文最宽约 30 个字。",
                     systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right",
                     isOn: $settings.limitEditorMaximumWidth
                 )
 
-                toggleRow("关闭空白笔记时自动丢弃", systemImage: "trash", isOn: $settings.autoDeleteEmptyNotes)
+                toggleRow("空白笔记清理", subtitle: "关闭时自动丢弃空白笔记。", systemImage: "trash", isOn: $settings.autoDeleteEmptyNotes)
 
-                toggleRow("自动命名笔记", subtitle: "开启后每次自动保存都会按正文重新命名；关闭时仅保留手动标题和首次标题规则。", systemImage: "text.cursor", isOn: $settings.autoRenameNotesOnSave)
+                toggleRow("自动命名", subtitle: "保存时按正文更新笔记标题。", systemImage: "text.cursor", isOn: $settings.autoRenameNotesOnSave)
 
-                toggleRow("不将 Hex 色值识别为标签", subtitle: "忽略 #RRGGBB 和含透明度的 #RRGGBBAA 色值。", systemImage: "paintpalette", isOn: $settings.excludeHexColorsFromTags)
+                toggleRow("色值过滤", subtitle: "不将 #RRGGBB、#RRGGBBAA 识别为标签。", systemImage: "paintpalette", isOn: $settings.excludeHexColorsFromTags)
             }
         }
     }
@@ -430,70 +370,52 @@ struct MacSettingsView: View {
     private var shortcutTab: some View {
         panelStack {
             macPanel("常用操作") {
-                LazyVGrid(columns: shortcutGridColumns, alignment: .leading, spacing: DS.s2) {
-                    shortcutTile(
-                        title: "新建笔记",
-                        value: ShortcutStore.displayStringForKey(
-                            keyCode: shortcutStore.newNoteKey.keyCode,
-                            modifiers: shortcutStore.newNoteKey.modifiers
-                        ),
-                        isRecording: recordingAction == .newNote,
-                        onRecord: { recordingAction = .newNote }
+                shortcutRow(
+                    title: "新建笔记",
+                    value: ShortcutStore.displayStringForKey(keyCode: shortcutStore.newNoteKey.keyCode, modifiers: shortcutStore.newNoteKey.modifiers),
+                    isRecording: recordingAction == .newNote,
+                    onRecord: { recordingAction = .newNote }
+                )
+                ForEach(EditorShortcutAction.allCases) { action in
+                    let shortcut = shortcutStore.shortcut(for: action)
+                    shortcutRow(
+                        title: action.title,
+                        value: ShortcutStore.displayStringForKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers),
+                        isRecording: recordingAction == .editor(action),
+                        onRecord: { recordingAction = .editor(action) }
                     )
-
-                    ForEach(EditorShortcutAction.allCases) { action in
-                        let shortcut = shortcutStore.shortcut(for: action)
-                        shortcutTile(
-                            title: action.title,
-                            value: ShortcutStore.displayStringForKey(
-                                keyCode: shortcut.keyCode,
-                                modifiers: shortcut.modifiers
-                            ),
-                            isRecording: recordingAction == .editor(action),
-                            onRecord: { recordingAction = .editor(action) }
-                        )
-                    }
                 }
             }
 
             macPanel("Markdown 格式") {
-                LazyVGrid(columns: shortcutGridColumns, alignment: .leading, spacing: DS.s2) {
-                    ForEach(MarkdownShortcutAction.allCases) { action in
-                        let shortcut = shortcutStore.shortcut(for: action)
-                        shortcutTile(
-                            title: action.title,
-                            value: ShortcutStore.displayStringForKey(
-                                keyCode: shortcut.keyCode,
-                                modifiers: shortcut.modifiers
-                            ),
-                            isRecording: recordingAction == .markdown(action),
-                            onRecord: { recordingAction = .markdown(action) }
-                        )
-                    }
+                ForEach(MarkdownShortcutAction.allCases) { action in
+                    let shortcut = shortcutStore.shortcut(for: action)
+                    shortcutRow(
+                        title: action.title,
+                        value: ShortcutStore.displayStringForKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers),
+                        isRecording: recordingAction == .markdown(action),
+                        onRecord: { recordingAction = .markdown(action) }
+                    )
                 }
-
             }
 
-            HStack(spacing: DS.s2) {
-                helperText(recordingAction == nil ? "点击录制后按下新的组合键；Esc 取消。" : "正在录制：按下新的组合键，或按 Esc 取消。")
-                Spacer(minLength: DS.s3)
-                Button("恢复默认") {
-                    shortcutStore.resetAllShortcuts()
-                    recordingAction = nil
-                }
-                .buttonStyle(AUIButtonStyle(variant: .outline))
-                .controlSize(.regular)
+            Button("恢复默认") {
+                shortcutStore.resetAllShortcuts()
+                recordingAction = nil
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(AUIColor.primary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .listRowSeparator(.hidden)
         }
-    }
-
-    private var fontSizeBinding: Binding<Double> {
-        Binding(
-            get: { settings.editorFontSize },
-            set: { newValue in
-                settings.editorFontSize = newValue
-            }
-        )
+        .alert("快捷键冲突", isPresented: Binding(
+            get: { shortcutConflictMessage != nil },
+            set: { if !$0 { shortcutConflictMessage = nil } }
+        )) {
+            Button("确定", role: .cancel) {}
+        } message: {
+            Text(shortcutConflictMessage ?? "")
+        }
     }
 
     private func keyStatusTitle(_ status: MacVaultKeyStatus) -> String {
@@ -592,22 +514,27 @@ struct MacSettingsView: View {
                 }
             }
         case .available:
-            HStack(spacing: DS.s2) {
+            Menu {
                 Button {
                     openKeyLocation()
                 } label: {
-                    Image(systemName: "folder")
+                    Label("打开密钥位置", systemImage: "folder")
                 }
-                .buttonStyle(AUIButtonStyle(variant: .outline))
-                .controlSize(.regular)
-                .help("打开密钥位置")
+                .labelStyle(.titleAndIcon)
 
-                Button("移除引用", role: .destructive) {
+                Button(role: .destructive) {
                     unloadKey()
+                } label: {
+                    Label("移除引用", systemImage: "link")
                 }
-                .buttonStyle(AUIButtonStyle(variant: .outline))
-                .controlSize(.regular)
+                .labelStyle(.titleAndIcon)
+            } label: {
+                Label("密钥操作", systemImage: "ellipsis")
             }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))
+            .help("密钥操作")
         case .invalid:
             HStack(spacing: DS.s2) {
                 Button("重新定位密钥") {
@@ -624,13 +551,6 @@ struct MacSettingsView: View {
                 .controlSize(.regular)
             }
         }
-    }
-
-    private var lineHeightBinding: Binding<Double> {
-        Binding(
-            get: { settings.editorLineHeightMultiple },
-            set: { settings.editorLineHeightMultiple = $0 }
-        )
     }
 
     private var newEncryptedNoteBinding: Binding<Bool> {
@@ -712,31 +632,21 @@ struct MacSettingsView: View {
             set: { isPresented in
                 if !isPresented {
                     settingsErrorMessage = nil
+                    settingsErrorTitle = "设置失败"
                 }
             }
         )
     }
 
     private var shortcutRecorder: some View {
-        ShortcutRecorderView(recordingAction: $recordingAction) { action, shortcut in
-            switch action {
-            case .newNote:
-                shortcutStore.setNewNoteShortcut(shortcut)
-            case .markdown(let markdownAction):
-                shortcutStore.setMarkdownShortcut(shortcut, for: markdownAction)
-            case .editor(let editorAction):
-                shortcutStore.setEditorShortcut(shortcut, for: editorAction)
+        ShortcutRecordingWindowHost(recordingAction: $recordingAction) { action, shortcut in
+            if let conflict = shortcutStore.applyRecordedShortcut(shortcut, for: action) {
+                let keys = ShortcutStore.displayStringForKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers)
+                shortcutConflictMessage = "\(keys) 已用于“\(conflict)”。已保留原快捷键。"
             }
             recordingAction = nil
         }
         .frame(width: 0, height: 0)
-    }
-
-    private var shortcutGridColumns: [GridItem] {
-        [
-            GridItem(.flexible(), spacing: DS.s2),
-            GridItem(.flexible(), spacing: DS.s2)
-        ]
     }
 
     private func panelStack<Content: View>(@ViewBuilder content: @escaping () -> Content) -> some View {
@@ -765,58 +675,12 @@ struct MacSettingsView: View {
         }
     }
 
-    private func shortcutTile(title: String, value: String, isRecording: Bool, onRecord: @escaping () -> Void) -> some View {
-        HStack(spacing: DS.s2) {
-            Image(systemName: isRecording ? "record.circle" : "keyboard")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(isRecording ? DS.primary : DS.textSubtle)
-                .frame(width: 24, height: 24)
-                .background((isRecording ? DS.primary : DS.textSubtle).opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: DS.rMd, style: .continuous))
-
-            Text(title)
-                .font(DS.body())
-                .foregroundColor(DS.textStrong)
-                .lineLimit(1)
-                .minimumScaleFactor(0.9)
-
-            Spacer(minLength: DS.s1)
-
-            Text(value)
-                .font(DS.caption())
-                .foregroundColor(isRecording ? DS.primary : DS.textSecondary)
+    private func shortcutRow(title: String, value: String, isRecording: Bool, onRecord: @escaping () -> Void) -> some View {
+        AUIItem(title, leading: .icon("keyboard"), trailingType: .button) {
+            AUIButton(isRecording ? "正在录制…" : value, variant: .outline, action: onRecord)
                 .monospacedDigit()
-                .lineLimit(1)
-
-            Button {
-                onRecord()
-            } label: {
-                Label(isRecording ? "正在录制" : "录制快捷键", systemImage: isRecording ? "record.circle.fill" : "record.circle")
-                    .labelStyle(.iconOnly)
-            }
-            .buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))
-            .controlSize(.regular)
-            .tint(isRecording ? DS.primary : nil)
-            .help(isRecording ? "正在录制" : "录制快捷键")
+                .accessibilityLabel("录制\(title)快捷键，当前\(value)")
         }
-        .padding(.horizontal, DS.s2)
-        .padding(.vertical, DS.s2)
-        .frame(minHeight: 40)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay {
-            if isRecording {
-                RoundedRectangle(cornerRadius: DS.rMd, style: .continuous)
-                    .stroke(DS.primary.opacity(0.26), lineWidth: 0.5)
-            }
-        }
-    }
-
-    private func helperText(_ text: String) -> some View {
-        Text(text)
-            .font(DS.caption())
-            .foregroundColor(DS.textSubtle)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, DS.s1)
     }
 
     @ViewBuilder
@@ -824,13 +688,12 @@ struct MacSettingsView: View {
         if let image = MacAppIconController.image(for: settings.appTheme) {
             Image(nsImage: image)
                 .resizable()
-                .frame(width: 82, height: 82)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .shadow(color: DS.floatShadow.color, radius: DS.floatShadow.radius, x: DS.floatShadow.x, y: DS.floatShadow.y)
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .id(settings.appTheme)
         } else {
             Color.clear
-                .frame(width: 82, height: 82)
+                .frame(width: 64, height: 64)
         }
     }
 
@@ -982,6 +845,13 @@ struct MacSettingsView: View {
             StickyNoteWindowManager.shared.closeAllWindows()
         } catch {
             await MainActor.run {
+                if let conversionError = error as? EncryptedNoteConversionError,
+                   case .filesUnavailable(_, let converted) = conversionError {
+                    settingsErrorTitle = "解密尚未完成"
+                    if converted > 0 {
+                        StickyNoteWindowManager.shared.closeAllWindows()
+                    }
+                }
                 settingsErrorMessage = error.localizedDescription
             }
         }
@@ -1117,20 +987,6 @@ struct MacSettingsView: View {
     MacSettingsView(selectedTab: .about)
 }
 
-private enum MacShortcutRecordingAction: Equatable, Identifiable {
-    case newNote
-    case markdown(MarkdownShortcutAction)
-    case editor(EditorShortcutAction)
-
-    var id: String {
-        switch self {
-        case .newNote: return "newNote"
-        case .markdown(let action): return "markdown.\(action.rawValue)"
-        case .editor(let action): return "editor.\(action.rawValue)"
-        }
-    }
-}
-
 private struct MacSettingsPage<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
@@ -1142,19 +998,132 @@ private struct MacSettingsPage<Content: View>: View {
         .scrollContentBackground(.hidden)
         .padding(.top, DS.s6)
         .padding(.horizontal, DS.s3)
-        .padding(.bottom, DS.s4)
+        // Keep bottom breathing room inside the scrollable content so rows do not
+        // disappear behind a fixed blank strip above the window's lower edge.
+        .contentMargins(.bottom, DS.s4, for: .scrollContent)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(AUIColor.canvas)
     }
 }
 
-private struct ShortcutRecorderView: NSViewRepresentable {
+/// Keeps the transient recorder window scoped to the settings view's lifetime.
+struct ShortcutRecordingWindowHost: NSViewRepresentable {
     @Binding var recordingAction: MacShortcutRecordingAction?
     let onRecord: (MacShortcutRecordingAction, MarkdownShortcut) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        let coordinator = context.coordinator
+        coordinator.recordingAction = $recordingAction
+        guard let action = recordingAction else {
+            coordinator.close()
+            return
+        }
+        guard coordinator.window == nil else { return }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 200),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "录制快捷键"
+        window.isReleasedWhenClosed = false
+        window.isRestorable = false
+        window.titlebarSeparatorStyle = .none
+        window.delegate = coordinator
+        coordinator.beginRecording()
+        window.contentView = NSHostingView(rootView:
+            ShortcutRecordingContent(action: action, recordingAction: $recordingAction, onRecord: { action, shortcut in
+                coordinator.close()
+                onRecord(action, shortcut)
+            })
+        )
+        coordinator.window = window
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.close()
+    }
+
+    final class Coordinator: NSObject, NSWindowDelegate {
+        var window: NSWindow?
+        var recordingAction: Binding<MacShortcutRecordingAction?>?
+        var shortcutStore = ShortcutStore.shared
+        private var recordingToken: UUID?
+
+        func beginRecording() {
+            if recordingToken == nil { recordingToken = shortcutStore.beginShortcutRecording() }
+        }
+
+        private func finishRecording() {
+            if let token = recordingToken {
+                recordingToken = nil
+                shortcutStore.endShortcutRecording(token)
+            }
+            if recordingAction?.wrappedValue != nil { recordingAction?.wrappedValue = nil }
+        }
+
+        func close() {
+            let closingWindow = window
+            window = nil
+            finishRecording()
+            closingWindow?.close()
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            window = nil
+            finishRecording()
+        }
+
+        func windowDidResignKey(_ notification: Notification) {
+            // Switching windows/apps cancels capture so no invisible recorder keeps shortcuts paused.
+            close()
+        }
+    }
+}
+
+private struct ShortcutRecordingContent: View {
+    let action: MacShortcutRecordingAction
+    @Binding var recordingAction: MacShortcutRecordingAction?
+    let onRecord: (MacShortcutRecordingAction, MarkdownShortcut) -> Void
+    @State private var pressedKeys = ""
+
+    var body: some View {
+        VStack(spacing: DS.s4) {
+            Text("正在录制：\(action.title)")
+                .font(DS.body().weight(.semibold))
+            Text(pressedKeys.isEmpty ? "请按下组合键" : pressedKeys)
+                .font(.system(size: 28, weight: .medium, design: .monospaced))
+                .foregroundStyle(pressedKeys.isEmpty ? DS.textSubtle : DS.primary)
+                .frame(height: 40)
+                .accessibilityLabel("当前按键")
+                .accessibilityValue(pressedKeys.isEmpty ? "尚未按键" : pressedKeys)
+            Text("松开按键保存；按 Esc 或关闭窗口取消。")
+                .font(DS.caption())
+                .foregroundStyle(DS.textSecondary)
+        }
+        .frame(width: 360, height: 200)
+        .background(ShortcutRecorderView(recordingAction: $recordingAction, onRecord: onRecord,
+                                         onChange: { pressedKeys = $0 })
+            .frame(width: 0, height: 0))
+    }
+}
+
+struct ShortcutRecorderView: NSViewRepresentable {
+    @Binding var recordingAction: MacShortcutRecordingAction?
+    let onRecord: (MacShortcutRecordingAction, MarkdownShortcut) -> Void
+    var onChange: (String) -> Void = { _ in }
 
     func makeNSView(context: Context) -> RecorderView {
         let view = RecorderView()
         view.onRecord = onRecord
+        view.onChange = onChange
         view.onCancel = { recordingAction = nil }
         return view
     }
@@ -1162,6 +1131,7 @@ private struct ShortcutRecorderView: NSViewRepresentable {
     func updateNSView(_ nsView: RecorderView, context: Context) {
         nsView.recordingAction = recordingAction
         nsView.onRecord = onRecord
+        nsView.onChange = onChange
         nsView.onCancel = { recordingAction = nil }
         if recordingAction != nil {
             DispatchQueue.main.async {
@@ -1170,23 +1140,87 @@ private struct ShortcutRecorderView: NSViewRepresentable {
         }
     }
 
+    static func dismantleNSView(_ nsView: RecorderView, coordinator: ()) {
+        nsView.recordingAction = nil
+        nsView.stopMonitoring()
+    }
+
     final class RecorderView: NSView {
-        var recordingAction: MacShortcutRecordingAction?
+        var recordingAction: MacShortcutRecordingAction? {
+            didSet {
+                if recordingAction != oldValue { pendingShortcut = nil }
+                updateEventMonitor()
+            }
+        }
+        private var eventMonitor: Any?
+        private var pendingShortcut: MarkdownShortcut?
+        var onChange: ((String) -> Void)?
         var onRecord: ((MacShortcutRecordingAction, MarkdownShortcut) -> Void)?
         var onCancel: (() -> Void)?
 
         override var acceptsFirstResponder: Bool { true }
 
+        override func performKeyEquivalent(with event: NSEvent) -> Bool {
+            guard recordingAction != nil else { return super.performKeyEquivalent(with: event) }
+            keyDown(with: event)
+            return true
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            updateEventMonitor()
+            if recordingAction != nil {
+                window?.makeFirstResponder(self)
+            }
+        }
+
+        func stopMonitoring() {
+            if let monitor = eventMonitor {
+                NSEvent.removeMonitor(monitor)
+                eventMonitor = nil
+            }
+        }
+
+        private func updateEventMonitor() {
+            guard recordingAction != nil, window != nil else {
+                stopMonitoring()
+                return
+            }
+            guard eventMonitor == nil else { return }
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { [weak self] event in
+                MainActor.assumeIsolated {
+                    self?.consumeRecordingEvent(event) == true ? nil : event
+                }
+            }
+        }
+
+        @discardableResult
+        func consumeRecordingEvent(_ event: NSEvent) -> Bool {
+            guard recordingAction != nil, let window, window.isKeyWindow,
+                  event.window === window else { return false }
+            switch event.type {
+            case .keyDown: keyDown(with: event)
+            case .keyUp: keyUp(with: event)
+            case .flagsChanged: flagsChanged(with: event)
+            default: return false
+            }
+            return true
+        }
+
         override func keyDown(with event: NSEvent) {
-            guard let action = recordingAction else {
+            guard recordingAction != nil else {
                 super.keyDown(with: event)
                 return
             }
 
             if event.keyCode == 53 {
+                pendingShortcut = nil
+                recordingAction = nil
+                onChange?("")
                 onCancel?()
                 return
             }
+            guard !event.isARepeat else { return }
 
             guard let keyEquivalent = event.charactersIgnoringModifiers?.lowercased(), !keyEquivalent.isEmpty else {
                 return
@@ -1197,6 +1231,25 @@ private struct ShortcutRecorderView: NSViewRepresentable {
                 modifiers: ShortcutStore.carbonModifiers(from: event.modifierFlags),
                 keyEquivalent: keyEquivalent
             )
+            pendingShortcut = shortcut
+            onChange?(ShortcutStore.displayStringForKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers))
+        }
+
+        override func flagsChanged(with event: NSEvent) {
+            guard recordingAction != nil else { return }
+            let modifiers = ShortcutStore.carbonModifiers(from: event.modifierFlags)
+            if let shortcut = pendingShortcut {
+                onChange?(ShortcutStore.displayStringForKey(keyCode: shortcut.keyCode, modifiers: modifiers))
+            } else {
+                onChange?(ShortcutStore.displayStringForModifiers(modifiers))
+            }
+        }
+
+        override func keyUp(with event: NSEvent) {
+            guard let action = recordingAction, let shortcut = pendingShortcut,
+                  shortcut.keyCode == UInt32(event.keyCode) else { return }
+            pendingShortcut = nil
+            recordingAction = nil
             onRecord?(action, shortcut)
         }
     }
