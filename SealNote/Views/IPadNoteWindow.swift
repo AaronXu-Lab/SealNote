@@ -98,6 +98,7 @@ struct IPadNoteWindow: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var loadState: IPadNoteWindowLoadState = .loading
+    @State private var isRetrying = false
 
     var body: some View {
         Group {
@@ -118,17 +119,14 @@ struct IPadNoteWindow: View {
                 }
 
             case .failed(let message):
-                AUIEmptyState("无法打开笔记", systemImage: "exclamationmark.icloud", description: message) {
-                    HStack {
-                    AUIButton("重试", variant: .fill) {
-                        loadState = .loading
-                        Task { await loadNote() }
+                SNErrorState(title: "无法打开笔记", message: message, isRetrying: isRetrying, retry: {
+                    guard !isRetrying else { return }
+                    isRetrying = true
+                    Task {
+                        await loadNote()
+                        isRetrying = false
                     }
-                    AUIButton("关闭窗口", role: .cancel) {
-                        dismiss()
-                    }
-                    }
-                }
+                }, close: { dismiss() })
             }
         }
         .onAppear {
@@ -150,8 +148,11 @@ struct IPadNoteWindow: View {
     }
 
     private func loadNote() async {
-        if case .loading = vaultStore.state {
+        switch vaultStore.state {
+        case .loading, .error:
             await vaultStore.initialize()
+        case .ready:
+            break
         }
 
         await vaultStore.cleanupAbandonedIPadDrafts()

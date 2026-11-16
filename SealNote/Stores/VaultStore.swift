@@ -682,6 +682,10 @@ final class VaultStore: ObservableObject {
     #endif
 
     func initialize() async {
+        #if os(iOS)
+        // Clear the previous failure before loading; iOS keeps its error surface visible during retry.
+        if case .error = state { state = .loading }
+        #endif
         do {
             let prepared = try await Task.detached(priority: .userInitiated) { [storage] in
                 try await Self.prepareIndex(storage: storage, fallbackIndex: NoteIndex(), initializeStorage: true)

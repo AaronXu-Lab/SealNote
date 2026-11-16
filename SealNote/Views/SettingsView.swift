@@ -310,7 +310,7 @@ private struct KeyManagementView: View {
             }
         }
         .snDialog("操作结果", isPresented: $showOperationResult,
-            primary: AUIDialogAction("确定", closes: true, handler: { operationMessage = nil })
+            secondary: AUIDialogAction("知道了", closes: true, handler: { operationMessage = nil })
         ) {
             Text(operationMessage ?? "")
         }
@@ -924,27 +924,19 @@ private struct DataSettingsView: View {
             }
         }
         .snDialog("操作结果", isPresented: $showOperationResult,
-            primary: AUIDialogAction("确定", closes: true, handler: { operationMessage = nil })
+            secondary: AUIDialogAction("知道了", closes: true, handler: { operationMessage = nil })
         ) {
             Text(operationMessage ?? "")
         }
-        .snDialog("清空回收站", isPresented: $showEmptyConfirmation,
-            primary: AUIDialogAction("清空", destructive: true, closes: true, handler: {
-                Task {
-                    do { try await vaultStore.emptyTrash() }
-                    catch { vaultStore.lastError = "清空失败：\(error.localizedDescription)" }
-                }
-            }),
-            secondary: AUIDialogAction("取消", closes: true, handler: {})
-        ) {
+        .snAsyncDialog("清空回收站", isPresented: $showEmptyConfirmation,
+                       actionTitle: "清空", destructive: true,
+                       operation: { try await vaultStore.emptyTrash() }) {
             Text("将永久删除回收站中的所有笔记，无法恢复。")
         }
-        .snDialog("清理空白笔记", isPresented: $showClearEmptyConfirmation,
-            primary: AUIDialogAction("清理", destructive: true, closes: true, handler: {
-                Task { await clearEmptyNotes() }
-            }),
-            secondary: AUIDialogAction("取消", closes: true, handler: {})
-        ) {
+        .snAsyncDialog("清理空白笔记", isPresented: $showClearEmptyConfirmation,
+                       actionTitle: "清理", destructive: true,
+                       operation: { try await clearEmptyNotes() },
+                       onSuccess: { showOperationResult = true }) {
             Text("正文为空的可读笔记会移到回收站，可以恢复。")
         }
     }
@@ -1008,15 +1000,11 @@ private struct DataSettingsView: View {
         }
     }
 
-    private func clearEmptyNotes() async {
-        do {
-            let count = try await vaultStore.clearEmptyReadableNotes()
-            operationMessage = count == 0 ? "没有需要清理的空白笔记。" : "已将 \(count) 条空白笔记移到回收站。"
-            showOperationResult = true
-        } catch {
-            vaultStore.lastError = "清理失败：\(error.localizedDescription)"
-        }
+    private func clearEmptyNotes() async throws {
+        let count = try await vaultStore.clearEmptyReadableNotes()
+        operationMessage = count == 0 ? "没有需要清理的空白笔记。" : "已将 \(count) 条空白笔记移到回收站。"
     }
+
 }
 
 private struct AppearanceSettingsView: View {

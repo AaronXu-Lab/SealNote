@@ -9,7 +9,6 @@ struct TrashView: View {
     @State private var noteToPurge: TrashNote?
     @State private var showEmptyConfirmation = false
     @State private var searchText = ""
-    @State private var actionErrorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -47,71 +46,33 @@ struct TrashView: View {
                         }
                     .buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))
                         .tint(DS.destructive)
+                        .accessibilityLabel("清空回收站")
                     }
                 }
             }
-            .snDialog("恢复笔记", isPresented: Binding(
+            .snAsyncDialog("恢复笔记", isPresented: Binding(
                 get: { noteToRestore != nil },
                 set: { if !$0 { noteToRestore = nil } }
-            ),
-            primary: AUIDialogAction("恢复", closes: true, handler: {
-                    if let note = noteToRestore {
-                        Task {
-                            do {
-                                try await vaultStore.restoreTrashNote(note)
-                            } catch {
-                                actionErrorMessage = "恢复失败：\(error.localizedDescription)"
-                            }
-                        }
-                    }
-                    noteToRestore = nil
-                }),
-            secondary: AUIDialogAction("取消", closes: true, handler: { noteToRestore = nil })
-        ) {
-            Text("恢复后笔记将回到主列表。")
-        }
-            .snDialog("永久删除", isPresented: Binding(
+            ), actionTitle: "恢复", operation: {
+                guard let note = noteToRestore else { return }
+                try await vaultStore.restoreTrashNote(note)
+            }) {
+                Text("恢复后笔记将回到主列表。")
+            }
+            .snAsyncDialog("永久删除", isPresented: Binding(
                 get: { noteToPurge != nil },
                 set: { if !$0 { noteToPurge = nil } }
-            ),
-            primary: AUIDialogAction("永久删除", destructive: true, closes: true, handler: {
-                    if let note = noteToPurge {
-                        Task {
-                            do {
-                                try await vaultStore.permanentlyDeleteTrashNote(note)
-                            } catch {
-                                actionErrorMessage = "删除失败：\(error.localizedDescription)"
-                            }
-                        }
-                    }
-                    noteToPurge = nil
-                }),
-            secondary: AUIDialogAction("取消", closes: true, handler: { noteToPurge = nil })
-        ) {
-            Text("永久删除后无法恢复。")
-        }
-            .snDialog("清空回收站", isPresented: $showEmptyConfirmation,
-            primary: AUIDialogAction("清空", destructive: true, closes: true, handler: {
-                    Task {
-                        do {
-                            try await vaultStore.emptyTrash()
-                        } catch {
-                            actionErrorMessage = "清空失败：\(error.localizedDescription)"
-                        }
-                    }
-                }),
-            secondary: AUIDialogAction("取消", closes: true, handler: {})
-        ) {
-            Text("将永久删除回收站中的所有笔记，无法恢复。")
-        }
-            .snDialog("操作失败", isPresented: Binding(
-                get: { actionErrorMessage != nil },
-                set: { if !$0 { actionErrorMessage = nil } }
-            ),
-            primary: AUIDialogAction("确定", closes: true, handler: { actionErrorMessage = nil })
-        ) {
-            Text(actionErrorMessage ?? "")
-        }
+            ), actionTitle: "永久删除", destructive: true, operation: {
+                guard let note = noteToPurge else { return }
+                try await vaultStore.permanentlyDeleteTrashNote(note)
+            }) {
+                Text("永久删除后无法恢复。")
+            }
+            .snAsyncDialog("清空回收站", isPresented: $showEmptyConfirmation,
+                           actionTitle: "清空", destructive: true,
+                           operation: { try await vaultStore.emptyTrash() }) {
+                Text("将永久删除回收站中的所有笔记，无法恢复。")
+            }
             .task {
                 await vaultStore.purgeExpiredTrash()
             }
@@ -231,11 +192,11 @@ struct TrashView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))
-                .accessibilityLabel("笔记操作")
+                .accessibilityLabel("\(trashNote.title)，笔记操作")
             }
 
             HStack(spacing: DS.s2) {
-                Text("删除于 \(DateFormatters.formatDisplayDateTime(trashNote.deletedAt).replacingOccurrences(of: ".", with: "-"))")
+                Text("删除于 \(DateFormatters.formatMobileAbsoluteTime(trashNote.deletedAt))")
                     .font(DS.caption())
                     .foregroundStyle(DS.textSubtle)
 

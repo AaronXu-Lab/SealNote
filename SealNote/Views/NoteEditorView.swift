@@ -306,16 +306,14 @@ struct NoteEditorView: View {
                 }
             }
             .snDialog("保存失败", isPresented: $showError,
-            primary: AUIDialogAction("确定", closes: true, handler: {})
+            secondary: AUIDialogAction("知道了", closes: true, handler: {})
         ) {
             Text(errorMessage)
         }
-            .snDialog("删除笔记", isPresented: $showDeleteConfirmation,
-            primary: AUIDialogAction("删除", destructive: true, closes: true, handler: {
-                    deleteCurrentNote()
-                }),
-            secondary: AUIDialogAction("取消", closes: true, handler: {})
-        ) {
+            .snAsyncDialog("删除笔记", isPresented: $showDeleteConfirmation,
+                           actionTitle: "删除", destructive: true,
+                           operation: { try await deleteCurrentNote() },
+                           onSuccess: { dismiss() }) {
             Text(currentPersistedNote == nil ? "这条未保存的笔记将被丢弃。" : "删除后笔记将进入回收站。")
         }
             .snDialog(keyPromptTitle, isPresented: Binding(
@@ -420,28 +418,22 @@ struct NoteEditorView: View {
     }
     #endif
 
-    private func deleteCurrentNote() {
-        Task {
-            await session.flush(reason: .delete)
-            let note = session.persistedNote ?? currentPersistedNote
-            do {
-                if let note {
-                    if isNewFlow && noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        try await vaultStore.discardEmptyNote(note, body: noteBody)
-                    } else {
-                        try await vaultStore.deleteNote(note)
-                    }
-                    #if os(iOS)
-                    IPadTemporaryNoteRegistry.shared.finish(note.id)
-                    #endif
-                }
-                shouldSkipDisappearPersistence = true
-                dismiss()
-            } catch {
-                errorMessage = error.localizedDescription
-                showError = true
-            }
+    private func deleteCurrentNote() async throws {
+        await session.flush(reason: .delete)
+        if let error = session.lastSaveError {
+            throw EditorSessionError.saveFailed(error)
         }
+        if let note = session.persistedNote ?? currentPersistedNote {
+            if isNewFlow && noteBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                try await vaultStore.discardEmptyNote(note, body: noteBody)
+            } else {
+                try await vaultStore.deleteNote(note)
+            }
+            #if os(iOS)
+            IPadTemporaryNoteRegistry.shared.finish(note.id)
+            #endif
+        }
+        shouldSkipDisappearPersistence = true
     }
 
     /// Flush pending edits when leaving the foreground, protected by a background task so

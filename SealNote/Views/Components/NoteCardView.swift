@@ -47,7 +47,7 @@ struct NoteCardView: View {
                         }
                         #if os(iOS)
                         .buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))
-                        .accessibilityLabel("笔记操作")
+                        .accessibilityLabel("\(displayTitle ?? NoteTitleFormatter.displayTitle(from: note.body))，笔记操作")
                         #endif
                     }
                 }
@@ -146,11 +146,11 @@ struct NoteCardView: View {
     }
 
     private var timestampText: String {
+        #if os(iOS)
+        return DateFormatters.formatMobileAbsoluteTime(note.updatedAt)
+        #else
         let timestamp = DateFormatters.formatDisplayDateTime(note.updatedAt)
             .replacingOccurrences(of: ".", with: "-")
-        #if os(iOS)
-        return timestamp
-        #else
         return note.isEncrypted ? "\(timestamp) · 加密" : timestamp
         #endif
     }

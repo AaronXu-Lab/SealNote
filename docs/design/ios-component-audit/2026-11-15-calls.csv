@@ -1,0 +1,324 @@
+file,line,component,source,evidence
+SealNote/App/SealNoteApp.swift,26,AUIEmptyState,"AUIEmptyState(""未选择笔记"", systemImage: ""note.text"")",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/DesignSystem.swift,195,AUIItemSurface,AUIItemSurface(size: .sm) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/EncryptedCardView.swift,83,.dsCardSurface,.dsCardSurface(shadow: false),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/EncryptedCardView.swift,98,Button,Button { onOpen() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/EncryptedCardView.swift,103,Button,Button(role: .destructive) { onDelete() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/EncryptedCardView.swift,126,Menu,Menu {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/EncryptedCardView.swift,128,Button,Button { onOpen() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/EncryptedCardView.swift,136,Button,Button(role: .destructive) { onDelete() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/EncryptedCardView.swift,178,.dsCardSurface,.dsCardSurface(shadow: false),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/IOSAaronUI.swift,16,AUIInput,"AUIInput(prompt, text: $text, size: .lg, variant: .filled, leadingIcon: ""magnifyingglass"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/IOSAaronUI.swift,18,AUIButton,"AUIButton(""清空搜索"", systemImage: ""xmark"", iconOnly: true, variant: .ghost, size: .sm) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/IOSAaronUI.swift,42,.fullScreenCover,.fullScreenCover(isPresented: isPresented) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/IOSAaronUI.swift,44,.auiDialog,".auiDialog(isPresented: isPresented, title: title, showClose: false,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,39,Menu,Menu {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,49,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,107,.dsCardSurface,.dsCardSurface(shadow: false),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,132,Button,Button { onRename() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,137,Button,Button { onEdit() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,142,Button,Button(role: .destructive) { onDelete() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,160,Toggle,"Toggle("""", isOn: Binding(get: { isSelected }, set: { _ in onToggleSelect?() }))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteCardView.swift,269,AUIButton,"AUIButton(""展开剩余 \(remainingLineCount) 行"", variant: .ghost, size: .sm) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteEditorContentView.swift,64,ScrollView,ScrollView {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteEditorContentView.swift,115,UITextView,private final class PlaceholderTextView: UITextView {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteEditorContentView.swift,120,UITextView,private let placeholderLabel = UITextView(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/NoteEditorContentView.swift,543,UITextView,if let view = scrollView as? UITextView { savePosition(view) },静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,28,AUIBadge,"AUIBadge(text, systemImage: systemImage, size: .sm, variant: .light,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,51,AUIItemSectionGroup,AUIItemSectionGroup(title) { content() },静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,53,AUIItemSectionGroup,AUIItemSectionGroup { content() },静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,56,.auiText,Text(footer).auiText(.caption).foregroundStyle(AUIColor.onSurfaceMuted),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,60,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,93,List,List {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,96,.auiItemListStyle,.auiItemListStyle(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,137,AUIItem,"AUIItem(title, description: subtitle, leading: .icon(systemImage)) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,156,AUIEmptyState,"AUIEmptyState(title, systemImage: systemImage, description: message)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,238,UIActivityViewController,func makeUIViewController(context: Context) -> UIActivityViewController {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/Components/SWComponents.swift,239,UIActivityViewController,"UIActivityViewController(activityItems: items, applicationActivities: nil)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,117,.sheet,.sheet(item: Binding(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,124,.fullScreenCover,.fullScreenCover(item: Binding(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,131,.iPadSettingsSheet,".iPadSettingsSheet(isPresented: $showSettings, onDismiss: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,136,.sheet,.sheet(isPresented: $showTrash) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,141,.sheet,.sheet(isPresented: $showShareSheet) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,146,.snDialog,".snDialog(""发现本机笔记"", isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,150,AUIDialogAction,"primary: AUIDialogAction(""合并到 iCloud"", closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,153,AUIDialogAction,"secondary: AUIDialogAction(""暂不"", closes: true, handler: { vaultStore.dismissStrandedDataPrompt() })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,157,.snDialog,".snDialog(""保存密钥"", isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,165,AUIDialogAction,"primary: AUIDialogAction(""立即保存"", closes: true, handler: { exportKeyFile() }),",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,166,AUIDialogAction,"secondary: AUIDialogAction(""稍后"", closes: true, handler: { vaultStore.needsKeyExport = false })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,170,.snDialog,".snDialog(""删除笔记"", isPresented: $showDeleteConfirmation,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,171,AUIDialogAction,"primary: AUIDialogAction(""删除"", destructive: true, closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,183,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: { noteToDelete = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,187,.snDialog,".snDialog(""批量删除"", isPresented: $showBatchDeleteConfirmation,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,188,AUIDialogAction,"primary: AUIDialogAction(""删除\(selectedItems.count)条"", destructive: true, closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,191,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,195,.snDialog,".snDialog(""重命名笔记"", isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,199,AUIDialogAction,"primary: AUIDialogAction(""保存"", disabled: renameTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, closes: true, handler: { renameSelectedNote() }),",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,200,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: { noteToRename = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,203,AUIInput,"AUIInput(""标题"", text: $renameTitle, label: ""标题"")",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,206,.snDialog,".snDialog(""操作结果"", isPresented: $showBatchResult,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,207,AUIDialogAction,"primary: AUIDialogAction(""确定"", closes: true, handler: { batchResultMessage = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,211,.snDialog,".snDialog(keyIssueTitle, isPresented: $showKeyIssueAlert,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,212,AUIDialogAction,"primary: AUIDialogAction(""打开密钥设置"", closes: true, handler: { openKeySettings() }),",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,213,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,217,.snDialog,".snDialog(""加密笔记"", isPresented: $showEncryptedNoteUnavailable,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,218,AUIDialogAction,"primary: AUIDialogAction(""知道了"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,222,.snDialog,".snDialog(""错误"", isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,226,AUIDialogAction,"primary: AUIDialogAction(""确定"", closes: true, handler: { vaultStore.lastError = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,295,NavigationStack,NavigationStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,304,SNSearchField,"SNSearchField(""搜索"", text: $searchQuery)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,319,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,329,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .text))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,332,Button,Button { openSettings() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,336,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,355,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,361,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,363,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,371,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .fill, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,378,Button,"Button(""选择"", action: enterSelectMode)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,385,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,390,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .iconText))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,395,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,400,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .iconText))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,407,ScrollView,ScrollView {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,410,AUIItemSurface,AUIItemSurface {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,412,AUISkeleton,"AUISkeleton().frame(width: 120, height: 14)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,413,AUISkeleton,AUISkeleton().frame(height: 20),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,414,AUISkeleton,AUISkeleton().frame(maxWidth: 220).frame(height: 14),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,427,AUIEmptyState,"AUIEmptyState(emptyTitle, systemImage: ""note.text"", description: emptyMessage)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,442,ScrollView,ScrollView {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,501,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,509,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .sm))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,515,ScrollView,"ScrollView(.horizontal, showsIndicators: false) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,535,AUIButton,"AUIButton(""\(title) · \(count)"", variant: isSelected ? .fill : .outline, size: .sm, action: action)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,540,AUIItemSurface,AUIItemSurface(size: .sm) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,541,AUIItem,"AUIItem(""同步失败"", description: message, size: .sm, leading: .icon(""exclamationmark.icloud"")) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,542,AUIButton,"AUIButton(""重试"", variant: .light, size: .sm) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,562,SWStatusBadge,SWStatusBadge(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,822,AUISymbol,"AUISymbol(systemImage: ""lock.fill"").frame(width: 56, height: 56)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,838,AUIEmptyState,"AUIEmptyState(""出错了"", systemImage: ""exclamationmark.triangle"", description: message) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/HomeView.swift,839,AUIButton,"AUIButton(""重试"", variant: .fill, action: retryAction)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/IPadNoteWindow.swift,106,AUILoading,"AUILoading(label: ""正在载入笔记…"")",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/IPadNoteWindow.swift,121,AUIEmptyState,"AUIEmptyState(""无法打开笔记"", systemImage: ""exclamationmark.icloud"", description: message) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/IPadNoteWindow.swift,123,AUIButton,"AUIButton(""重试"", variant: .fill) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/IPadNoteWindow.swift,127,AUIButton,"AUIButton(""关闭窗口"", role: .cancel) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,188,NavigationStack,NavigationStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,205,Button,Button { closeEditor() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,209,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,217,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,226,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,233,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,239,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,252,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,260,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,265,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,271,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,275,Menu,Menu {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,276,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,283,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,292,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,296,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,303,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,308,.snDialog,".snDialog(""保存失败"", isPresented: $showError,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,309,AUIDialogAction,"primary: AUIDialogAction(""确定"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,313,.snDialog,".snDialog(""删除笔记"", isPresented: $showDeleteConfirmation,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,314,AUIDialogAction,"primary: AUIDialogAction(""删除"", destructive: true, closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,317,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,321,.snDialog,".snDialog(keyPromptTitle, isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,325,AUIDialogAction,"primary: AUIDialogAction(""打开密钥设置"", closes: true, handler: { showKeySettings = true }),",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,326,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,330,.iPadSettingsSheet,.iPadSettingsSheet(isPresented: $showKeySettings) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/NoteEditorView.swift,345,.sheet,.sheet(isPresented: $showTrashFromKeySettings) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,36,NavigationStack,NavigationStack(path: $path) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,37,SWPanelStack,SWPanelStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,42,SWSectionPanel,SWSectionPanel {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,45,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,48,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,50,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,52,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,54,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,79,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,85,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,93,NavigationLink,NavigationLink(value: SettingsRoute.key) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,94,AUIItemSurface,AUIItemSurface(size: .sm) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,95,AUIItem,"AUIItem(""密钥未加载"", description: ""\(vaultStore.lockedNoteCount) 条加密笔记"", leading: .icon(""lock.fill"")) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,100,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,112,NavigationLink,NavigationLink(value: route) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,113,SWSettingsRow,"SWSettingsRow(title, subtitle: subtitle, systemImage: systemImage, tint: tint) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,116,SWStatusBadge,"SWStatusBadge(""\(vaultStore.trashCount)"", style: .neutral)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,122,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,131,SWPanelStack,SWPanelStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,134,SWSectionPanel,"SWSectionPanel(""列表布局"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,135,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,148,SWSectionPanel,"SWSectionPanel(""新建笔记"", footer: ""当前没有密钥时，新建笔记会保持为明文。"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,149,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,155,Toggle,"Toggle("""", isOn: defaultEncryptedBinding)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,165,SWSectionPanel,"SWSectionPanel(""编辑外观"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,166,SWSettingsRow,"SWSettingsRow(""编辑字号"", systemImage: ""textformat.size"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,167,Picker,"Picker(""编辑字号"", selection: $settings.editorFontSize) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,177,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,179,SWSettingsRow,"SWSettingsRow(""行高"", systemImage: ""line.3.horizontal.decrease"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,180,Picker,"Picker(""行高"", selection: $settings.editorLineHeightMultiple) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,197,SWSectionPanel,"SWSectionPanel(""编辑行为"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,198,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,208,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,210,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,222,SWSectionPanel,"SWSectionPanel(""Markdown"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,223,SWSettingsRow,"SWSettingsRow(""Markdown 预览"", subtitle: ""在编辑器右上角切换预览"", systemImage: ""play.rectangle"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,224,SWStatusBadge,"SWStatusBadge(""已开启"", style: .success)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,241,Toggle,"Toggle("""", isOn: binding)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,278,SWPanelStack,SWPanelStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,279,SWSectionPanel,SWSectionPanel {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,280,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,300,.fileImporter,.fileImporter(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,307,.sheet,.sheet(isPresented: $showShareSheet) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,312,.snDialog,".snDialog(""操作结果"", isPresented: $showOperationResult,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,313,AUIDialogAction,"primary: AUIDialogAction(""确定"", closes: true, handler: { operationMessage = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,317,.alert,".alert(activeAlertTitle, isPresented: activeAlertBinding) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,425,SWSectionPanel,"SWSectionPanel(""密钥操作"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,426,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,429,SWSettingsRow,"SWSettingsRow(""导出密钥"", subtitle: ""保存当前密钥"", systemImage: ""square.and.arrow.up"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,434,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,435,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,436,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,439,SWSettingsRow,"SWSettingsRow(""移除本机密钥"", subtitle: ""移除前需要先处理所有加密笔记"", systemImage: ""lock.slash"", tint: DS.destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,444,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,449,SWSectionPanel,"SWSectionPanel(""加密笔记处理"", footer: affectedEncryptedNotesMessage(prefix: ""这些操作会改变现有加密笔记，请先确认密钥已妥善保存。"")) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,451,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,454,SWSettingsRow,"SWSettingsRow(""全部转为明文"", subtitle: ""解密所有加密笔记并移除本机密钥"", systemImage: ""lock.open"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,459,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,460,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,461,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,464,SWSettingsRow,"SWSettingsRow(""解密导出并移除本地"", subtitle: ""导出明文 zip 后永久移除本地加密笔记"", systemImage: ""archivebox"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,469,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,470,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,472,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,475,SWSettingsRow,"SWSettingsRow(""永久删除所有加密笔记"", subtitle: ""不进入回收站，无法恢复"", systemImage: ""trash"", tint: DS.destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,480,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,491,AUIButton,"AUIButton(title, variant: prominent || destructive ? .fill : .outline, size: .sm,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,686,Button,"Button(""取消"", role: .cancel) {}",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,687,Button,"Button(""移除本机密钥"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,691,Button,"Button(""删除全部加密笔记"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,694,Button,"Button(""先全部解密成明文"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,697,Button,"Button(""取消"", role: .cancel) {}",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,699,Button,"Button(""删除全部加密笔记"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,702,Button,"Button(""取消"", role: .cancel) {}",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,704,Button,"Button(""删除这些加密笔记并创建新密钥"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,707,Button,"Button(""取消"", role: .cancel) {}",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,709,Button,"Button(""重新选择密钥"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,713,Button,"Button(""删除这些加密笔记并使用此密钥"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,718,Button,"Button(""取消"", role: .cancel) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,722,Button,"Button(""取消"", role: .cancel) {}",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,723,Button,"Button(""永久删除"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,727,Button,"Button(""取消"", role: .cancel) {}",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,728,Button,"Button(""转为明文"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,732,Button,"Button(""取消"", role: .cancel) {}",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,733,Button,"Button(""导出并移除"", role: .destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,750,SWPanelStack,SWPanelStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,751,SWSectionPanel,"SWSectionPanel(""隐私保护"", footer: privacyFooter) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,752,SWSettingsRow,"SWSettingsRow(""进入后台时隐藏内容"", subtitle: ""切换到其他应用时遮住笔记内容"", systemImage: ""eye.slash"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,753,Toggle,"Toggle("""", isOn: $settings.hideContentOnBackground)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,760,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,761,SWSettingsRow,"SWSettingsRow(""离开 App 后锁定加密笔记"", subtitle: ""回到 App 时需重新验证（Face ID / 密码）才能查看加密笔记"", systemImage: ""lock.rotation"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,762,Toggle,"Toggle("""", isOn: $settings.lockSessionOnBackground)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,797,SWPanelStack,SWPanelStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,798,SWSectionPanel,"SWSectionPanel(""同步"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,799,SWSettingsRow,"SWSettingsRow(syncTitle, subtitle: syncSubtitle, systemImage: syncIcon, tint: syncTint) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,800,AUIButton,"AUIButton(""刷新"", variant: .light, size: .sm) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,805,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,806,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,815,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,816,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,826,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,827,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,830,SWSettingsRow,SWSettingsRow(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,840,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,844,SWSectionPanel,"SWSectionPanel(""回收站"", footer: ""回收站笔记将在删除 30 天后自动永久删除。"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,845,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,849,SWSettingsRow,"SWSettingsRow(""查看回收站"", subtitle: ""恢复或永久删除已移除笔记"", systemImage: ""trash"", tint: DS.destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,851,SWStatusBadge,"SWStatusBadge(""\(vaultStore.trashCount)"", style: .neutral)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,856,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,857,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,858,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,861,SWSettingsRow,"SWSettingsRow(""清理 30 天前删除的笔记"", subtitle: ""只移除已经到期的回收站笔记"", systemImage: ""clock.arrow.circlepath"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,866,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,867,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,868,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,871,SWSettingsRow,"SWSettingsRow(""清空回收站"", subtitle: ""永久删除回收站中的所有笔记"", systemImage: ""trash.slash"", tint: DS.destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,876,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,879,SWSectionPanel,"SWSectionPanel(""导出与维护"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,880,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,883,SWSettingsRow,"SWSettingsRow(""导出明文笔记"", subtitle: ""导出 zip，跳过加密笔记"", systemImage: ""square.and.arrow.up"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,888,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,889,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,890,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,893,SWSettingsRow,"SWSettingsRow(""清理空白笔记"", subtitle: ""将正文为空的可读笔记移到回收站"", systemImage: ""trash"", tint: DS.destructive) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,898,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,899,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,900,SWSettingsRow,"SWSettingsRow(""记录维护日志"", subtitle: ""不记录正文或密钥"", systemImage: ""doc.text.magnifyingglass"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,901,Toggle,"Toggle("""", isOn: $settings.maintenanceLoggingEnabled)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,907,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,908,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,911,SWSettingsRow,"SWSettingsRow(""导出维护日志"", subtitle: ""用于问题排查"", systemImage: ""square.and.arrow.down"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,916,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,921,.sheet,.sheet(isPresented: $showShareSheet) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,926,.snDialog,".snDialog(""操作结果"", isPresented: $showOperationResult,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,927,AUIDialogAction,"primary: AUIDialogAction(""确定"", closes: true, handler: { operationMessage = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,931,.snDialog,".snDialog(""清空回收站"", isPresented: $showEmptyConfirmation,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,932,AUIDialogAction,"primary: AUIDialogAction(""清空"", destructive: true, closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,938,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,942,.snDialog,".snDialog(""清理空白笔记"", isPresented: $showClearEmptyConfirmation,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,943,AUIDialogAction,"primary: AUIDialogAction(""清理"", destructive: true, closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,946,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1028,SWPanelStack,SWPanelStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1029,SWSectionPanel,"SWSectionPanel(""主题色"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1032,AUIRadio,"AUIRadio(theme.title, isSelected: theme == settings.appTheme) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1042,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1048,SWSectionPanel,"SWSectionPanel(""应用图标"", footer: ""更换图标时，iOS 会显示系统确认弹窗。主题色和图标可以独立选择。"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1051,AUIRadio,"AUIRadio(choice.title, isSelected: choice == currentIconChoice) {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1065,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1069,.snDialog,".snDialog(""更换应用图标？"", isPresented: $showIconConfirmation,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1070,AUIDialogAction,"primary: AUIDialogAction(""更换"", closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1073,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: { pendingIcon = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1143,SWPanelStack,SWPanelStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1144,SWSectionPanel,SWSectionPanel {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1145,SWSettingsRow,"SWSettingsRow(""应用名称"", systemImage: ""app.badge"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1148,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1149,SWSettingsRow,"SWSettingsRow(""当前版本"", systemImage: ""number"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1154,SWSectionPanel,"SWSectionPanel(""说明"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1155,SWSettingsRow,"SWSettingsRow(""iCloud 同步"", subtitle: ""笔记文件保存在 iCloud Drive 中，可在多设备间同步。"", systemImage: ""icloud"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1158,SWRowDivider,SWRowDivider(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1159,SWSettingsRow,"SWSettingsRow(""内容安全"", subtitle: MobileFeatureVisibility.encryptionActions",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1166,SWSectionPanel,SWSectionPanel {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1167,Link,Link(destination: privacyPolicyURL) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1168,SWSettingsRow,"SWSettingsRow(""隐私政策"", subtitle: ""查看 Seal Note 如何处理数据"", systemImage: ""hand.raised"") {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/SettingsView.swift,1175,.auiListRowInsets,.auiListRowInsets(),静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,15,NavigationStack,NavigationStack {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,29,SNSearchField,"SNSearchField(""搜索回收站"", text: $searchText)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,37,Button,Button { dismiss() } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,40,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,45,Button,Button { showEmptyConfirmation = true } label: {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,48,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, size: .lg, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,53,.snDialog,".snDialog(""恢复笔记"", isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,57,AUIDialogAction,"primary: AUIDialogAction(""恢复"", closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,69,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: { noteToRestore = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,73,.snDialog,".snDialog(""永久删除"", isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,77,AUIDialogAction,"primary: AUIDialogAction(""永久删除"", destructive: true, closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,89,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: { noteToPurge = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,93,.snDialog,".snDialog(""清空回收站"", isPresented: $showEmptyConfirmation,",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,94,AUIDialogAction,"primary: AUIDialogAction(""清空"", destructive: true, closes: true, handler: {",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,103,AUIDialogAction,"secondary: AUIDialogAction(""取消"", closes: true, handler: {})",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,107,.snDialog,".snDialog(""操作失败"", isPresented: Binding(",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,111,AUIDialogAction,"primary: AUIDialogAction(""确定"", closes: true, handler: { actionErrorMessage = nil })",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,124,SWEmptyState,SWEmptyState(,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,138,List,List {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,160,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,168,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,175,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,181,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,214,Menu,Menu {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,215,Button,Button {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,221,Button,Button(role: .destructive) {,静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,233,AUIButtonStyle,".buttonStyle(AUIButtonStyle(variant: .ghost, contentType: .icon))",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,244,SWStatusBadge,"SWStatusBadge(""\(trashNote.remainingDays) 天"", systemImage: ""clock"", style: .warning)",静态调用盘点；含功能开关关闭分支，详细结论见报告
+SealNote/Views/TrashView.swift,266,.dsCardSurface,.dsCardSurface(shadow: false),静态调用盘点；含功能开关关闭分支，详细结论见报告

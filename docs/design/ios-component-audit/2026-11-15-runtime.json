@@ -1,0 +1,121 @@
+{
+  "currentHome": {
+    "schema": "xcodebuildmcp.output.capture-result",
+    "schemaVersion": "2",
+    "didError": false,
+    "error": null,
+    "data": {
+      "summary": {
+        "status": "SUCCEEDED"
+      },
+      "artifacts": {
+        "simulatorId": "1C1A019A-1C6F-4F59-A3E8-EA3747588664"
+      },
+      "capture": {
+        "type": "runtime-snapshot",
+        "rs": "1",
+        "screenHash": "1duma1p",
+        "seq": 7,
+        "count": 53,
+        "targets": [
+          "e41|typeText|text-field|搜索|搜索|",
+          "e18|tap|button|笔记操作||",
+          "e19|tap|button|||",
+          "e23|tap|button|展开剩余 1 行||",
+          "e24|tap|button|笔记操作||",
+          "e25|tap|button|||",
+          "e29|tap|button|展开剩余 1 行||",
+          "e30|tap|button|笔记操作||",
+          "e31|tap|button|||",
+          "e35|tap|button|展开剩余 1 行||",
+          "e47|tap|button|设置||gearshape",
+          "e53|tap|button|新建笔记||square.and.pencil"
+        ],
+        "scroll": [
+          "e12|swipe|scroll-view|||"
+        ],
+        "text": [
+          "e50|text|text|Seal Note||",
+          "e21|text|text|2026-11-15 06:19||",
+          "e22|text|text|欢迎使用Seal Note。 你可以像写卡片一样记录想法，也可以在需要时创建加密笔记。 #欢迎||",
+          "e27|text|text|2026-11-15 06:19||",
+          "e28|text|text|标签写法示例： 在正文中输入 #灵感 或 #日记 ，它们会出现在侧边栏的标签区域。 #使用说明 #标签||",
+          "e33|text|text|2026-11-15 06:19||",
+          "e34|text|text|加密笔记适合保存更私密的内容。 首次创建笔记时，你可以选择创建密钥。创建密钥后，新建笔记时可以打开\"加密笔记\"开关。 #加密||"
+        ],
+        "udid": "1C1A019A-1C6F-4F59-A3E8-EA3747588664"
+      }
+    },
+    "nextSteps": [
+      "Refresh after layout changes: snapshot_ui({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\" })",
+      "Wait for UI to settle: wait_for_ui({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\", predicate: \"settled\" })",
+      "Batch same-screen taps: batch({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\", steps: [{\"action\":\"tap\",\"elementRef\":\"e18\"},{\"action\":\"tap\",\"elementRef\":\"e19\"}] })",
+      "Tap an elementRef: tap({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\", elementRef: \"e18\" })",
+      "Scroll visible content: swipe({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\", withinElementRef: \"e12\", direction: \"up\", distance: 0.5 })"
+    ]
+  },
+  "currentRename": {
+    "schema": "xcodebuildmcp.output.ui-action-result",
+    "schemaVersion": "2",
+    "didError": false,
+    "error": null,
+    "data": {
+      "summary": {
+        "status": "SUCCEEDED"
+      },
+      "action": {
+        "type": "tap",
+        "elementRef": "e63",
+        "x": 249,
+        "y": 235
+      },
+      "artifacts": {
+        "simulatorId": "1C1A019A-1C6F-4F59-A3E8-EA3747588664"
+      },
+      "capture": {
+        "type": "runtime-snapshot",
+        "rs": "1",
+        "screenHash": "0p178kj",
+        "seq": 9,
+        "count": 68,
+        "targets": [
+          "e23|typeText|text-field|搜索|搜索|",
+          "e62|typeText|text-field|标题|欢迎使用Seal Note。|",
+          "e11|tap|button|设置||gearshape",
+          "e17|tap|button|新建笔记||square.and.pencil",
+          "e30|tap|button|笔记操作||",
+          "e31|tap|button|||",
+          "e35|tap|button|展开剩余 1 行||",
+          "e36|tap|button|笔记操作||",
+          "e37|tap|button|||",
+          "e41|tap|button|展开剩余 1 行||",
+          "e42|tap|button|笔记操作||",
+          "e43|tap|button|||",
+          "e47|tap|button|展开剩余 1 行||",
+          "e63|tap|button|取消||",
+          "e64|tap|button|保存||"
+        ],
+        "scroll": [
+          "e24|swipe|scroll-view|||"
+        ],
+        "text": [
+          "e14|text|text|Seal Note||",
+          "e33|text|text|2026-11-15 06:19||",
+          "e34|text|text|欢迎使用Seal Note。 你可以像写卡片一样记录想法，也可以在需要时创建加密笔记。 #欢迎||",
+          "e60|text|text|标题只影响列表和文件名，不会改写正文。||",
+          "e61|text|text|标题||",
+          "e39|text|text|2026-11-15 06:19||",
+          "e40|text|text|标签写法示例： 在正文中输入 #灵感 或 #日记 ，它们会出现在侧边栏的标签区域。 #使用说明 #标签||",
+          "e45|text|text|2026-11-15 06:19||",
+          "e46|text|text|加密笔记适合保存更私密的内容。 首次创建笔记时，你可以选择创建密钥。创建密钥后，新建笔记时可以打开\"加密笔记\"开关。 #加密||"
+        ],
+        "udid": "1C1A019A-1C6F-4F59-A3E8-EA3747588664"
+      }
+    },
+    "nextSteps": [
+      "Batch same-screen taps: batch({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\", steps: [{\"action\":\"tap\",\"elementRef\":\"e11\"},{\"action\":\"tap\",\"elementRef\":\"e17\"}] })",
+      "Tap an elementRef: tap({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\", elementRef: \"e11\" })",
+      "Scroll visible content: swipe({ simulatorId: \"1C1A019A-1C6F-4F59-A3E8-EA3747588664\", withinElementRef: \"e24\", direction: \"up\", distance: 0.5 })"
+    ]
+  }
+}

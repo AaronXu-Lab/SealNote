@@ -75,6 +75,29 @@ struct DateFormatters {
         return yearMonthDay.string(from: date)
     }
 
+    #if os(iOS)
+    /// Mobile absolute timestamps include the date only outside today, and the year only across years.
+    static func formatMobileAbsoluteTime(
+        _ date: Date,
+        relativeTo now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> String {
+        guard date.timeIntervalSinceReferenceDate.isFinite else { return "—" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        if calendar.isDate(date, inSameDayAs: now) {
+            formatter.dateFormat = "HH:mm"
+        } else if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
+            formatter.dateFormat = "MM/dd HH:mm"
+        } else {
+            formatter.dateFormat = "yyyy/MM/dd HH:mm"
+        }
+        return formatter.string(from: date)
+    }
+    #endif
+
     static func parseISO8601(_ string: String) -> Date? {
         iso8601.date(from: string)
     }

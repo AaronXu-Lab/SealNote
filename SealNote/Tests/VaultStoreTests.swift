@@ -16,6 +16,24 @@ final class VaultStoreTests: XCTestCase {
     }
 
     #if os(iOS)
+    @MainActor
+    func testInitializationCanRecoverAfterStorageFailure() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storage = try TemporaryStorage(baseURL: directory)
+        storage.loadIndexError = StorageError.fileReadFailed
+        let store = VaultStore(storage: storage)
+        await store.initialize()
+        guard case .error = store.state else {
+            return XCTFail("The initial storage failure must be reported")
+        }
+        storage.loadIndexError = nil
+        await store.initialize()
+        guard case .ready = store.state else {
+            return XCTFail("A successful retry must clear the previous error")
+        }
+    }
+
     func testMissingCloudIndexTargetsDoNotProducePhantomCards() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

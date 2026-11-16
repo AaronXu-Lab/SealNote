@@ -1,0 +1,1794 @@
+{
+  "mode": "audit",
+  "readDate": "2026-11-15",
+  "server": {
+    "url": "http://127.0.0.1:7331/mcp",
+    "name": "ui-knowledge",
+    "version": "4.2.0",
+    "protocolVersion": "2025-03-26"
+  },
+  "targetCommit": "6396223baf49593d81dd5c57cd4130a6c3f3e8dd",
+  "libraryCommit": "b5aabb462c427d67d362ed8f4e6b1c6310775bc8",
+  "targetDirty": [
+    "SealNote.xcodeproj/project.pbxproj"
+  ],
+  "sourceFiles": [
+    "SealNote/App/SealNoteApp.swift",
+    "SealNote/ContentView.swift",
+    "SealNote/DesignSystem.swift",
+    "SealNote/Stores/AppLockStore.swift",
+    "SealNote/Views/Components/EncryptedCardView.swift",
+    "SealNote/Views/Components/IOSAaronUI.swift",
+    "SealNote/Views/Components/NoteCardView.swift",
+    "SealNote/Views/Components/NoteEditorContentView.swift",
+    "SealNote/Views/Components/SWComponents.swift",
+    "SealNote/Views/HomeView.swift",
+    "SealNote/Views/IPadNoteWindow.swift",
+    "SealNote/Views/NoteEditorView.swift",
+    "SealNote/Views/SettingsView.swift",
+    "SealNote/Views/TrashView.swift"
+  ],
+  "callsCount": 323,
+  "reads": [
+    {
+      "response": "bundle1.json",
+      "error": null,
+      "code": null,
+      "coverage": [
+        {
+          "target": {
+            "type": "component",
+            "id": "button"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "input"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "field-container"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "checkbox"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "switch"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "radio"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "menu"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "menu-item"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "controls-gap"
+          },
+          "via": "component/button",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "action-label"
+          },
+          "via": "component/button",
+          "status": "available",
+          "returned": 2
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "form-gap"
+          },
+          "via": "component/input",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "grid-of-minimum-width"
+          },
+          "via": "component/checkbox",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "menu-positioning"
+          },
+          "via": "component/menu",
+          "status": "available",
+          "returned": 2
+        }
+      ],
+      "scope": {
+        "relatedDepth": 1,
+        "maxResources": 30,
+        "expansion": "outgoing-docs-only",
+        "complete": true
+      },
+      "deferred": [],
+      "sources": [
+        "ui://component/button#anatomy",
+        "ui://component/button#best-practices",
+        "ui://component/button#composition",
+        "ui://component/button#usage",
+        "ui://component/checkbox#anatomy",
+        "ui://component/checkbox#best-practices",
+        "ui://component/checkbox#composition",
+        "ui://component/checkbox#usage",
+        "ui://component/field-container#anatomy",
+        "ui://component/field-container#best-practices",
+        "ui://component/field-container#composition",
+        "ui://component/field-container#usage",
+        "ui://component/input#anatomy",
+        "ui://component/input#best-practices",
+        "ui://component/input#composition",
+        "ui://component/input#usage",
+        "ui://component/menu#anatomy",
+        "ui://component/menu#best-practices",
+        "ui://component/menu#composition",
+        "ui://component/menu#usage",
+        "ui://component/menu-item#anatomy",
+        "ui://component/menu-item#best-practices",
+        "ui://component/menu-item#composition",
+        "ui://component/menu-item#usage",
+        "ui://component/radio#anatomy",
+        "ui://component/radio#best-practices",
+        "ui://component/radio#composition",
+        "ui://component/radio#usage",
+        "ui://component/switch#anatomy",
+        "ui://component/switch#best-practices",
+        "ui://component/switch#composition",
+        "ui://component/switch#usage",
+        "ui://doc/action-label#core-rules",
+        "ui://doc/controls-gap#core-rules",
+        "ui://doc/form-gap#core-rules",
+        "ui://doc/grid-of-minimum-width#core-rules",
+        "ui://doc/menu-positioning#core-rules"
+      ]
+    },
+    {
+      "response": "bundle2.json",
+      "error": null,
+      "code": null,
+      "coverage": [
+        {
+          "target": {
+            "type": "component",
+            "id": "list"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "list-section"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "list-row"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "item-layout"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "badge"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "empty-state"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "error-state"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "loading"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        }
+      ],
+      "scope": {
+        "relatedDepth": 1,
+        "maxResources": 30,
+        "expansion": "outgoing-docs-only",
+        "complete": true
+      },
+      "deferred": [],
+      "sources": [
+        "ui://component/badge#anatomy",
+        "ui://component/badge#best-practices",
+        "ui://component/badge#composition",
+        "ui://component/badge#usage",
+        "ui://component/empty-state#anatomy",
+        "ui://component/empty-state#best-practices",
+        "ui://component/empty-state#composition",
+        "ui://component/empty-state#usage",
+        "ui://component/error-state#best-practices",
+        "ui://component/error-state#composition",
+        "ui://component/error-state#usage",
+        "ui://component/item-layout#best-practices",
+        "ui://component/item-layout#composition",
+        "ui://component/item-layout#usage",
+        "ui://component/list#best-practices",
+        "ui://component/list#composition",
+        "ui://component/list#usage",
+        "ui://component/list-row#anatomy",
+        "ui://component/list-row#best-practices",
+        "ui://component/list-row#composition",
+        "ui://component/list-row#usage",
+        "ui://component/list-section#anatomy",
+        "ui://component/list-section#best-practices",
+        "ui://component/list-section#composition",
+        "ui://component/list-section#usage",
+        "ui://component/loading#best-practices",
+        "ui://component/loading#composition",
+        "ui://component/loading#usage"
+      ]
+    },
+    {
+      "response": "bundle3.json",
+      "error": null,
+      "code": null,
+      "coverage": [
+        {
+          "target": {
+            "type": "component",
+            "id": "dialog-basic"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "sheet-basic"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "modal-actions"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "skeleton"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "symbol"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "markdown"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "input-area"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "topbar"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "dialog-label"
+          },
+          "via": "component/dialog-basic",
+          "status": "available",
+          "returned": 5
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "form-gap"
+          },
+          "via": "component/dialog-basic",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "controls-gap"
+          },
+          "via": "component/topbar",
+          "status": "available",
+          "returned": 4
+        }
+      ],
+      "scope": {
+        "relatedDepth": 1,
+        "maxResources": 30,
+        "expansion": "outgoing-docs-only",
+        "complete": false
+      },
+      "deferred": [
+        {
+          "target": {
+            "type": "doc",
+            "id": "action-label"
+          },
+          "via": "doc/dialog-label",
+          "reason": "depth-limit"
+        }
+      ],
+      "sources": [
+        "ui://component/dialog-basic#anatomy",
+        "ui://component/dialog-basic#best-practices",
+        "ui://component/dialog-basic#composition",
+        "ui://component/dialog-basic#usage",
+        "ui://component/input-area#anatomy",
+        "ui://component/input-area#best-practices",
+        "ui://component/input-area#composition",
+        "ui://component/input-area#usage",
+        "ui://component/markdown#best-practices",
+        "ui://component/markdown#composition",
+        "ui://component/markdown#usage",
+        "ui://component/modal-actions#best-practices",
+        "ui://component/modal-actions#composition",
+        "ui://component/modal-actions#usage",
+        "ui://component/sheet-basic#anatomy",
+        "ui://component/sheet-basic#best-practices",
+        "ui://component/sheet-basic#composition",
+        "ui://component/sheet-basic#usage",
+        "ui://component/skeleton#best-practices",
+        "ui://component/skeleton#composition",
+        "ui://component/skeleton#usage",
+        "ui://component/symbol#anatomy",
+        "ui://component/symbol#best-practices",
+        "ui://component/symbol#composition",
+        "ui://component/symbol#usage",
+        "ui://component/topbar#best-practices",
+        "ui://component/topbar#composition",
+        "ui://component/topbar#usage",
+        "ui://doc/controls-gap#core-rules",
+        "ui://doc/dialog-label#core-rules",
+        "ui://doc/dialog-label#type",
+        "ui://doc/form-gap#core-rules"
+      ]
+    },
+    {
+      "response": "bundle4.json",
+      "error": null,
+      "code": null,
+      "coverage": [
+        {
+          "target": {
+            "type": "component",
+            "id": "utility-button"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "dropdown"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "scrollbar"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "alert"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "sonner"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "component",
+            "id": "grid-item"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "theme"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 1
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "time-display"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 6
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "controls-gap"
+          },
+          "via": "component/utility-button",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "grid-of-ideal-width"
+          },
+          "via": "component/grid-item",
+          "status": "available",
+          "returned": 3
+        }
+      ],
+      "scope": {
+        "relatedDepth": 1,
+        "maxResources": 30,
+        "expansion": "outgoing-docs-only",
+        "complete": true
+      },
+      "deferred": [],
+      "sources": [
+        "ui://component/alert#anatomy",
+        "ui://component/alert#best-practices",
+        "ui://component/alert#composition",
+        "ui://component/alert#usage",
+        "ui://component/dropdown#anatomy",
+        "ui://component/dropdown#best-practices",
+        "ui://component/dropdown#composition",
+        "ui://component/dropdown#usage",
+        "ui://component/grid-item#anatomy",
+        "ui://component/grid-item#best-practices",
+        "ui://component/grid-item#composition",
+        "ui://component/grid-item#usage",
+        "ui://component/scrollbar#anatomy",
+        "ui://component/scrollbar#best-practices",
+        "ui://component/scrollbar#composition",
+        "ui://component/scrollbar#usage",
+        "ui://component/sonner#anatomy",
+        "ui://component/sonner#best-practices",
+        "ui://component/sonner#composition",
+        "ui://component/sonner#usage",
+        "ui://component/utility-button#anatomy",
+        "ui://component/utility-button#best-practices",
+        "ui://component/utility-button#composition",
+        "ui://component/utility-button#usage",
+        "ui://doc/controls-gap#core-rules",
+        "ui://doc/grid-of-ideal-width#core-rules",
+        "ui://doc/theme#core-rules",
+        "ui://doc/time-display#absolute-time",
+        "ui://doc/time-display#core-rules",
+        "ui://doc/time-display#relative-time-future",
+        "ui://doc/time-display#relative-time-past"
+      ]
+    },
+    {
+      "response": "bundle5.json",
+      "error": null,
+      "code": null,
+      "coverage": [
+        {
+          "target": {
+            "type": "doc",
+            "id": "form-gap"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "controls-gap"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 4
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "dialog-label"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 5
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "grid-of-ideal-width"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "grid-of-minimum-width"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 3
+        },
+        {
+          "target": {
+            "type": "style",
+            "id": "layout-spacing"
+          },
+          "via": "selected",
+          "status": "not-declared",
+          "returned": 0,
+          "note": "No dedicated guidance sections; selected Example rules are reported separately."
+        },
+        {
+          "target": {
+            "type": "style",
+            "id": "center-modal"
+          },
+          "via": "selected",
+          "status": "not-declared",
+          "returned": 0,
+          "note": "No dedicated guidance sections; selected Example rules are reported separately."
+        },
+        {
+          "target": {
+            "type": "style",
+            "id": "disable"
+          },
+          "via": "selected",
+          "status": "available",
+          "returned": 1
+        },
+        {
+          "target": {
+            "type": "doc",
+            "id": "action-label"
+          },
+          "via": "doc/dialog-label",
+          "status": "available",
+          "returned": 2
+        }
+      ],
+      "scope": {
+        "relatedDepth": 2,
+        "maxResources": 30,
+        "expansion": "outgoing-docs-only",
+        "complete": false
+      },
+      "deferred": [],
+      "sources": [
+        "ui://doc/action-label#core-rules",
+        "ui://doc/controls-gap#core-rules",
+        "ui://doc/dialog-label#core-rules",
+        "ui://doc/dialog-label#type",
+        "ui://doc/form-gap#core-rules",
+        "ui://doc/grid-of-ideal-width#core-rules",
+        "ui://doc/grid-of-minimum-width#core-rules",
+        "ui://style/disable#usage"
+      ]
+    },
+    {
+      "response": "design-rules.json",
+      "error": null,
+      "code": null
+    },
+    {
+      "response": "documents.json",
+      "error": null,
+      "code": null,
+      "count": 100,
+      "nextCursor": "eyJjb250ZXh0Ijoic2hhMjU2OjQ2ZDQwMTk5NGRhYjNkMjlhYzYwODcyODlkODNlZTk0YTU1ODFhNWMzNjBjNzgzNmQ5ZmU5YWE1M2ZhZGEyNTMiLCJvZmZzZXQiOjEwMH0",
+      "resources": [
+        {
+          "type": "component",
+          "id": "alert"
+        },
+        {
+          "type": "component",
+          "id": "announcement"
+        },
+        {
+          "type": "component",
+          "id": "ask-user-approval"
+        },
+        {
+          "type": "component",
+          "id": "ask-user-option-symbol"
+        },
+        {
+          "type": "component",
+          "id": "ask-user-option"
+        },
+        {
+          "type": "component",
+          "id": "ask-user-plain"
+        },
+        {
+          "type": "component",
+          "id": "ask-user"
+        },
+        {
+          "type": "component",
+          "id": "avatar"
+        },
+        {
+          "type": "component",
+          "id": "badge"
+        },
+        {
+          "type": "component",
+          "id": "bar-chart"
+        },
+        {
+          "type": "component",
+          "id": "breadcrumb-item"
+        },
+        {
+          "type": "component",
+          "id": "breadcrumb-separator"
+        },
+        {
+          "type": "component",
+          "id": "breadcrumb"
+        },
+        {
+          "type": "component",
+          "id": "bulk-action-bar"
+        },
+        {
+          "type": "component",
+          "id": "button-group"
+        },
+        {
+          "type": "component",
+          "id": "button"
+        },
+        {
+          "type": "component",
+          "id": "calendar"
+        },
+        {
+          "type": "component",
+          "id": "canvas-navigation"
+        },
+        {
+          "type": "component",
+          "id": "checkbox"
+        },
+        {
+          "type": "component",
+          "id": "code-block"
+        },
+        {
+          "type": "component",
+          "id": "collapsible"
+        },
+        {
+          "type": "component",
+          "id": "color-input"
+        },
+        {
+          "type": "component",
+          "id": "color-picker"
+        },
+        {
+          "type": "component",
+          "id": "combobox"
+        },
+        {
+          "type": "component",
+          "id": "composer-attachment"
+        },
+        {
+          "type": "component",
+          "id": "composer-context-bar"
+        },
+        {
+          "type": "component",
+          "id": "composer-voice-wave"
+        },
+        {
+          "type": "component",
+          "id": "composer"
+        },
+        {
+          "type": "component",
+          "id": "content-group"
+        },
+        {
+          "type": "component",
+          "id": "context-chip"
+        },
+        {
+          "type": "component",
+          "id": "detail-activity-group"
+        },
+        {
+          "type": "component",
+          "id": "detail-activity"
+        },
+        {
+          "type": "component",
+          "id": "detail-hero"
+        },
+        {
+          "type": "component",
+          "id": "dialog-basic"
+        },
+        {
+          "type": "component",
+          "id": "drop-hint"
+        },
+        {
+          "type": "component",
+          "id": "drop-zone"
+        },
+        {
+          "type": "component",
+          "id": "dropdown-inline"
+        },
+        {
+          "type": "component",
+          "id": "dropdown"
+        },
+        {
+          "type": "component",
+          "id": "ds-animation"
+        },
+        {
+          "type": "component",
+          "id": "ds-background"
+        },
+        {
+          "type": "component",
+          "id": "ds-color-swatch"
+        },
+        {
+          "type": "component",
+          "id": "ds-display"
+        },
+        {
+          "type": "component",
+          "id": "ds-playground"
+        },
+        {
+          "type": "component",
+          "id": "empty-state"
+        },
+        {
+          "type": "component",
+          "id": "error-state"
+        },
+        {
+          "type": "component",
+          "id": "field-container"
+        },
+        {
+          "type": "component",
+          "id": "file-chip"
+        },
+        {
+          "type": "component",
+          "id": "file-dropzone"
+        },
+        {
+          "type": "component",
+          "id": "file-upload-item"
+        },
+        {
+          "type": "component",
+          "id": "file-upload-panel"
+        },
+        {
+          "type": "component",
+          "id": "filter-bar"
+        },
+        {
+          "type": "component",
+          "id": "filter-pill"
+        },
+        {
+          "type": "component",
+          "id": "floating-container"
+        },
+        {
+          "type": "component",
+          "id": "grid-item-infos"
+        },
+        {
+          "type": "component",
+          "id": "grid-item"
+        },
+        {
+          "type": "component",
+          "id": "guide-card-item"
+        },
+        {
+          "type": "component",
+          "id": "guide-card"
+        },
+        {
+          "type": "component",
+          "id": "history-activity-group"
+        },
+        {
+          "type": "component",
+          "id": "history-activity-item"
+        },
+        {
+          "type": "component",
+          "id": "history-timeline"
+        },
+        {
+          "type": "component",
+          "id": "history-version-item"
+        },
+        {
+          "type": "component",
+          "id": "im-connector"
+        },
+        {
+          "type": "component",
+          "id": "input-area"
+        },
+        {
+          "type": "component",
+          "id": "input"
+        },
+        {
+          "type": "component",
+          "id": "item-layout"
+        },
+        {
+          "type": "component",
+          "id": "lightbox-minimap"
+        },
+        {
+          "type": "component",
+          "id": "lightbox"
+        },
+        {
+          "type": "component",
+          "id": "list-row"
+        },
+        {
+          "type": "component",
+          "id": "list-section"
+        },
+        {
+          "type": "component",
+          "id": "list"
+        },
+        {
+          "type": "component",
+          "id": "loading"
+        },
+        {
+          "type": "component",
+          "id": "markdown"
+        },
+        {
+          "type": "component",
+          "id": "md-code-inline"
+        },
+        {
+          "type": "component",
+          "id": "md-h1"
+        },
+        {
+          "type": "component",
+          "id": "md-h2"
+        },
+        {
+          "type": "component",
+          "id": "md-h3"
+        },
+        {
+          "type": "component",
+          "id": "md-h4"
+        },
+        {
+          "type": "component",
+          "id": "menu-footer"
+        },
+        {
+          "type": "component",
+          "id": "menu-header"
+        },
+        {
+          "type": "component",
+          "id": "menu-identity"
+        },
+        {
+          "type": "component",
+          "id": "menu-item"
+        },
+        {
+          "type": "component",
+          "id": "menu"
+        },
+        {
+          "type": "component",
+          "id": "mermaid"
+        },
+        {
+          "type": "component",
+          "id": "message-activity-group"
+        },
+        {
+          "type": "component",
+          "id": "message-activity"
+        },
+        {
+          "type": "component",
+          "id": "message-answer"
+        },
+        {
+          "type": "component",
+          "id": "message-asset-card"
+        },
+        {
+          "type": "component",
+          "id": "message-footer"
+        },
+        {
+          "type": "component",
+          "id": "message-media"
+        },
+        {
+          "type": "component",
+          "id": "message-query"
+        },
+        {
+          "type": "component",
+          "id": "message-result-chip"
+        },
+        {
+          "type": "component",
+          "id": "message-source"
+        },
+        {
+          "type": "component",
+          "id": "message-user-reply"
+        },
+        {
+          "type": "component",
+          "id": "modal-actions"
+        },
+        {
+          "type": "component",
+          "id": "morphing-shape"
+        },
+        {
+          "type": "component",
+          "id": "otp-input"
+        },
+        {
+          "type": "component",
+          "id": "pagination"
+        },
+        {
+          "type": "component",
+          "id": "pie-chart"
+        },
+        {
+          "type": "component",
+          "id": "progress"
+        },
+        {
+          "type": "component",
+          "id": "property"
+        }
+      ]
+    },
+    {
+      "response": "documents2.json",
+      "error": null,
+      "code": null,
+      "count": 100,
+      "nextCursor": "eyJjb250ZXh0Ijoic2hhMjU2OjQ2ZDQwMTk5NGRhYjNkMjlhYzYwODcyODlkODNlZTk0YTU1ODFhNWMzNjBjNzgzNmQ5ZmU5YWE1M2ZhZGEyNTMiLCJvZmZzZXQiOjIwMH0",
+      "resources": [
+        {
+          "type": "component",
+          "id": "qr-code"
+        },
+        {
+          "type": "component",
+          "id": "radio-cards"
+        },
+        {
+          "type": "component",
+          "id": "radio"
+        },
+        {
+          "type": "component",
+          "id": "result-item"
+        },
+        {
+          "type": "component",
+          "id": "run-item"
+        },
+        {
+          "type": "component",
+          "id": "scrollbar"
+        },
+        {
+          "type": "component",
+          "id": "search-bar"
+        },
+        {
+          "type": "component",
+          "id": "search-panel"
+        },
+        {
+          "type": "component",
+          "id": "section-header"
+        },
+        {
+          "type": "component",
+          "id": "segmented"
+        },
+        {
+          "type": "component",
+          "id": "selectable-cards"
+        },
+        {
+          "type": "component",
+          "id": "selection-tree-item"
+        },
+        {
+          "type": "component",
+          "id": "selection-tree"
+        },
+        {
+          "type": "component",
+          "id": "session-end"
+        },
+        {
+          "type": "component",
+          "id": "session-info"
+        },
+        {
+          "type": "component",
+          "id": "sheet-basic"
+        },
+        {
+          "type": "component",
+          "id": "sidebar-item-meta"
+        },
+        {
+          "type": "component",
+          "id": "sidebar-item"
+        },
+        {
+          "type": "component",
+          "id": "sidebar-section-header"
+        },
+        {
+          "type": "component",
+          "id": "sidebar-topbar"
+        },
+        {
+          "type": "component",
+          "id": "skeleton"
+        },
+        {
+          "type": "component",
+          "id": "slider"
+        },
+        {
+          "type": "component",
+          "id": "sonner"
+        },
+        {
+          "type": "component",
+          "id": "stat-card"
+        },
+        {
+          "type": "component",
+          "id": "stat-cards-group"
+        },
+        {
+          "type": "component",
+          "id": "stat-trend"
+        },
+        {
+          "type": "component",
+          "id": "stepper"
+        },
+        {
+          "type": "component",
+          "id": "strength-meter"
+        },
+        {
+          "type": "component",
+          "id": "suggestion"
+        },
+        {
+          "type": "component",
+          "id": "switch"
+        },
+        {
+          "type": "component",
+          "id": "symbol"
+        },
+        {
+          "type": "component",
+          "id": "tab-item"
+        },
+        {
+          "type": "component",
+          "id": "table-cell"
+        },
+        {
+          "type": "component",
+          "id": "table-column"
+        },
+        {
+          "type": "component",
+          "id": "table-header"
+        },
+        {
+          "type": "component",
+          "id": "table-main-key-badge"
+        },
+        {
+          "type": "component",
+          "id": "table-main-key-symbol"
+        },
+        {
+          "type": "component",
+          "id": "table-main-key"
+        },
+        {
+          "type": "component",
+          "id": "table"
+        },
+        {
+          "type": "component",
+          "id": "tabs"
+        },
+        {
+          "type": "component",
+          "id": "time-picker"
+        },
+        {
+          "type": "component",
+          "id": "toc"
+        },
+        {
+          "type": "component",
+          "id": "tooltip"
+        },
+        {
+          "type": "component",
+          "id": "topbar"
+        },
+        {
+          "type": "component",
+          "id": "turn-navigator"
+        },
+        {
+          "type": "component",
+          "id": "utility-button"
+        },
+        {
+          "type": "component",
+          "id": "wf-job-event-timeline"
+        },
+        {
+          "type": "component",
+          "id": "wf-job-summary"
+        },
+        {
+          "type": "component",
+          "id": "wf-node"
+        },
+        {
+          "type": "component",
+          "id": "wf-port"
+        },
+        {
+          "type": "doc",
+          "id": "action-label"
+        },
+        {
+          "type": "doc",
+          "id": "controls-gap"
+        },
+        {
+          "type": "doc",
+          "id": "dialog-label"
+        },
+        {
+          "type": "doc",
+          "id": "email-masking"
+        },
+        {
+          "type": "doc",
+          "id": "file-name-truncation"
+        },
+        {
+          "type": "doc",
+          "id": "file-path-truncation"
+        },
+        {
+          "type": "doc",
+          "id": "file-size"
+        },
+        {
+          "type": "doc",
+          "id": "form-gap"
+        },
+        {
+          "type": "doc",
+          "id": "grid-of-ideal-width"
+        },
+        {
+          "type": "doc",
+          "id": "grid-of-minimum-width"
+        },
+        {
+          "type": "doc",
+          "id": "internationalization"
+        },
+        {
+          "type": "doc",
+          "id": "local-mcp-setup"
+        },
+        {
+          "type": "doc",
+          "id": "menu-positioning"
+        },
+        {
+          "type": "doc",
+          "id": "recurrence"
+        },
+        {
+          "type": "doc",
+          "id": "theme"
+        },
+        {
+          "type": "doc",
+          "id": "time-display"
+        },
+        {
+          "type": "style",
+          "id": "border"
+        },
+        {
+          "type": "style",
+          "id": "center-modal"
+        },
+        {
+          "type": "style",
+          "id": "color-primitives"
+        },
+        {
+          "type": "style",
+          "id": "color-tokens"
+        },
+        {
+          "type": "style",
+          "id": "disable"
+        },
+        {
+          "type": "style",
+          "id": "float-panel"
+        },
+        {
+          "type": "style",
+          "id": "hover"
+        },
+        {
+          "type": "style",
+          "id": "icon"
+        },
+        {
+          "type": "style",
+          "id": "layout-spacing"
+        },
+        {
+          "type": "style",
+          "id": "link"
+        },
+        {
+          "type": "style",
+          "id": "list"
+        },
+        {
+          "type": "style",
+          "id": "motion"
+        },
+        {
+          "type": "style",
+          "id": "rounded"
+        },
+        {
+          "type": "style",
+          "id": "shadows"
+        },
+        {
+          "type": "style",
+          "id": "side-panel"
+        },
+        {
+          "type": "style",
+          "id": "size"
+        },
+        {
+          "type": "style",
+          "id": "typography"
+        },
+        {
+          "type": "scenario",
+          "id": "collection-loading"
+        },
+        {
+          "type": "scenario",
+          "id": "copy-button-feedback"
+        },
+        {
+          "type": "scenario",
+          "id": "detail-page-structure"
+        },
+        {
+          "type": "scenario",
+          "id": "dialog"
+        },
+        {
+          "type": "scenario",
+          "id": "drag-and-drop"
+        },
+        {
+          "type": "scenario",
+          "id": "file-folder-picker"
+        },
+        {
+          "type": "scenario",
+          "id": "form"
+        },
+        {
+          "type": "scenario",
+          "id": "history-timeline"
+        },
+        {
+          "type": "scenario",
+          "id": "linked-folder-selection"
+        },
+        {
+          "type": "scenario",
+          "id": "login-card"
+        },
+        {
+          "type": "scenario",
+          "id": "markdown-document"
+        },
+        {
+          "type": "scenario",
+          "id": "menu-organization"
+        },
+        {
+          "type": "scenario",
+          "id": "message-activity"
+        },
+        {
+          "type": "scenario",
+          "id": "modal-viewport"
+        },
+        {
+          "type": "scenario",
+          "id": "multiple-entry-select"
+        },
+        {
+          "type": "scenario",
+          "id": "resource-sharing"
+        },
+        {
+          "type": "scenario",
+          "id": "session-approval"
+        }
+      ]
+    },
+    {
+      "response": "documents3.json",
+      "error": null,
+      "code": null,
+      "count": 6,
+      "nextCursor": null,
+      "resources": [
+        {
+          "type": "scenario",
+          "id": "sessions-lifecircle"
+        },
+        {
+          "type": "scenario",
+          "id": "sheet-basic-size-selection"
+        },
+        {
+          "type": "scenario",
+          "id": "sheet"
+        },
+        {
+          "type": "scenario",
+          "id": "sidebar-density"
+        },
+        {
+          "type": "scenario",
+          "id": "topbar-trailing"
+        },
+        {
+          "type": "scenario",
+          "id": "topbar"
+        }
+      ]
+    },
+    {
+      "response": "examples-dialog.json",
+      "error": "Design guidance could not be read.",
+      "code": "INVALID_DOCUMENT"
+    },
+    {
+      "response": "examples-list.json",
+      "error": "Design guidance could not be read.",
+      "code": "INVALID_DOCUMENT"
+    },
+    {
+      "response": "examples-scenario-dialog.json",
+      "error": "Design guidance could not be read.",
+      "code": "INVALID_DOCUMENT"
+    },
+    {
+      "response": "examples.json",
+      "error": "Design guidance could not be read.",
+      "code": "INVALID_DOCUMENT"
+    },
+    {
+      "response": "props-badge.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/badge",
+      "galleryUrl": "http://localhost:5680/components/badge",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-button.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/button",
+      "galleryUrl": "http://localhost:5680/components/button",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-dialog-basic.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/dialog-basic",
+      "galleryUrl": "http://localhost:5680/components/dialog-basic",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-dropdown.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/dropdown",
+      "galleryUrl": "http://localhost:5680/components/dropdown",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-empty-state.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/empty-state",
+      "galleryUrl": "http://localhost:5680/components/empty-state",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-error-state.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/error-state",
+      "galleryUrl": "http://localhost:5680/components/error-state",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-field-container.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/field-container",
+      "galleryUrl": "http://localhost:5680/components/field-container",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-input.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/input",
+      "galleryUrl": "http://localhost:5680/components/input",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-list-row.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/list-row",
+      "galleryUrl": "http://localhost:5680/components/list-row",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-list-section.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/list-section",
+      "galleryUrl": "http://localhost:5680/components/list-section",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-list.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/list",
+      "galleryUrl": "http://localhost:5680/components/list",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-loading.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/loading",
+      "galleryUrl": "http://localhost:5680/components/loading",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-radio.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/radio",
+      "galleryUrl": "http://localhost:5680/components/radio",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-skeleton.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/skeleton",
+      "galleryUrl": "http://localhost:5680/components/skeleton",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-symbol.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/symbol",
+      "galleryUrl": "http://localhost:5680/components/symbol",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    },
+    {
+      "response": "props-utility-button.json",
+      "error": null,
+      "code": null,
+      "resourceId": "ui://component/utility-button",
+      "galleryUrl": "http://localhost:5680/components/utility-button",
+      "sections": [
+        "properties",
+        "props"
+      ]
+    }
+  ],
+  "toolchain": {
+    "developerDir": "/Applications/Xcode.app/Contents/Developer",
+    "version": "Xcode 27.2",
+    "buildVersion": "27B52",
+    "authorization": "User confirmed replacing Xcode Beta with the release version during audit."
+  },
+  "build": {
+    "tool": "XcodeBuildMCP.build_run_sim",
+    "scheme": "SealNote",
+    "success": true,
+    "warnings": 17,
+    "simulator": "iPhone 18 Pro / iOS 27.2",
+    "processId": 33428,
+    "buildLogPath": "/Users/aaronxu/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/logs/build_run_sim_2026-11-15T12-05-55-402Z_pid21611_0ff12af1.log",
+    "interactions": [
+      "open note Menu",
+      "open Rename",
+      "Cancel Rename and return to Home"
+    ],
+    "motionVerification": "not-performed",
+    "iPadRuntime": "not-performed"
+  }
+}

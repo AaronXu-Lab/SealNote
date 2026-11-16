@@ -240,3 +240,71 @@ final class SettingsStoreTests: XCTestCase {
     #endif
 
 }
+
+#if os(iOS)
+@MainActor
+final class MobileComponentBehaviorTests: XCTestCase {
+    private enum Failure: LocalizedError {
+        case write
+        var errorDescription: String? { "无法写入笔记" }
+    }
+
+    func testPendingActionRejectsDuplicateAndCanRetryAfterFailure() async {
+        let state = MobileTaskState()
+        let started = expectation(description: "operation suspended")
+        var continuation: CheckedContinuation<Void, Error>?
+        let first = Task { @MainActor in
+            await state.run {
+                try await withCheckedThrowingContinuation { pending in
+                    continuation = pending
+                    started.fulfill()
+                }
+            }
+        }
+        await fulfillment(of: [started], timeout: 2)
+        XCTAssertTrue(state.isRunning)
+        let duplicate = await state.run { XCTFail("Pending operation must not run twice") }
+        XCTAssertFalse(duplicate)
+        state.reset()
+        XCTAssertTrue(state.isRunning)
+        continuation?.resume(throwing: Failure.write)
+        let failed = await first.value
+        XCTAssertFalse(failed)
+        XCTAssertFalse(state.isRunning)
+        XCTAssertEqual(state.errorMessage, "无法写入笔记")
+        let retried = await state.run {}
+        XCTAssertTrue(retried)
+        XCTAssertNil(state.errorMessage)
+        XCTAssertFalse(state.isRunning)
+    }
+
+    func testNewPresentationClearsPreviousFailure() async {
+        let state = MobileTaskState()
+        let succeeded = await state.run { throw Failure.write }
+        XCTAssertFalse(succeeded)
+        XCTAssertNotNil(state.errorMessage)
+        state.reset()
+        XCTAssertNil(state.errorMessage)
+    }
+
+    func testAbsoluteTimestampUsesLocalDayAndYearBoundaries() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T05:10:00Z"))
+        let sameDay = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T05:01:00Z"))
+        let previousYear = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-01T04:59:00Z"))
+        let anotherDay = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-01-02T05:01:00Z"))
+        XCTAssertEqual(DateFormatters.formatMobileAbsoluteTime(sameDay, relativeTo: now, calendar: calendar), "00:01")
+        XCTAssertEqual(DateFormatters.formatMobileAbsoluteTime(previousYear, relativeTo: now, calendar: calendar), "2025/12/31 23:59")
+        XCTAssertEqual(DateFormatters.formatMobileAbsoluteTime(anotherDay, relativeTo: now, calendar: calendar), "01/02 00:01")
+    }
+
+    func testAbsoluteTimestampUses24HourClockAndInvalidFallback() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        let date = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-11-15T18:07:00Z"))
+        XCTAssertEqual(DateFormatters.formatMobileAbsoluteTime(date, relativeTo: date, calendar: calendar), "18:07")
+        XCTAssertEqual(DateFormatters.formatMobileAbsoluteTime(Date(timeIntervalSinceReferenceDate: .infinity)), "—")
+    }
+}
+#endif

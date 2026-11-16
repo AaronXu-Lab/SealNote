@@ -33,6 +33,7 @@ struct HomeView: View {
 
     @State private var searchQuery = VaultStore.shared.searchText
     @State private var showSettings = false
+    @State private var showStrandedDataConfirmation = false
     @State private var showTrash = false
     @State private var editorSheet: MobileEditorSheet?
     @State private var noteToDelete: NoteListItem?
@@ -53,6 +54,8 @@ struct HomeView: View {
     @State private var showKeyIssueAlert = false
     @State private var showEncryptedNoteUnavailable = false
     @State private var isStorageRefreshInProgress = false
+    @State private var isRetryingInitialization = false
+    @State private var initializationRetryMessage = ""
 
     private var filteredItems: [NoteListItem] {
         vaultStore.filteredNotes
@@ -143,15 +146,15 @@ struct HomeView: View {
                 ShareSheet(items: [url])
             }
         }
-        .snDialog("发现本机笔记", isPresented: Binding(
-            get: { vaultStore.strandedLocalDataDetected },
-            set: { if !$0 { vaultStore.dismissStrandedDataPrompt() } }
-        ),
-            primary: AUIDialogAction("合并到 iCloud", closes: true, handler: {
-                Task { try? await vaultStore.mergeLocalDataIntoICloud() }
-            }),
-            secondary: AUIDialogAction("暂不", closes: true, handler: { vaultStore.dismissStrandedDataPrompt() })
-        ) {
+        .snAsyncDialog("发现本机笔记", isPresented: Binding(
+            get: { showStrandedDataConfirmation },
+            set: {
+                showStrandedDataConfirmation = $0
+                if !$0 { vaultStore.dismissStrandedDataPrompt() }
+            }
+        ), actionTitle: "合并到 iCloud", operation: {
+            _ = try await vaultStore.mergeLocalDataIntoICloud()
+        }) {
             Text("检测到本机存储中还有笔记，可能是 iCloud 退出登录期间创建的。是否合并到当前 iCloud 保险库？重复的笔记会保留为「本机副本」。")
         }
         .snDialog("保存密钥", isPresented: Binding(
@@ -167,44 +170,32 @@ struct HomeView: View {
         ) {
             Text("密钥已经创建并加载。\n请导出并妥善保存密钥。丢失密钥后，加密笔记将无法恢复。")
         }
-        .snDialog("删除笔记", isPresented: $showDeleteConfirmation,
-            primary: AUIDialogAction("删除", destructive: true, closes: true, handler: {
-                if let item = noteToDelete {
-                    Task {
-                        do {
-                            try await deleteSingleItem(item)
-                        } catch {
-                            vaultStore.lastError = "删除失败：\(error.localizedDescription)"
-                        }
-                    }
-                }
-                noteToDelete = nil
-            }),
-            secondary: AUIDialogAction("取消", closes: true, handler: { noteToDelete = nil })
-        ) {
+        .snAsyncDialog("删除笔记", isPresented: Binding(
+            get: { showDeleteConfirmation },
+            set: { showDeleteConfirmation = $0; if !$0 { noteToDelete = nil } }
+        ), actionTitle: "删除", destructive: true, operation: {
+            guard let item = noteToDelete else { return }
+            try await deleteSingleItem(item)
+        }) {
             Text("删除后笔记将进入回收站，30 天后自动永久删除。")
         }
-        .snDialog("批量删除", isPresented: $showBatchDeleteConfirmation,
-            primary: AUIDialogAction("删除\(selectedItems.count)条", destructive: true, closes: true, handler: {
-                Task { await performBatchDelete() }
-            }),
-            secondary: AUIDialogAction("取消", closes: true, handler: {})
-        ) {
+        .snAsyncDialog("批量删除", isPresented: $showBatchDeleteConfirmation,
+                       actionTitle: "删除\(selectedItems.count)条", destructive: true,
+                       operation: { try await performBatchDelete() },
+                       onSuccess: { showBatchResult = true }) {
             Text("选中的笔记将移动至回收站，30 天后自动永久删除。")
         }
-        .snDialog("重命名笔记", isPresented: Binding(
+        .snAsyncDialog("重命名笔记", isPresented: Binding(
             get: { noteToRename != nil },
             set: { if !$0 { noteToRename = nil } }
-        ),
-            primary: AUIDialogAction("保存", disabled: renameTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, closes: true, handler: { renameSelectedNote() }),
-            secondary: AUIDialogAction("取消", closes: true, handler: { noteToRename = nil })
-        ) {
+        ), actionTitle: "保存", disabled: renameTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       operation: { try await renameSelectedNote() }) {
             Text("标题只影响列表和文件名，不会改写正文。")
             AUIInput("标题", text: $renameTitle, label: "标题")
                 .accessibilityLabel("标题")
         }
         .snDialog("操作结果", isPresented: $showBatchResult,
-            primary: AUIDialogAction("确定", closes: true, handler: { batchResultMessage = nil })
+            secondary: AUIDialogAction("知道了", closes: true, handler: { batchResultMessage = nil })
         ) {
             Text(batchResultMessage ?? "")
         }
@@ -215,7 +206,7 @@ struct HomeView: View {
             Text(keyIssueMessage)
         }
         .snDialog("加密笔记", isPresented: $showEncryptedNoteUnavailable,
-            primary: AUIDialogAction("知道了", closes: true, handler: {})
+            secondary: AUIDialogAction("知道了", closes: true, handler: {})
         ) {
             Text("当前版本暂不支持在 iPhone 或 iPad 上查看和编辑加密笔记，请使用 Seal Note for Mac 打开。")
         }
@@ -223,9 +214,12 @@ struct HomeView: View {
             get: { vaultStore.lastError != nil },
             set: { if !$0 { vaultStore.lastError = nil } }
         ),
-            primary: AUIDialogAction("确定", closes: true, handler: { vaultStore.lastError = nil })
+            secondary: AUIDialogAction("知道了", closes: true, handler: { vaultStore.lastError = nil })
         ) {
             Text(vaultStore.lastError ?? "")
+        }
+        .onChange(of: vaultStore.strandedLocalDataDetected, initial: true) { _, detected in
+            if detected { showStrandedDataConfirmation = true }
         }
         .task {
             if !MobileFeatureVisibility.tags { vaultStore.selectedTag = nil }
@@ -281,14 +275,20 @@ struct HomeView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        switch vaultStore.state {
+        switch isRetryingInitialization ? .error(message: initializationRetryMessage) : vaultStore.state {
         case .loading:
             loadingSkeleton
                 .dsCanvasBackground()
 
         case .error(let message):
-            ErrorView(message: message) {
-                Task { await vaultStore.initialize() }
+            SNErrorState(title: "无法载入笔记", message: message, isRetrying: isRetryingInitialization) {
+                guard !isRetryingInitialization else { return }
+                initializationRetryMessage = message
+                isRetryingInitialization = true
+                Task {
+                    await vaultStore.initialize()
+                    isRetryingInitialization = false
+                }
             }
 
         case .ready:
@@ -722,19 +722,11 @@ struct HomeView: View {
         noteToRename = note
     }
 
-    private func renameSelectedNote() {
+    private func renameSelectedNote() async throws {
         guard let note = noteToRename else { return }
         let title = renameTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
-        noteToRename = nil
-
-        Task {
-            do {
-                try await vaultStore.renameNote(note, title: title)
-            } catch {
-                vaultStore.lastError = "重命名失败：\(error.localizedDescription)"
-            }
-        }
+        try await vaultStore.renameNote(note, title: title)
     }
 
     private func enterSelectMode() {
@@ -756,19 +748,13 @@ struct HomeView: View {
         }
     }
 
-    private func performBatchDelete() async {
-        let items = selectedItems
+    private func performBatchDelete() async throws {
+        let result = try await vaultStore.batchDeleteNotes(selectedItems)
         exitSelectMode()
-        do {
-            let result = try await vaultStore.batchDeleteNotes(items)
-            if result.errors > 0 {
-                batchResultMessage = "成功删除 \(result.deleted) 条，\(result.errors) 条删除失败。"
-            } else {
-                batchResultMessage = "已将 \(result.deleted) 条笔记移动至回收站。"
-            }
-            showBatchResult = true
-        } catch {
-            vaultStore.lastError = "批量删除失败：\(error.localizedDescription)"
+        if result.errors > 0 {
+            batchResultMessage = "成功删除 \(result.deleted) 条，\(result.errors) 条删除失败。"
+        } else {
+            batchResultMessage = "已将 \(result.deleted) 条笔记移动至回收站。"
         }
     }
 
@@ -827,17 +813,5 @@ struct PrivacyScreenView: View {
             }
         }
         .ignoresSafeArea()
-    }
-}
-
-struct ErrorView: View {
-    let message: String
-    let retryAction: () -> Void
-
-    var body: some View {
-        AUIEmptyState("出错了", systemImage: "exclamationmark.triangle", description: message) {
-            AUIButton("重试", variant: .fill, action: retryAction)
-        }
-        .dsCanvasBackground()
     }
 }

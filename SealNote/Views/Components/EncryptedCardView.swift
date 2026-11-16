@@ -188,8 +188,12 @@ struct EncryptedCardView: View {
     }
 
     private var timestampText: String {
+        #if os(iOS)
+        DateFormatters.formatMobileAbsoluteTime(updatedAt)
+        #else
         DateFormatters.formatDisplayDateTime(updatedAt)
             .replacingOccurrences(of: ".", with: "-")
+        #endif
     }
 
     private var openActionTitle: String {

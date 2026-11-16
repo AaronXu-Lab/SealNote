@@ -1,0 +1,287 @@
+{
+  "date": "2026-11-15",
+  "tests": {
+    "schema": "xcodebuildmcp.output.test-result",
+    "schemaVersion": "3",
+    "didError": false,
+    "error": null,
+    "data": {
+      "summary": {
+        "status": "SUCCEEDED",
+        "durationMs": 37360,
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0
+        },
+        "target": "simulator"
+      },
+      "artifacts": {
+        "buildLogPath": "~/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/logs/test_sim_2026-11-15T12-47-09-570Z_pid21611_f7d43199.log",
+        "xcresultPath": "~/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/result-bundles/test_sim_2026-11-15T12-47-09-571Z_pid21611_276e1789.xcresult",
+        "testProductsPath": "~/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/test-products/test_sim_2026-11-15T12-47-09-571Z_pid21611_18f032c7.xctestproducts"
+      },
+      "diagnostics": {
+        "warnings": [
+          {
+            "message": "main actor-isolated static property 'shared' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultIdentityStore.swift:26"
+          },
+          {
+            "message": "main actor-isolated static property 'shared' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:190"
+          },
+          {
+            "message": "main actor-isolated static property 'default' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Storage/VaultStorage.swift:121"
+          },
+          {
+            "message": "main actor-isolated static property 'default' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Storage/VaultStorage.swift:140"
+          },
+          {
+            "message": "main actor-isolated static property 'default' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:1367"
+          },
+          {
+            "message": "main actor-isolated static property 'shared' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:1382"
+          },
+          {
+            "message": "main actor-isolated static property 'shared' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:1385"
+          },
+          {
+            "message": "main actor-isolated static property 'shared' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:1389"
+          },
+          {
+            "message": "main actor-isolated static property 'shared' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:1393"
+          },
+          {
+            "message": "main actor-isolated static property 'shared' can not be referenced from a nonisolated context",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:1394"
+          },
+          {
+            "message": "main actor-isolated static property 'shared' cannot be accessed from outside of the actor; this is an error in the Swift 6 language mode",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Stores/VaultStore.swift:1481"
+          },
+          {
+            "message": "'headingStyle(_:for:)' is deprecated: renamed to 'markdownHeadingStyle' [#DeprecatedDeclaration]",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Views/Components/NoteEditorContentView.swift:81"
+          },
+          {
+            "message": "'headingStyle(_:for:)' is deprecated: renamed to 'markdownHeadingStyle' [#DeprecatedDeclaration]",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Views/Components/NoteEditorContentView.swift:82"
+          },
+          {
+            "message": "'headingStyle(_:for:)' is deprecated: renamed to 'markdownHeadingStyle' [#DeprecatedDeclaration]",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Views/Components/NoteEditorContentView.swift:83"
+          },
+          {
+            "message": "'headingStyle(_:for:)' is deprecated: renamed to 'markdownHeadingStyle' [#DeprecatedDeclaration]",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Views/Components/NoteEditorContentView.swift:84"
+          },
+          {
+            "message": "'headingStyle(_:for:)' is deprecated: renamed to 'markdownHeadingStyle' [#DeprecatedDeclaration]",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Views/Components/NoteEditorContentView.swift:85"
+          },
+          {
+            "message": "'headingStyle(_:for:)' is deprecated: renamed to 'markdownHeadingStyle' [#DeprecatedDeclaration]",
+            "location": "/Users/aaronxu/Documents/GitHub/SealNote/SealNote/Views/Components/NoteEditorContentView.swift:86"
+          }
+        ],
+        "errors": [],
+        "testFailures": []
+      },
+      "testCases": [
+        {
+          "suite": "MobileComponentBehaviorTests",
+          "test": "testAbsoluteTimestampUses24HourClockAndInvalidFallback()",
+          "status": "passed",
+          "durationMs": 3
+        },
+        {
+          "suite": "MobileComponentBehaviorTests",
+          "test": "testAbsoluteTimestampUsesLocalDayAndYearBoundaries()",
+          "status": "passed",
+          "durationMs": 2
+        },
+        {
+          "suite": "MobileComponentBehaviorTests",
+          "test": "testNewPresentationClearsPreviousFailure()",
+          "status": "passed",
+          "durationMs": 7
+        },
+        {
+          "suite": "MobileComponentBehaviorTests",
+          "test": "testPendingActionRejectsDuplicateAndCanRetryAfterFailure()",
+          "status": "passed",
+          "durationMs": 9
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testBatchDeletePlainNotesMovesToTrash()",
+          "status": "passed",
+          "durationMs": 19
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testClearEmptyReadableNotesMovesOnlyReadableEmptyNotesToTrash()",
+          "status": "passed",
+          "durationMs": 32
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testDeletePlainNoteMovesToTrash()",
+          "status": "passed",
+          "durationMs": 9
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testEditorSessionFailedCloseKeepsDraftAndCanRetry()",
+          "status": "passed",
+          "durationMs": 3
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testEditorSessionFlushWaitsForAllSaves()",
+          "status": "passed",
+          "durationMs": 1
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testEmptyTrash()",
+          "status": "passed",
+          "durationMs": 61
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testInitializationCanRecoverAfterStorageFailure()",
+          "status": "passed",
+          "durationMs": 16
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testMergeVaultDataMergesUniqueAndRenamesCollisions()",
+          "status": "passed",
+          "durationMs": 17
+        },
+        {
+          "suite": "VaultStoreTests",
+          "test": "testRenameNoteChangesFileNameButLeavesMarkdownContentUntouched()",
+          "status": "passed",
+          "durationMs": 10
+        }
+      ]
+    }
+  },
+  "ipadBuild": {
+    "status": "SUCCEEDED",
+    "durationMs": 31216,
+    "target": "simulator"
+  },
+  "ipadBuildArtifacts": {
+    "appPath": "/Users/aaronxu/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/DerivedData/SealNote-8b475339c01f/Build/Products/Debug-iphonesimulator/SealNote.app",
+    "bundleId": "com.xuweinan.sealnote",
+    "processId": 63196,
+    "simulatorId": "4286C1B8-3C05-4B59-8AB3-FB8FFAE33DF4",
+    "buildLogPath": "/Users/aaronxu/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/logs/build_run_sim_2026-11-15T12-40-47-522Z_pid21611_c34b45b4.log",
+    "runtimeLogPath": "/Users/aaronxu/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/logs/com.xuweinan.sealnote_2026-11-15T12-41-14-106Z_helperpid63117_ownerpid21611_c69ba4ab.log",
+    "osLogPath": "/Users/aaronxu/Library/Developer/XcodeBuildMCP/workspaces/SealNote-d3df8db9edd4/logs/com.xuweinan.sealnote_oslog_2026-11-15T12-41-18-712Z_helperpid63264_ownerpid21611_3d3fe8a2.log"
+  },
+  "editorDelete": {
+    "type": "runtime-snapshot",
+    "rs": "1",
+    "screenHash": "1bltagv",
+    "seq": 46,
+    "count": 56,
+    "targets": [
+      "e23|typeText|text-field|搜索|搜索|",
+      "e11|tap|button|设置||gearshape",
+      "e17|tap|button|新建笔记||square.and.pencil",
+      "e30|tap|button|欢迎使用Seal Note。，笔记操作||",
+      "e31|tap|button|||",
+      "e35|tap|button|展开剩余 1 行||",
+      "e36|tap|button|标签写法示例：，笔记操作||",
+      "e37|tap|button|||",
+      "e41|tap|button|展开剩余 1 行||",
+      "e42|tap|button|加密笔记适合保存更私密的内容。，笔记操作||",
+      "e43|tap|button|||",
+      "e47|tap|button|展开剩余 1 行||"
+    ],
+    "scroll": [
+      "e24|swipe|scroll-view|||"
+    ],
+    "text": [
+      "e14|text|text|Seal Note||",
+      "e33|text|text|06:19||",
+      "e34|text|text|欢迎使用Seal Note。 你可以像写卡片一样记录想法，也可以在需要时创建加密笔记。 #欢迎||",
+      "e39|text|text|06:19||",
+      "e40|text|text|标签写法示例： 在正文中输入 #灵感 或 #日记 ，它们会出现在侧边栏的标签区域。 #使用说明 #标签||",
+      "e45|text|text|06:19||",
+      "e46|text|text|加密笔记适合保存更私密的内容。 首次创建笔记时，你可以选择创建密钥。创建密钥后，新建笔记时可以打开\"加密笔记\"开关。 #加密||"
+    ],
+    "udid": "1C1A019A-1C6F-4F59-A3E8-EA3747588664"
+  },
+  "notice": {
+    "type": "runtime-snapshot",
+    "rs": "1",
+    "screenHash": "0i3yqwk",
+    "seq": 50,
+    "count": 190,
+    "targets": [
+      "e104|tap|button|查看回收站, 恢复或永久删除已移除笔记, 1||",
+      "e117|tap|button|清理 30 天前删除的笔记, 只移除已经到期的回收站笔记||",
+      "e129|tap|button|清空回收站, 永久删除回收站中的所有笔记||",
+      "e153|tap|button|导出明文笔记, 导出 zip，跳过加密笔记||",
+      "e164|tap|button|清理空白笔记, 将正文为空的可读笔记移到回收站||",
+      "e23|typeText|text-field|搜索|搜索|",
+      "e11|tap|button|设置||gearshape",
+      "e17|tap|button|新建笔记||square.and.pencil",
+      "e30|tap|button|欢迎使用Seal Note。，笔记操作||",
+      "e31|tap|button|||",
+      "e35|tap|button|展开剩余 1 行||",
+      "e36|tap|button|标签写法示例：，笔记操作||",
+      "e37|tap|button|||",
+      "e41|tap|button|展开剩余 1 行||",
+      "e42|tap|button|加密笔记适合保存更私密的内容。，笔记操作||",
+      "e43|tap|button|||",
+      "e47|tap|button|展开剩余 1 行||",
+      "e59|tap|button|设置||BackButton",
+      "e78|tap|button|刷新||",
+      "e186|tap|button|知道了||"
+    ],
+    "scroll": [
+      "e24|swipe|scroll-view|||"
+    ],
+    "text": [
+      "e14|text|text|Seal Note||",
+      "e77|text|text|同步可用||",
+      "e80|text|text|当前使用本地回退存储||",
+      "e33|text|text|06:19||",
+      "e34|text|text|欢迎使用Seal Note。 你可以像写卡片一样记录想法，也可以在需要时创建加密笔记。 #欢迎||",
+      "e88|text|text|存储位置||",
+      "e90|text|text|仅本机||",
+      "e105|text|text|查看回收站||",
+      "e108|text|text|1||",
+      "e109|text|text|恢复或永久删除已移除笔记||",
+      "e185|text|text|没有需要清理的空白笔记。||",
+      "e39|text|text|06:19||",
+      "e118|text|text|清理 30 天前删除的笔记||",
+      "e40|text|text|标签写法示例： 在正文中输入 #灵感 或 #日记 ，它们会出现在侧边栏的标签区域。 #使用说明 #标签||",
+      "e120|text|text|只移除已经到期的回收站笔记||",
+      "e130|text|text|清空回收站||",
+      "e132|text|text|永久删除回收站中的所有笔记||",
+      "e142|text|text|回收站笔记将在删除 30 天后自动永久删除。||",
+      "e45|text|text|06:19||",
+      "e46|text|text|加密笔记适合保存更私密的内容。 首次创建笔记时，你可以选择创建密钥。创建密钥后，新建笔记时可以打开\"加密笔记\"开关。 #加密||",
+      "e154|text|text|导出明文笔记||",
+      "e156|text|text|导出 zip，跳过加密笔记||",
+      "e165|text|text|清理空白笔记||",
+      "e167|text|text|将正文为空的可读笔记移到回收站||"
+    ],
+    "udid": "1C1A019A-1C6F-4F59-A3E8-EA3747588664"
+  }
+}
